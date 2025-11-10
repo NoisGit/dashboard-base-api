@@ -1,0 +1,15 @@
+argon2-cffi==25.1.0
+asyncmy==0.2.10
+azure-storage-blob==12.27.0
+cryptography==45.0.3
+fastapi==0.115.12
+fastapi-mcp==0.3.7
+firebase-admin==6.9.0
+gunicorn==23.0.0
+pydantic[email]==2.11.5
+pyotp==2.9.0
+python-dotenv==1.1.0
+PyJWT==2.10.1
+sqlalchemy[asyncio]==2.0.41
+sqlmodel==0.0.24
+uvicorn==0.34.3
