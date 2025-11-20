@@ -17,6 +17,11 @@ from .custom_field import CustomField
 from .emergency_contact import EmergencyContact
 from .type_access_list import TypeAccessList
 from .access_list import AccessList
+from .document import Document
+from .support_ticket import SupportTicket
+from .support_response import SupportResponse
+from .external_people import ExternalPeople
+from .access_log import AccessLog
 
 __all__ = [
     "Role",
@@ -29,4 +34,9 @@ __all__ = [
     "EmergencyContact",
     "TypeAccessList",
     "AccessList",
+    "Document",
+    "SupportTicket",
+    "SupportResponse",
+    "ExternalPeople",
+    "AccessLog",
 ]
