@@ -12,7 +12,7 @@ from .plan import Plan
 from .company import Company
 from .entries import Entries
 from .user import User
-from .user_entry import UserEntry
+from .user_entry_access import UserEntryAccess
 from .custom_field import CustomField
 from .emergency_contact import EmergencyContact
 from .type_access_list import TypeAccessList
@@ -22,6 +22,7 @@ from .support_ticket import SupportTicket
 from .support_response import SupportResponse
 from .external_people import ExternalPeople
 from .access_log import AccessLog
+from .user_company import UserCompany
 
 __all__ = [
     "Role",
@@ -29,7 +30,7 @@ __all__ = [
     "Company",
     "Entries",
     "User",
-    "UserEntry",
+    "UserEntryAccess",
     "CustomField",
     "EmergencyContact",
     "TypeAccessList",
@@ -39,4 +40,5 @@ __all__ = [
     "SupportResponse",
     "ExternalPeople",
     "AccessLog",
+    "UserCompany",
 ]
