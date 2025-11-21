@@ -33,11 +33,11 @@ class Company(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    name: str
-    giro: str
-    rut: str
-    logo: Optional[str] = None
-    type_document: str
+    name: str = Field(max_length=100)
+    giro: str = Field(max_length=100)
+    rut: str = Field(max_length=50)
+    logo: Optional[str] = Field(default=None, max_length=255)
+    type_document: str = Field(max_length=30)
 
     created_by: Optional[int] = Field(
         default=None,

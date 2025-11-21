@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     from .access_list import AccessList
     from .type_access_list import TypeAccessList
     from .external_people import ExternalPeople
+    from .support_ticket import SupportTicket
+    from .support_response import SupportResponse
 
 
 class User(SQLModel, table=True):
@@ -31,27 +33,28 @@ class User(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    username: str
-    name: str
-    password: str
-    email: str
+    # Core identity fields (match ERD: username, full_name, password_hash, email)
+    username: str = Field(max_length=50)
+    full_name: str = Field(max_length=100)
+    password_hash: str = Field(max_length=255)
+    email: str = Field(max_length=100)
 
     status: bool = Field(default=True)
 
-    # Foreign keys
+    # Foreign keys (match ERD: role_id, plan_id, company_id)
     role_id: int = Field(foreign_key="role.id")
     plan_id: Optional[int] = Field(default=None, foreign_key="plan.id")
     company_id: Optional[int] = Field(default=None, foreign_key="company.id")
 
     last_session: Optional[datetime] = None
-    reason_suspension: Optional[str] = None
+    reason_suspension: Optional[str] = Field(default=None, max_length=255)
     date_change_status: Optional[datetime] = None
     last_update: Optional[datetime] = None
     recovery_password_mode: Optional[bool] = None
 
     # Who created this user (self-reference to users.id)
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
-    created_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships (belongs-to)
     role: Optional["Role"] = Relationship(back_populates="users")
@@ -76,4 +79,12 @@ class User(SQLModel, table=True):
     external_people_created: List["ExternalPeople"] = Relationship(
         back_populates="creator",
         sa_relationship_kwargs={"foreign_keys": "[ExternalPeople.created_by]"},
+    )
+    support_tickets_created: List["SupportTicket"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={"foreign_keys": "[SupportTicket.created_by]"},
+    )
+    support_responses_created: List["SupportResponse"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={"foreign_keys": "[SupportResponse.created_by]"},
     )

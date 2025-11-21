@@ -36,12 +36,12 @@ class Entries(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    name: str
-    address: str
-    country: Optional[str] = None
-    password: str
+    name: str = Field(max_length=100)
+    address: str = Field(max_length=255)
+    country: Optional[str] = Field(default=None, max_length=20)
+    password: str = Field(max_length=255)
     date_last_entry: Optional[datetime] = None
-    logo: Optional[str] = None
+    logo: Optional[str] = Field(default=None, max_length=255)
 
     created_by: Optional[int] = Field(
         default=None,

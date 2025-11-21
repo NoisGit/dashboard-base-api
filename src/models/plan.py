@@ -25,7 +25,8 @@ class Plan(SQLModel, table=True):
     __tablename__ = "plan"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(max_length=100)
+
     qty_entries: int = 0
     qty_admins: int = 0
     qty_janitors: int = 0

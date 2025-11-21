@@ -7,8 +7,8 @@ Represents a user role (e.g. admin, janitor) and keeps track of when
 the role record was created.
 """
 
-from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
+from typing import Optional, List, TYPE_CHECKING
 
 from sqlmodel import SQLModel, Field, Relationship
 
