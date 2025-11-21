@@ -26,6 +26,7 @@ class Company(SQLModel, table=True):
     Matches the `company` table in the ERD:
     - Basic identification (name, giro, rut)
     - Optional logo
+    - Document type (invoice/boleta, etc.)
     - Audit fields for who created the record and when
     """
     __tablename__ = "company"
@@ -36,9 +37,13 @@ class Company(SQLModel, table=True):
     giro: str
     rut: str
     logo: Optional[str] = None
+    type_document: str
 
-    created_by: Optional[int] = None
-    created_at: Optional[datetime] = None
+    created_by: Optional[int] = Field(
+        default=None,
+        foreign_key="users.id",
+    )
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
     # One company can be referenced directly by many users (users.company_id)

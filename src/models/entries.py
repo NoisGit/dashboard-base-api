@@ -35,13 +35,19 @@ class Entries(SQLModel, table=True):
     __tablename__ = "entries"
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
     name: str
     address: str
-    country: str
-    password: Optional[str] = None
+    country: Optional[str] = None
+    password: str
     date_last_entry: Optional[datetime] = None
-    created_by: Optional[int] = None
-    created_at: Optional[datetime] = None
+    logo: Optional[str] = None
+
+    created_by: Optional[int] = Field(
+        default=None,
+        foreign_key="users.id",
+    )
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
     user_entries: List["UserEntryAccess"] = Relationship(back_populates="entry")

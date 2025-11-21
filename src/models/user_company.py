@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-User–Company association model for the Sentinel Enterprise API.
+User Company association model for the Sentinel Enterprise API.
 
 Represents the link between a user and a company, including who created
 the relation and when it was created.
@@ -18,6 +18,12 @@ if TYPE_CHECKING:
 
 
 class UserCompany(SQLModel, table=True):
+    """
+    User–company association entity.
+
+    Represents the membership link between a user and a company,
+    and tracks which user created this relation and when.
+    """
     __tablename__ = "user_company"
 
     id: Optional[int] = Field(default=None, primary_key=True)

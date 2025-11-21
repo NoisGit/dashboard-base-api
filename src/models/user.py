@@ -7,6 +7,7 @@ Represents a platform user (admin, janitor, etc.) and its core relationships:
 - Belongs to a Role and a Plan
 - Can be associated with a Company
 - Can access multiple Entries through the user_entry_access join table
+- Can be the creator of other records (access lists, external people, etc.)
 """
 
 from datetime import datetime
@@ -20,6 +21,9 @@ if TYPE_CHECKING:
     from .company import Company
     from .user_entry_access import UserEntryAccess
     from .user_company import UserCompany
+    from .access_list import AccessList
+    from .type_access_list import TypeAccessList
+    from .external_people import ExternalPeople
 
 
 class User(SQLModel, table=True):
@@ -45,10 +49,11 @@ class User(SQLModel, table=True):
     last_update: Optional[datetime] = None
     recovery_password_mode: Optional[bool] = None
 
-    created_by: Optional[int] = None
+    # Who created this user (self-reference to users.id)
+    created_by: Optional[int] = Field(default=None, foreign_key="users.id")
     created_at: Optional[datetime] = None
 
-    # Relationships
+    # Relationships (belongs-to)
     role: Optional["Role"] = Relationship(back_populates="users")
     plan: Optional["Plan"] = Relationship(back_populates="users")
     company: Optional["Company"] = Relationship(back_populates="users")
@@ -58,3 +63,17 @@ class User(SQLModel, table=True):
 
     # Link to the user_company join table
     user_companies: List["UserCompany"] = Relationship(back_populates="user")
+
+    # Audit relationships: entities created by this user
+    access_lists_created: List["AccessList"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={"foreign_keys": "[AccessList.created_by]"},
+    )
+    type_access_lists_created: List["TypeAccessList"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={"foreign_keys": "[TypeAccessList.created_by]"},
+    )
+    external_people_created: List["ExternalPeople"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={"foreign_keys": "[ExternalPeople.created_by]"},
+    )
