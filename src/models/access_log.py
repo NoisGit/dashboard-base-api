@@ -3,8 +3,8 @@ from __future__ import annotations
 """
 Access log database model for the Sentinel Enterprise API.
 
-Represents a single access event in an entry (site), linked to:
-- The entry where the access happened
+Represents a single access event in a location (site), linked to:
+- The location where the access happened
 - The external person involved
 - The users who created/closed the record
 """
@@ -15,7 +15,7 @@ from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
-    from .entries import Entries
+    from .location import Location
     from .external_people import ExternalPeople
 
 
@@ -25,7 +25,7 @@ class AccessLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
     # Foreign keys
-    entry_id: int = Field(foreign_key="entries.id")
+    location_id: int = Field(foreign_key="location.id")
     external_people_id: int = Field(foreign_key="external_people.id")
 
     # Access information
@@ -53,5 +53,7 @@ class AccessLog(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    entry: "Entries" = Relationship(back_populates="access_logs")
-    external_people: "ExternalPeople" = Relationship(back_populates="access_logs")
+    location: "Location" = Relationship(back_populates="access_logs")
+    external_people: "ExternalPeople" = Relationship(
+        back_populates="access_logs",
+    )

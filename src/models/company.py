@@ -3,10 +3,13 @@ from __future__ import annotations
 """
 Company database model for the Sentinel Enterprise API.
 
-Represents a client company that uses the platform. A company:
-- Can have multiple users associated with it
-- Is linked to users through both a direct FK (users.company_id)
-  and the user_company join table
+Represents a client company that uses the platform.
+
+Matches the `company` table in the ERD:
+- Basic identification (name)
+- Optional activity and id_number
+- Optional logo and document type
+- Audit fields for who created the record and when
 """
 
 from datetime import datetime
@@ -15,29 +18,22 @@ from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
-    from .user import User
-    from .user_company import UserCompany
+    from .company_staff import CompanyStaff
 
 
 class Company(SQLModel, table=True):
     """
-    Core company entity.
-
-    Matches the `company` table in the ERD:
-    - Basic identification (name, giro, rut)
-    - Optional logo
-    - Document type (invoice/boleta, etc.)
-    - Audit fields for who created the record and when
+    Core company entity aligned with the new ERD.
     """
     __tablename__ = "company"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
     name: str = Field(max_length=100)
-    giro: str = Field(max_length=100)
-    rut: str = Field(max_length=50)
+    activity: Optional[str] = Field(default=None, max_length=100)
+    id_number: Optional[str] = Field(default=None, max_length=50)
     logo: Optional[str] = Field(default=None, max_length=255)
-    type_document: str = Field(max_length=30)
+    type_document: Optional[str] = Field(default=None, max_length=30)
 
     created_by: Optional[int] = Field(
         default=None,
@@ -46,8 +42,7 @@ class Company(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    # One company can be referenced directly by many users (users.company_id)
-    users: List["User"] = Relationship(back_populates="company")
-
-    # One company can also be linked to many users via the user_company join table
-    user_companies: List["UserCompany"] = Relationship(back_populates="company")
+    # Company is linked to users through the company_staff join table
+    staff_memberships: List["CompanyStaff"] = Relationship(
+        back_populates="company",
+    )

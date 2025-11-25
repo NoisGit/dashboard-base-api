@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from .role import Role
     from .plan import Plan
     from .company import Company
-    from .user_entry_access import UserEntryAccess
-    from .user_company import UserCompany
+    from .user_location_access import UserEntryAccess
+    from .company_staff import UserCompany
     from .access_list import AccessList
     from .type_access_list import TypeAccessList
     from .external_people import ExternalPeople

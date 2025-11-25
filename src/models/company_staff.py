@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-User Company association model for the Sentinel Enterprise API.
+Company staff association model for the Sentinel Enterprise API.
 
 Represents the link between a user and a company, including who created
 the relation and when it was created.
@@ -17,23 +17,24 @@ if TYPE_CHECKING:
     from .company import Company
 
 
-class UserCompany(SQLModel, table=True):
+class CompanyStaff(SQLModel, table=True):
     """
-    User–company association entity.
+    Company–staff association entity.
 
-    Represents the membership link between a user and a company,
-    and tracks which user created this relation and when.
+    Matches the `company_staff` table in the ERD:
+    - One row links one user with one company
+    - Tracks which user created the relation and when
     """
-    __tablename__ = "user_company"
+    __tablename__ = "company_staff"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    user_id: int = Field(foreign_key="users.id")
     company_id: int = Field(foreign_key="company.id")
+    user_id: int = Field(foreign_key="users.id")
 
     created_by: int = Field(foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    user: "User" = Relationship(back_populates="user_companies")
-    company: "Company" = Relationship(back_populates="user_companies")
+    user: "User" = Relationship(back_populates="company_staff_links")
+    company: "Company" = Relationship(back_populates="staff_memberships")

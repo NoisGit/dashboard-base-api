@@ -12,7 +12,7 @@ from .plan import Plan
 from .company import Company
 from .entries import Entries
 from .user import User
-from .user_entry_access import UserEntryAccess
+from .user_location_access import UserEntryAccess
 from .custom_field import CustomField
 from .emergency_contact import EmergencyContact
 from .type_access_list import TypeAccessList
@@ -22,7 +22,7 @@ from .support_ticket import SupportTicket
 from .support_response import SupportResponse
 from .external_people import ExternalPeople
 from .access_log import AccessLog
-from .user_company import UserCompany
+from .company_staff import UserCompany
 
 __all__ = [
     "Role",
