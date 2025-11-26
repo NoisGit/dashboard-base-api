@@ -19,6 +19,7 @@ from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
     from .company_staff import CompanyStaff
+    from .user import User
 
 
 class Company(SQLModel, table=True):
@@ -35,8 +36,8 @@ class Company(SQLModel, table=True):
     logo: Optional[str] = Field(default=None, max_length=255)
     type_document: Optional[str] = Field(default=None, max_length=30)
 
-    created_by: Optional[int] = Field(
-        default=None,
+    # DBML: created_by int, created_at timestamp
+    created_by: int = Field(
         foreign_key="users.id",
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -45,4 +46,7 @@ class Company(SQLModel, table=True):
     # Company is linked to users through the company_staff join table
     staff_memberships: List["CompanyStaff"] = Relationship(
         back_populates="company",
+    )
+    creator: "User" = Relationship(
+        back_populates="companies_created",
     )

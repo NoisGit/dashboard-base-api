@@ -6,17 +6,20 @@ Access log database model for the Sentinel Enterprise API.
 Represents a single access event in a location (site), linked to:
 - The location where the access happened
 - The external person involved
-- The users who created/closed the record
+- The user who created the record
+- Optional user who closed the record (exit_created_by)
 """
 
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, List
 
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
     from .location import Location
     from .external_people import ExternalPeople
+    from .user import User
+    from .access_log_custom_field import AccessLogCustomField
 
 
 class AccessLog(SQLModel, table=True):
@@ -28,7 +31,7 @@ class AccessLog(SQLModel, table=True):
     location_id: int = Field(foreign_key="location.id")
     external_people_id: int = Field(foreign_key="external_people.id")
 
-    # Access information
+    # Access information (DBML: [null] donde aplica)
     type_document: Optional[str] = Field(default=None, max_length=30)
     vehicle_plate: Optional[str] = Field(default=None, max_length=20)
     office: Optional[str] = Field(default=None, max_length=20)
@@ -48,7 +51,7 @@ class AccessLog(SQLModel, table=True):
     api_origin: Optional[str] = Field(default=None, max_length=255)
     type_origin: Optional[str] = Field(default=None, max_length=10)
 
-    # Audit fields
+    # Audit fields (DBML: created_by int, created_at timestamp)
     created_by: int = Field(foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -56,4 +59,14 @@ class AccessLog(SQLModel, table=True):
     location: "Location" = Relationship(back_populates="access_logs")
     external_people: "ExternalPeople" = Relationship(
         back_populates="access_logs",
+    )
+
+    # User who created the access log
+    creator: "User" = Relationship(
+        back_populates="access_logs_created",
+    )
+
+    # Custom field values attached to this access log
+    custom_field_values: List["AccessLogCustomField"] = Relationship(
+        back_populates="access_log",
     )

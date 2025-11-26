@@ -28,12 +28,22 @@ class AuditLog(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
+    # DBML: user_id int
     user_id: int = Field(foreign_key="users.id")
+
+    # DBML: action varchar(100)
     action: str = Field(max_length=100)
+
+    # DBML: table_name varchar(100) [null]
     table_name: Optional[str] = Field(default=None, max_length=100)
-    record_id: Optional[int] = None
+
+    # DBML: record_id int [null]
+    record_id: Optional[int] = Field(default=None)
+
+    # DBML: description varchar(255)
     description: str = Field(max_length=255)
 
+    # DBML: created_at timestamp
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships

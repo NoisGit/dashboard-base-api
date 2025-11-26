@@ -25,16 +25,19 @@ class TypeAccessList(SQLModel, table=True):
     Represents a category for access list entries (visitor, provider,
     delivery, etc.) and tracks which user created the record.
     """
+
     __tablename__ = "type_access_list"
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    # DBML: name varchar(100)
     name: str = Field(max_length=100)
 
-    created_by: Optional[int] = Field(
-        default=None,
+    # DBML: created_by int, created_at timestamp
+    created_by: int = Field(
         foreign_key="users.id",
     )
-    created_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
     access_lists: List["AccessList"] = Relationship(

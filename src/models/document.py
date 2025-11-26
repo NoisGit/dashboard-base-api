@@ -24,17 +24,17 @@ class Document(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
     name: str = Field(max_length=100)
-    file_url: str = Field(max_length=255)
+    # DBML: file_name varchar(255)
+    file_name: str = Field(max_length=255)
 
     # FK to users.id (owner of the document)
     user_id: int = Field(foreign_key="users.id")
 
-    # Optional comment/notes
+    # Optional comment/notes (DBML: text(255) [null])
     comment: Optional[str] = Field(default=None, max_length=255)
 
-    # Audit fields
-    created_by: Optional[int] = Field(
-        default=None,
+    # Audit fields (DBML: created_by int, created_at timestamp)
+    created_by: int = Field(
         foreign_key="users.id",
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)

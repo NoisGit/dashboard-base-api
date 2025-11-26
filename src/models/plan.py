@@ -21,22 +21,26 @@ class Plan(SQLModel, table=True):
 
     Matches the `plan` table in the ERD:
 
+    - id
     - name
     - qty_locations
     - qty_admins
     - qty_janitors
     - qty_daily_reads
     """
+
     __tablename__ = "plan"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
+    # DBML: name varchar(100)
     name: str = Field(max_length=100)
 
-    qty_locations: int = 0
-    qty_admins: int = 0
-    qty_janitors: int = 0
-    qty_daily_reads: int = 0
+    # DBML: qty_locations int, qty_admins int, qty_janitors int, qty_daily_reads int
+    qty_locations: int
+    qty_admins: int
+    qty_janitors: int
+    qty_daily_reads: int
 
     # Relationships
     users: List["User"] = Relationship(back_populates="plan")

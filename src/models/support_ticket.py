@@ -4,8 +4,8 @@ from __future__ import annotations
 Support ticket database model for the Sentinel Enterprise API.
 
 Represents a support request opened by a user, including:
-- Title and detailed comment
-- Optional media URL (screenshot, video, etc.)
+- Title and detailed description
+- Optional media name (screenshot, video, etc.)
 - Status flag (open/closed or active/inactive)
 - Who created the ticket and when
 - Related responses from the support team
@@ -26,14 +26,20 @@ class SupportTicket(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
+    # DBML: title varchar(50)
     title: str = Field(max_length=50)
-    comment: Optional[str] = Field(default=None, max_length=500)
-    media_url: Optional[str] = Field(default=None, max_length=255)
 
-    status: bool = Field(default=True)
+    # DBML: description text(1000)
+    description: str = Field(max_length=1000)
 
-    created_by: Optional[int] = Field(
-        default=None,
+    # DBML: media_name varchar(255) [null]
+    media_name: Optional[str] = Field(default=None, max_length=255)
+
+    # DBML: status bool
+    status: bool
+
+    # Audit fields (DBML: created_by int, created_at timestamp)
+    created_by: int = Field(
         foreign_key="users.id",
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)

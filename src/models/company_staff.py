@@ -36,5 +36,12 @@ class CompanyStaff(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    user: "User" = Relationship(back_populates="company_staff_links")
-    company: "Company" = Relationship(back_populates="staff_memberships")
+    user: "User" = Relationship(
+        back_populates="company_staff_memberships",
+    )
+    company: "Company" = Relationship(
+        back_populates="staff_memberships",
+    )
+    creator: "User" = Relationship(
+        back_populates="company_staff_created",
+    )

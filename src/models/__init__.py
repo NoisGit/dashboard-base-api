@@ -7,38 +7,41 @@ All models are imported and made available through this package's public interfa
 via the __all__ list.
 """
 
-from .role import Role
 from .plan import Plan
 from .company import Company
-from .entries import Entries
-from .user import User
-from .user_location_access import UserEntryAccess
+from .location import Location
+from .user import User, UserRole
+from .user_location_access import UserLocationAccess
+from .company_staff import CompanyStaff
 from .custom_field import CustomField
 from .emergency_contact import EmergencyContact
 from .type_access_list import TypeAccessList
 from .access_list import AccessList
+from .external_people import ExternalPeople
+from .access_log import AccessLog
+from .access_log_custom_field import AccessLogCustomField
 from .document import Document
 from .support_ticket import SupportTicket
 from .support_response import SupportResponse
-from .external_people import ExternalPeople
-from .access_log import AccessLog
-from .company_staff import UserCompany
+from .audit_log import AuditLog
 
 __all__ = [
-    "Role",
     "Plan",
     "Company",
-    "Entries",
+    "Location",
     "User",
-    "UserEntryAccess",
+    "UserRole",
+    "UserLocationAccess",
+    "CompanyStaff",
     "CustomField",
     "EmergencyContact",
     "TypeAccessList",
     "AccessList",
+    "ExternalPeople",
+    "AccessLog",
+    "AccessLogCustomField",
     "Document",
     "SupportTicket",
     "SupportResponse",
-    "ExternalPeople",
-    "AccessLog",
-    "UserCompany",
+    "AuditLog",
 ]

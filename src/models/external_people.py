@@ -24,22 +24,23 @@ class ExternalPeople(SQLModel, table=True):
     External people entity.
 
     Stores identification data for external people (visitors, providers,
-    etc.) that interact with the entries.
+    etc.) that interact with the locations.
     """
+
     __tablename__ = "external_people"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    name: str
-    id_number: str
-    clean_id_number: Optional[str] = None
-    gender: Optional[str] = None
-    file_name: Optional[str] = None
+    # DBML: name varchar(100), id_number varchar(50)
+    name: str = Field(max_length=100)
+    id_number: str = Field(max_length=50)
 
-    created_by: Optional[int] = Field(
-        default=None,
-        foreign_key="users.id",
-    )
+    # DBML: gender varchar(3) [null], file_name varchar(255) [null]
+    gender: Optional[str] = Field(default=None, max_length=3)
+    file_name: Optional[str] = Field(default=None, max_length=255)
+
+    # DBML: created_by int, created_at timestamp
+    created_by: int = Field(foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships

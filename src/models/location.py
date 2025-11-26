@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from .emergency_contact import EmergencyContact
     from .access_list import AccessList
     from .access_log import AccessLog
+    from .user import User
 
 
 class Location(SQLModel, table=True):
@@ -35,19 +36,21 @@ class Location(SQLModel, table=True):
     - created_by
     - created_at
     """
+
     __tablename__ = "location"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
+    # DBML: name varchar(100), address varchar(255)
     name: str = Field(max_length=100)
     address: str = Field(max_length=255)
+
+    # DBML: country varchar(20) [null], logo varchar(255) [null]
     country: Optional[str] = Field(default=None, max_length=20)
     logo: Optional[str] = Field(default=None, max_length=255)
 
-    created_by: Optional[int] = Field(
-        default=None,
-        foreign_key="users.id",
-    )
+    # DBML: created_by int, created_at timestamp
+    created_by: int = Field(foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
@@ -65,4 +68,8 @@ class Location(SQLModel, table=True):
     )
     access_logs: List["AccessLog"] = Relationship(
         back_populates="location",
+    )
+
+    creator: "User" = Relationship(
+        back_populates="locations_created",
     )
