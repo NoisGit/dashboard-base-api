@@ -73,7 +73,7 @@ class User(SQLModel, table=True):
     # Who created this user (self-reference to users.id)
     # DBML: created_by int, created_at timestamp
     created_by: int = Field(foreign_key="users.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
 
     # -----------------------------
     # Relationships (belongs-to)

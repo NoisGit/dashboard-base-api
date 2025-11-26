@@ -53,7 +53,7 @@ class AccessLog(SQLModel, table=True):
 
     # Audit fields (DBML: created_by int, created_at timestamp)
     created_by: int = Field(foreign_key="users.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
     location: "Location" = Relationship(back_populates="access_logs")

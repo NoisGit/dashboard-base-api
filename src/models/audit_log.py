@@ -44,7 +44,7 @@ class AuditLog(SQLModel, table=True):
     description: str = Field(max_length=255)
 
     # DBML: created_at timestamp
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
     user: "User" = Relationship(back_populates="audit_logs")

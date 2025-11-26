@@ -37,7 +37,7 @@ class Document(SQLModel, table=True):
     created_by: int = Field(
         foreign_key="users.id",
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
     user: "User" = Relationship(back_populates="documents")
