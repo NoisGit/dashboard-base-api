@@ -1,14 +1,46 @@
-from typing import Optional
+from __future__ import annotations
 
-from sqlmodel import SQLModel, Field
+"""
+Plan database model for the Sentinel Enterprise API.
+
+Represents the subscription/usage plan assigned to users, including limits
+for locations, admins, janitors and daily reads.
+"""
+
+from typing import Optional, List, TYPE_CHECKING
+
+from sqlmodel import SQLModel, Field, Relationship
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class Plan(SQLModel, table=True):
+    """
+    Subscription plan entity.
+
+    Matches the `plan` table in the ERD:
+
+    - id
+    - name
+    - qty_locations
+    - qty_admins
+    - qty_janitors
+    - qty_daily_reads
+    """
+
     __tablename__ = "plan"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    qty_entries: int = 0
-    qty_admins: int = 0
-    qty_janitors: int = 0
-    qty_daily_reads: int = 0
+
+    # DBML: name varchar(100)
+    name: str = Field(max_length=100)
+
+    # DBML: qty_locations int, qty_admins int, qty_janitors int, qty_daily_reads int
+    qty_locations: int
+    qty_admins: int
+    qty_janitors: int
+    qty_daily_reads: int
+
+    # Relationships
+    users: List["User"] = Relationship(back_populates="plan")
