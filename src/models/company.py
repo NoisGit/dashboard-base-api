@@ -9,6 +9,7 @@ Matches the `company` table in the ERD:
 - Basic identification (name)
 - Optional activity and id_number
 - Optional logo and document type
+- Soft delete flag (is_active)
 - Audit fields for who created the record and when
 """
 
@@ -35,6 +36,10 @@ class Company(SQLModel, table=True):
     id_number: Optional[str] = Field(default=None, max_length=50)
     logo: Optional[str] = Field(default=None, max_length=255)
     type_document: Optional[str] = Field(default=None, max_length=30)
+
+    # Soft delete flag:
+    # Business rule: never delete physically, use is_active = False instead.
+    is_active: bool = Field(default=True)
 
     # DBML: created_by int, created_at timestamp
     created_by: int = Field(
