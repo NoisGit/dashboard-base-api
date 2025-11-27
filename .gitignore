@@ -136,3 +136,7 @@ cython_debug/
 uploads/
 temp/
 cache/
+
+# Docker volumes (Postgres / pgAdmin data)
+postgres/
+pgadmin/

@@ -3,18 +3,16 @@ from __future__ import annotations
 """
 Companies router for Sentinel Enterprise API.
 
-First iteration of the Company CRUD:
+Full Company CRUD behavior (backend side):
 
 - JWT-based security (access token required).
-- Basic listing of active companies.
-- Company creation restricted to superadmin.
-- Initial role handling based on JWT payload.
-
-TODO (next steps):
-- Restrict visibility by company_staff for admin/subadmin/janitor/client.
-- Implement PUT /api/company/{id}.
-- Implement DELETE /api/company/{id} with soft delete (is_active = False).
-- Improve error handling and add tests.
+- Role-based access control (RBAC) using JWT payload:
+  * superadmin: full CRUD over all companies.
+  * admin: can list and update only companies associated via company_staff.
+  * subadmin / janitor / client: read-only access to associated companies.
+- Soft delete:
+  * DELETE /api/company/{id} sets is_active = False (no physical delete).
+- Companies listing only returns active companies (is_active = True) by default.
 """
 
 from typing import List, Dict, Any
@@ -23,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import SQLModel, Field, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Company  # CompanyStaff will be used in the next iteration
+from src.models import Company, CompanyStaff
 from src.database import get_session
 from src.auth.utils import get_current_user
 
@@ -42,26 +40,65 @@ ROLE_SUBADMIN = "subadmin"
 ROLE_JANITOR = "janitor"      # gatekeeper / porter
 ROLE_CLIENT = "client"        # end client
 
+# Roles allowed to view associated companies
+ROLES_CAN_VIEW_ASSOCIATED = {
+    ROLE_SUPERADMIN,
+    ROLE_ADMIN,
+    ROLE_SUBADMIN,
+    ROLE_JANITOR,
+    ROLE_CLIENT,
+}
+
+# Roles allowed to edit companies
+ROLES_CAN_EDIT_COMPANY = {
+    ROLE_SUPERADMIN,
+    ROLE_ADMIN,
+}
+
+# Roles allowed to create or delete companies
+ROLES_CAN_CREATE_DELETE_COMPANY = {
+    ROLE_SUPERADMIN,
+}
+
+
+# -----------------------------
+# Pydantic/SQLModel schemas
+# -----------------------------
+
 
 class CompanyBase(SQLModel):
     """
     Base data for Company.
 
     Mapping vs functional description:
-    - Name   -> name
-    - RUT    -> id_number
-    - Activity -> activity
+    - name        -> company name
+    - id_number   -> RUT / tax id
+    - activity    -> business activity
     """
     name: str = Field(max_length=100)
     activity: str | None = Field(default=None, max_length=100)
-    id_number: str | None = Field(default=None, max_length=50)  # RUT / id_number
+    id_number: str | None = Field(default=None, max_length=50)
     logo: str | None = Field(default=None, max_length=255)
     type_document: str | None = Field(default=None, max_length=30)
 
 
 class CompanyCreate(CompanyBase):
-    """Payload used to create a company (first version)."""
+    """Payload used to create a new company."""
     pass
+
+
+class CompanyUpdate(SQLModel):
+    """
+    Payload used to update an existing company.
+
+    All fields are optional so that we can perform partial updates using
+    model_dump(exclude_unset=True).
+    """
+    name: str | None = Field(default=None, max_length=100)
+    activity: str | None = Field(default=None, max_length=100)
+    id_number: str | None = Field(default=None, max_length=50)
+    logo: str | None = Field(default=None, max_length=255)
+    type_document: str | None = Field(default=None, max_length=30)
 
 
 class CompanyRead(CompanyBase):
@@ -74,7 +111,7 @@ class CompanyRead(CompanyBase):
 
 
 # -----------------------------
-# Basic auth helpers
+# Auth / RBAC helpers
 # -----------------------------
 
 
@@ -106,17 +143,68 @@ def ensure_authenticated(current_user: Dict[str, Any]) -> None:
         )
 
 
-def ensure_superadmin(current_user: Dict[str, Any]) -> None:
+def ensure_can_view_companies(current_user: Dict[str, Any]) -> None:
     role = _get_role(current_user)
-    if role != ROLE_SUPERADMIN:
+    if role not in ROLES_CAN_VIEW_ASSOCIATED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only superadmin can perform this action.",
+            detail="You are not allowed to view companies.",
+        )
+
+
+def ensure_can_edit_companies(current_user: Dict[str, Any]) -> None:
+    role = _get_role(current_user)
+    if role not in ROLES_CAN_EDIT_COMPANY:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to edit companies.",
+        )
+
+
+def ensure_can_create_or_delete_companies(current_user: Dict[str, Any]) -> None:
+    role = _get_role(current_user)
+    if role not in ROLES_CAN_CREATE_DELETE_COMPANY:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to create or delete companies.",
+        )
+
+
+async def ensure_user_linked_to_company(
+    company_id: int,
+    session: AsyncSession,
+    current_user: Dict[str, Any],
+) -> None:
+    """
+    Ensure the user is linked to the given company via company_staff.
+
+    - SUPERADMIN: bypass, always allowed.
+    - ADMIN / SUBADMIN / JANITOR / CLIENT:
+      must have a record in company_staff with that company_id.
+    """
+    role = _get_role(current_user)
+    if role == ROLE_SUPERADMIN:
+        return
+
+    user_id = _get_user_id(current_user)
+
+    stmt = (
+        select(CompanyStaff)
+        .where(CompanyStaff.company_id == company_id)
+        .where(CompanyStaff.user_id == user_id)
+    )
+    result = await session.execute(stmt)
+    link = result.scalars().first()
+
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to access this company.",
         )
 
 
 # -----------------------------
-# Endpoints (first iteration)
+# Endpoints
 # -----------------------------
 
 
@@ -128,21 +216,27 @@ async def list_companies(
     """
     List active companies.
 
-    First iteration:
-    - SUPERADMIN: lists all active companies.
-    - Other roles: same behavior for now (TODO: restrict by company_staff).
-
-    TODO:
-    - Filter by companies associated to the user via company_staff for
-      admin / subadmin / janitor / client roles.
+    Behavior:
+    - SUPERADMIN:
+      * returns all companies where is_active = True.
+    - ADMIN / SUBADMIN / JANITOR / CLIENT:
+      * returns only active companies associated to the user via company_staff.
     """
     ensure_authenticated(current_user)
-    _ = _get_role(current_user)
-    _ = _get_user_id(current_user)  # will be used in the next iteration
+    ensure_can_view_companies(current_user)
 
-    # For now, all authenticated roles see the same list of active companies.
-    # In the next iteration this will be restricted based on company_staff.
-    stmt = select(Company).where(Company.is_active == True)
+    role = _get_role(current_user)
+    user_id = _get_user_id(current_user)
+
+    if role == ROLE_SUPERADMIN:
+        stmt = select(Company).where(Company.is_active == True)
+    else:
+        stmt = (
+            select(Company)
+            .join(CompanyStaff, CompanyStaff.company_id == Company.id)
+            .where(CompanyStaff.user_id == user_id)
+            .where(Company.is_active == True)
+        )
 
     result = await session.execute(stmt)
     companies = result.scalars().all()
@@ -160,17 +254,13 @@ async def create_company(
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> CompanyRead:
     """
-    Create a company.
+    Create a new company.
 
-    First iteration:
+    Behavior:
     - Only SUPERADMIN can create companies.
-
-    TODO:
-    - Revisit if "admin company" should be allowed to create child companies
-      or if this stays exclusive to superadmin.
     """
     ensure_authenticated(current_user)
-    ensure_superadmin(current_user)
+    ensure_can_create_or_delete_companies(current_user)
 
     user_id = _get_user_id(current_user)
 
@@ -181,9 +271,80 @@ async def create_company(
         logo=payload.logo,
         type_document=payload.type_document,
         created_by=user_id,
-        # is_active = True by default at the model level
+        # is_active is True by default at the model level
     )
     session.add(company)
     await session.commit()
     await session.refresh(company)
     return company
+
+
+@router.put("/company/{company_id}", response_model=CompanyRead)
+async def update_company(
+    company_id: int,
+    payload: CompanyUpdate,
+    session: AsyncSession = Depends(get_session),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> CompanyRead:
+    """
+    Update an existing company.
+
+    Behavior:
+    - SUPERADMIN:
+      * can update any active company.
+    - ADMIN:
+      * can update only active companies associated via company_staff.
+    - Other roles:
+      * not allowed to update companies.
+    """
+    ensure_authenticated(current_user)
+    ensure_can_edit_companies(current_user)
+
+    company = await session.get(Company, company_id)
+    if not company or not company.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found.",
+        )
+
+    # Enforce association for all editing roles except superadmin
+    await ensure_user_linked_to_company(company_id, session, current_user)
+
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(company, key, value)
+
+    await session.commit()
+    await session.refresh(company)
+    return company
+
+
+@router.delete("/company/{company_id}", status_code=status.HTTP_200_OK)
+async def delete_company(
+    company_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> Dict[str, str]:
+    """
+    Soft delete a company.
+
+    Behavior:
+    - Only SUPERADMIN can delete companies.
+    - Soft delete only:
+      * sets is_active = False.
+      * does not physically remove the row to preserve referential integrity.
+    """
+    ensure_authenticated(current_user)
+    ensure_can_create_or_delete_companies(current_user)
+
+    company = await session.get(Company, company_id)
+    if not company or not company.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found.",
+        )
+
+    company.is_active = False
+    await session.commit()
+
+    return {"detail": "Company soft-deleted successfully"}
