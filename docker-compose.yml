@@ -1,0 +1,27 @@
+services:
+  porteriaDB:
+    image: postgres:17.6
+    container_name: porteria_db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=porteria_admin
+      - POSTGRES_PASSWORD=mi_password_secreto
+      - POSTGRES_DB=porteria_db
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+
+  porteriaPGAdmin:
+    image: dpage/pgadmin4
+    container_name: porteria_pgadmin
+    restart: always
+    depends_on:
+      - porteriaDB
+    ports:
+      - "8080:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@porteria.com
+      - PGADMIN_DEFAULT_PASSWORD=123456
+    volumes:
+      - ./pgadmin:/var/lib/pgadmin
