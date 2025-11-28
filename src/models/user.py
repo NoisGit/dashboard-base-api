@@ -40,7 +40,8 @@ class UserRole(str, Enum):
     ADMIN = "admin"
     JANITOR = "janitor"
     SUPERADMIN = "superadmin"
-
+    SUBADMIN = "subadmin"
+    CLIENT = "client"
 
 
 class User(SQLModel, table=True):
@@ -56,6 +57,9 @@ class User(SQLModel, table=True):
 
     # DBML: status bool
     status: bool
+
+    # Soft delete flag (business rule: DELETE -> is_active = false)
+    is_active: bool = Field(default=True)
 
     # DBML: role varchar(10)
     role: UserRole = Field(max_length=10)
