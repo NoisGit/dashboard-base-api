@@ -1,10 +1,12 @@
 """
 Router module initialization.
 
-This module centralizes the import and export of all API routers for the 
+This module centralizes the import and export of all API routers for the
 Sentinel Enterprise API.
 """
 
-# Import routers for easy access
+from .users import router as users_router
 
-__all__ = []
+__all__ = [
+    "users_router",
+]

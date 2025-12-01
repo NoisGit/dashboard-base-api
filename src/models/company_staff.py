@@ -1,11 +1,6 @@
+"""Company staff association model for the Sentinel Enterprise API."""
+
 from __future__ import annotations
-
-"""
-Company staff association model for the Sentinel Enterprise API.
-
-Represents the link between a user and a company, including who created
-the relation and when it was created.
-"""
 
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
@@ -18,13 +13,7 @@ if TYPE_CHECKING:
 
 
 class CompanyStaff(SQLModel, table=True):
-    """
-    Company–staff association entity.
-
-    Matches the `company_staff` table in the ERD:
-    - One row links one user with one company
-    - Tracks which user created the relation and when
-    """
+    """Association between a user and a company."""
     __tablename__ = "company_staff"
 
     id: Optional[int] = Field(default=None, primary_key=True)

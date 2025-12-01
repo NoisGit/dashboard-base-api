@@ -13,6 +13,12 @@ from .base_schemas import (
     ErrorResponse,
 )
 
+from .user_schemas import (
+    UserCreateRequest,
+    UserUpdateRequest,
+    UserResponse,
+)
+
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -20,4 +26,8 @@ __all__ = [
     "PaginatedResponse",
     "SuccessResponse",
     "ErrorResponse",
+    # User schemas
+    "UserCreateRequest",
+    "UserUpdateRequest",
+    "UserResponse",
 ]
