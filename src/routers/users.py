@@ -12,7 +12,7 @@ from src.schemas import UserCreateRequest, UserUpdateRequest, UserResponse
 from src.services.user_service import UserService
 
 router = APIRouter(
-    prefix="/api/users",
+    prefix="/users",
     tags=["users"],
 )
 
