@@ -8,7 +8,13 @@ from fastapi import APIRouter, Depends, Response, status
 
 from src.auth.utils import get_current_user
 from src.dependencies import get_company_service
-from src.schemas import CompanyCreateRequest, CompanyUpdateRequest, CompanyResponse
+from src.schemas import (
+    CompanyCreateRequest,
+    CompanyUpdateRequest,
+    CompanyResponse,
+    CompanyAssignUserRequest,
+    CompanyUserAssignmentResponse,
+)
 from src.services.company_service import CompanyService
 
 router = APIRouter(
@@ -92,3 +98,26 @@ async def delete_company(
         company_id=company_id,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{company_id}/users",
+    response_model=CompanyUserAssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def assign_user_to_company(
+    company_id: int,
+    payload: CompanyAssignUserRequest,
+    service: CompanyService = Depends(get_company_service),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> CompanyUserAssignmentResponse:
+    """Assign an existing user to a company."""
+    assignment = await service.assign_user_to_company(
+        current_user=current_user,
+        company_id=company_id,
+        user_id=payload.user_id,
+    )
+    return CompanyUserAssignmentResponse(
+        company_id=assignment.company_id,
+        user_id=assignment.user_id,
+    )

@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from src.models import Company, CompanyStaff
+from src.models import Company, CompanyStaff, User
 
 # pylint: disable=no-member, singleton-comparison
 # noqa: E712
@@ -248,3 +248,68 @@ class CompanyService:
 
         company.is_active = False
         await self.session.commit()
+
+    async def assign_user_to_company(
+        self,
+        current_user: Dict[str, Any],
+        company_id: int,
+        user_id: int,
+    ) -> CompanyStaff:
+        """Assign an existing user to a company via CompanyStaff.
+
+        Rules:
+        - Only SUPERADMIN/ADMIN (can edit companies) can assign users.
+        - ADMIN must be linked to the target company (SUPERADMIN bypasses).
+        - The user must exist and be active.
+        - The user must not already belong to another company (1:1 rule).
+        """
+        self._ensure_authenticated(current_user)
+        self._ensure_can_edit_companies(current_user)
+
+        # Validate company
+        company = await self._get_company_by_id(company_id)
+        if not company or not company.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Company not found.",
+            )
+
+        # Ensure caller can manage this company (admin restricted to their companies)
+        await self._ensure_user_linked_to_company(company_id, current_user)
+
+        # Validate user exists and is active
+        user_stmt = select(User).where(User.id == user_id)
+        user_result = await self.session.execute(user_stmt)
+        user = user_result.scalars().first()
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        # Enforce 1:1 rule: user cannot belong to another company
+        link_stmt = select(CompanyStaff).where(CompanyStaff.user_id == user_id)
+        link_result = await self.session.execute(link_stmt)
+        existing_link = link_result.scalars().first()
+
+        if existing_link:
+            if existing_link.company_id == company_id:
+                # Already assigned to this company -> idempotent
+                return existing_link
+
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="User is already assigned to another company.",
+            )
+
+        creator_id = self._get_user_id(current_user)
+        new_link = CompanyStaff(
+            user_id=user_id,
+            company_id=company_id,
+            created_by=creator_id,
+        )
+
+        self.session.add(new_link)
+        await self.session.commit()
+        await self.session.refresh(new_link)
+        return new_link

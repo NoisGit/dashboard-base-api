@@ -23,6 +23,8 @@ from .company_schemas import (
     CompanyCreateRequest,
     CompanyUpdateRequest,
     CompanyResponse,
+    CompanyAssignUserRequest,
+    CompanyUserAssignmentResponse,
 )
 
 __all__ = [
@@ -40,4 +42,6 @@ __all__ = [
     "CompanyCreateRequest",
     "CompanyUpdateRequest",
     "CompanyResponse",
+    "CompanyAssignUserRequest",
+    "CompanyUserAssignmentResponse",
 ]

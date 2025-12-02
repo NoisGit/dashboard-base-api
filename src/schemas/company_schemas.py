@@ -41,8 +41,21 @@ class CompanyResponse(BaseModel):
         from_attributes = True
 
 
+class CompanyAssignUserRequest(BaseModel):
+    """Schema for assigning an existing user to a company."""
+    user_id: int
+
+
+class CompanyUserAssignmentResponse(BaseModel):
+    """Schema representing a user-company assignment."""
+    company_id: int
+    user_id: int
+
+
 __all__ = [
     "CompanyCreateRequest",
     "CompanyUpdateRequest",
     "CompanyResponse",
+    "CompanyAssignUserRequest",
+    "CompanyUserAssignmentResponse",
 ]
