@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .access_list import AccessList
     from .access_log import AccessLog
     from .audit_log import AuditLog
+    from .company import Company              # 👈 NUEVO: para companies_created
     from .company_staff import CompanyStaff
     from .custom_field import CustomField
     from .document import Document
@@ -92,6 +93,12 @@ class User(SQLModel, table=True):
         back_populates="user",
     )
 
+    # 👇 NUEVO: empresas creadas por este usuario (Company.created_by)
+    companies_created: List["Company"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={"foreign_keys": "[Company.created_by]"},
+    )
+
     # Documents where this user is the owner (documents.user_id)
     documents: List["Document"] = Relationship(
         back_populates="user",
@@ -125,7 +132,8 @@ class User(SQLModel, table=True):
     support_responses_created: List["SupportResponse"] = Relationship(
         back_populates="creator",
         sa_relationship_kwargs={
-            "foreign_keys": "[SupportResponse.created_by]"},
+            "foreign_keys": "[SupportResponse.created_by]",
+        },
     )
 
     documents_created: List["Document"] = Relationship(
@@ -146,7 +154,8 @@ class User(SQLModel, table=True):
     emergency_contacts_created: List["EmergencyContact"] = Relationship(
         back_populates="creator",
         sa_relationship_kwargs={
-            "foreign_keys": "[EmergencyContact.created_by]"},
+            "foreign_keys": "[EmergencyContact.created_by]",
+        },
     )
 
     access_logs_created: List["AccessLog"] = Relationship(

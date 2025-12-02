@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .user import User
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 class CompanyStaff(SQLModel, table=True):
     """Association between a user and a company."""
+
     __tablename__ = "company_staff"
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -21,7 +22,9 @@ class CompanyStaff(SQLModel, table=True):
     company_id: int = Field(foreign_key="company.id")
     user_id: int = Field(foreign_key="users.id")
 
-    created_by: int = Field(foreign_key="users.id")
+    created_by: int = Field(
+        foreign_key="users.id",
+    )
     created_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships

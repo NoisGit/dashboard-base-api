@@ -1,7 +1,4 @@
-from __future__ import annotations
-
-"""
-Company database model for the Sentinel Enterprise API.
+"""Company database model for the Sentinel Enterprise API.
 
 Represents a client company that uses the platform.
 
@@ -13,10 +10,12 @@ Matches the `company` table in the ERD:
 - Audit fields for who created the record and when
 """
 
-from datetime import datetime
-from typing import Optional, List, TYPE_CHECKING
+from __future__ import annotations
 
-from sqlmodel import SQLModel, Field, Relationship
+from datetime import datetime
+from typing import List, Optional, TYPE_CHECKING
+
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .company_staff import CompanyStaff
@@ -24,9 +23,8 @@ if TYPE_CHECKING:
 
 
 class Company(SQLModel, table=True):
-    """
-    Core company entity aligned with the new ERD.
-    """
+    """Core company entity aligned with the new ERD."""
+
     __tablename__ = "company"
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -37,11 +35,10 @@ class Company(SQLModel, table=True):
     logo: Optional[str] = Field(default=None, max_length=255)
     type_document: Optional[str] = Field(default=None, max_length=30)
 
-    # Soft delete flag:
-    # Business rule: never delete physically, use is_active = False instead.
+    # Soft delete flag: use is_active = False instead of physical delete
     is_active: bool = Field(default=True)
 
-    # DBML: created_by int, created_at timestamp
+    # Audit fields
     created_by: int = Field(
         foreign_key="users.id",
     )
@@ -52,6 +49,7 @@ class Company(SQLModel, table=True):
     staff_memberships: List["CompanyStaff"] = Relationship(
         back_populates="company",
     )
+
     creator: "User" = Relationship(
         back_populates="companies_created",
     )
