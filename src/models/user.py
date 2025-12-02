@@ -1,38 +1,36 @@
-from __future__ import annotations
-
-"""
-User database model for the Sentinel Enterprise API.
+"""User database model for the Sentinel Enterprise API.
 
 Represents a platform user (admin, janitor, superadmin, etc.) and its core relationships:
 - Has a role stored as varchar(10) (handled as an Enum in code)
 - Belongs to a Plan
 - Is linked to Companies via the company_staff join table
 - Can access multiple Locations through the user_location_access join table
-- Can be the creator of other records (access lists, external people, tickets, etc.)
+- Can be the creator of other records (access lists, external people, tickets, etc.).
 """
+
+from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from .plan import Plan
-    from .user_location_access import UserLocationAccess
-    from .company_staff import CompanyStaff
-
     from .access_list import AccessList
-    from .type_access_list import TypeAccessList
-    from .external_people import ExternalPeople
-    from .support_ticket import SupportTicket
-    from .support_response import SupportResponse
-    from .document import Document
-    from .location import Location
-    from .custom_field import CustomField
-    from .emergency_contact import EmergencyContact
     from .access_log import AccessLog
     from .audit_log import AuditLog
+    from .company_staff import CompanyStaff
+    from .custom_field import CustomField
+    from .document import Document
+    from .emergency_contact import EmergencyContact
+    from .external_people import ExternalPeople
+    from .location import Location
+    from .plan import Plan
+    from .support_response import SupportResponse
+    from .support_ticket import SupportTicket
+    from .type_access_list import TypeAccessList
+    from .user_location_access import UserLocationAccess
 
 
 class UserRole(str, Enum):
@@ -40,10 +38,12 @@ class UserRole(str, Enum):
     ADMIN = "admin"
     JANITOR = "janitor"
     SUPERADMIN = "superadmin"
-
+    SUBADMIN = "subadmin"
+    CLIENT = "client"
 
 
 class User(SQLModel, table=True):
+    """User ORM model for the Sentinel Enterprise API."""
     __tablename__ = "users"
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -56,6 +56,9 @@ class User(SQLModel, table=True):
 
     # DBML: status bool
     status: bool
+
+    # Soft delete flag (business rule: DELETE -> is_active = false)
+    is_active: bool = Field(default=True)
 
     # DBML: role varchar(10)
     role: UserRole = Field(max_length=10)
@@ -71,7 +74,6 @@ class User(SQLModel, table=True):
     recovery_password_mode: Optional[bool] = None
 
     # Who created this user (self-reference to users.id)
-    # DBML: created_by int, created_at timestamp
     created_by: int = Field(foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.now)
 
@@ -122,7 +124,8 @@ class User(SQLModel, table=True):
 
     support_responses_created: List["SupportResponse"] = Relationship(
         back_populates="creator",
-        sa_relationship_kwargs={"foreign_keys": "[SupportResponse.created_by]"},
+        sa_relationship_kwargs={
+            "foreign_keys": "[SupportResponse.created_by]"},
     )
 
     documents_created: List["Document"] = Relationship(
@@ -142,7 +145,8 @@ class User(SQLModel, table=True):
 
     emergency_contacts_created: List["EmergencyContact"] = Relationship(
         back_populates="creator",
-        sa_relationship_kwargs={"foreign_keys": "[EmergencyContact.created_by]"},
+        sa_relationship_kwargs={
+            "foreign_keys": "[EmergencyContact.created_by]"},
     )
 
     access_logs_created: List["AccessLog"] = Relationship(

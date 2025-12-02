@@ -1,11 +1,10 @@
-from __future__ import annotations
-
-"""
-User–Location Access database model for the Sentinel Enterprise API.
+"""User–Location Access database model for the Sentinel Enterprise API.
 
 Represents the association between a user and a location (site/project),
 including who created the link and when it was created.
 """
+
+from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
@@ -33,6 +32,7 @@ class UserLocationAccess(SQLModel, table=True):
     - created_by
     - created_at
     """
+
     __tablename__ = "user_location_access"
 
     id: Optional[int] = Field(default=None, primary_key=True)
