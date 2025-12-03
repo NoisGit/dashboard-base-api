@@ -20,6 +20,7 @@ from sqlmodel import Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from .company_staff import CompanyStaff
     from .user import User
+    from .location import Location
 
 
 class Company(SQLModel, table=True):
@@ -50,6 +51,12 @@ class Company(SQLModel, table=True):
         back_populates="company",
     )
 
+    # Locations owned by this company
+    locations: List["Location"] = Relationship(
+        back_populates="company",
+    )
+
+    # User who created this company
     creator: "User" = Relationship(
         back_populates="companies_created",
     )
