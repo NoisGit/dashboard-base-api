@@ -11,10 +11,11 @@ Represents a platform user (admin, janitor, superadmin, etc.) and its core relat
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
+
+from src.core.enums import UserRole
 
 if TYPE_CHECKING:
     from .access_list import AccessList
@@ -32,15 +33,6 @@ if TYPE_CHECKING:
     from .support_ticket import SupportTicket
     from .type_access_list import TypeAccessList
     from .user_location_access import UserLocationAccess
-
-
-class UserRole(str, Enum):
-    """Enum for the `role` column (varchar(10)) in the users table."""
-    ADMIN = "admin"
-    JANITOR = "janitor"
-    SUPERADMIN = "superadmin"
-    SUBADMIN = "subadmin"
-    CLIENT = "client"
 
 
 class User(SQLModel, table=True):
@@ -62,7 +54,7 @@ class User(SQLModel, table=True):
     # Soft delete flag (business rule: DELETE -> is_active = false)
     is_active: bool = Field(default=True)
 
-    # DBML: role varchar(10)
+    # DBML: role varchar(10), mapped to global UserRole enum
     role: UserRole = Field(max_length=10)
 
     # DBML: plan_id int

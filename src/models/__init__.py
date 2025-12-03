@@ -7,10 +7,12 @@ All models are imported and made available through this package's public interfa
 via the __all__ list.
 """
 
+from src.core.enums import UserRole
+
 from .plan import Plan
 from .company import Company
 from .location import Location
-from .user import User, UserRole
+from .user import User
 from .user_location_access import UserLocationAccess
 from .company_staff import CompanyStaff
 from .custom_field import CustomField
@@ -24,6 +26,7 @@ from .document import Document
 from .support_ticket import SupportTicket
 from .support_response import SupportResponse
 from .audit_log import AuditLog
+
 
 __all__ = [
     "Plan",
