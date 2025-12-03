@@ -1,4 +1,9 @@
-# src/config/config.py
+"""Application configuration module for the Sentinel Enterprise API.
+
+Defines the Settings class used to load and centralize environment
+configuration (database, secrets, runtime environment, etc.).
+"""
+
 from functools import lru_cache
 
 from pydantic import Field
@@ -10,7 +15,7 @@ class Settings(BaseSettings):
     Centralizes project configuration.
 
     - Reads variables from .env (or the system environment)
-    - Exposes typed properties (debug, database_url, etc.)
+    - Exposes typed properties (env, debug, database_url, etc.)
     """
 
     # Runtime environment
@@ -54,7 +59,7 @@ class Settings(BaseSettings):
         if not all([self.db_host, self.db_user, self.db_pass, self.db_name]):
             raise ValueError(
                 "Database configuration is incomplete. "
-                "Set DATABASE_URL or DB_HOST, DB_USER, DB_PASS, DB_NAME."
+                "Set DATABASE_URL or DB_HOST, DB_USER, DB_PASS, DB_NAME.",
             )
 
         # Adjust dialect later if the team switches to PostgreSQL or another engine
@@ -67,7 +72,7 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """
-    Returns a single cached Settings instance.
+    Return a single cached Settings instance.
 
     Avoids re-reading the .env file on every import.
     """

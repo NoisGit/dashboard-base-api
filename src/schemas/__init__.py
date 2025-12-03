@@ -19,6 +19,14 @@ from .user_schemas import (
     UserResponse,
 )
 
+from .company_schemas import (
+    CompanyCreateRequest,
+    CompanyUpdateRequest,
+    CompanyResponse,
+    CompanyAssignUserRequest,
+    CompanyUserAssignmentResponse,
+)
+
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -30,4 +38,10 @@ __all__ = [
     "UserCreateRequest",
     "UserUpdateRequest",
     "UserResponse",
+    # Company schemas
+    "CompanyCreateRequest",
+    "CompanyUpdateRequest",
+    "CompanyResponse",
+    "CompanyAssignUserRequest",
+    "CompanyUserAssignmentResponse",
 ]
