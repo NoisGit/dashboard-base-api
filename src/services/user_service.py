@@ -3,21 +3,23 @@
 # pylint: disable=no-member, singleton-comparison
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any, cast
+from typing import Any, Dict, List, Optional, cast
 
 from argon2 import PasswordHasher
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from src.core.enums import UserRole
 from src.models import User, CompanyStaff
 from src.schemas import UserCreateRequest, UserUpdateRequest
 
-ROLE_SUPERADMIN = "superadmin"
-ROLE_ADMIN = "admin"
-ROLE_SUBADMIN = "subadmin"
-ROLE_JANITOR = "janitor"
-ROLE_CLIENT = "client"
+# Role constants derived from the global enum (single source of truth)
+ROLE_SUPERADMIN = UserRole.SUPERADMIN.value
+ROLE_ADMIN = UserRole.ADMIN.value
+ROLE_SUBADMIN = UserRole.SUBADMIN.value
+ROLE_JANITOR = UserRole.JANITOR.value
+ROLE_CLIENT = UserRole.CLIENT.value
 
 ADMIN_LIKE_ROLES = {ROLE_ADMIN, ROLE_SUPERADMIN}
 
@@ -32,8 +34,8 @@ class UserService:
 
     # ---------- RBAC helpers ----------
 
-    @staticmethod
-    def _get_role(current_user: Dict[str, Any]) -> str:
+    def _get_role(self, current_user: Dict[str, Any]) -> str:
+        """Extract the role from the current user payload."""
         role = current_user.get("role")
         if role is None:
             raise HTTPException(
@@ -42,8 +44,8 @@ class UserService:
             )
         return role
 
-    @staticmethod
-    def _get_user_id(current_user: Dict[str, Any]) -> int:
+    def _get_user_id(self, current_user: Dict[str, Any]) -> int:
+        """Extract the user_id from the current user payload."""
         user_id = current_user.get("user_id")
         if user_id is None:
             raise HTTPException(
@@ -52,46 +54,46 @@ class UserService:
             )
         return int(user_id)
 
-    @staticmethod
-    def _ensure_authenticated(current_user: Dict[str, Any]) -> None:
+    def _ensure_authenticated(self, current_user: Dict[str, Any]) -> None:
+        """Ensure that the current user is authenticated."""
         if not current_user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required.",
             )
 
-    @classmethod
-    def _ensure_can_list_users(cls, current_user: Dict[str, Any]) -> None:
+    def _ensure_can_list_users(self, current_user: Dict[str, Any]) -> None:
         """Only ADMIN and SUPERADMIN can list users."""
-        role = cls._get_role(current_user)
+        role = self._get_role(current_user)
         if role not in {ROLE_ADMIN, ROLE_SUPERADMIN}:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to list users.",
             )
 
-    @classmethod
-    def _ensure_can_create_users(cls, current_user: Dict[str, Any]) -> None:
+    def _ensure_can_create_users(self, current_user: Dict[str, Any]) -> None:
         """Only ADMIN and SUPERADMIN can create users."""
-        role = cls._get_role(current_user)
+        role = self._get_role(current_user)
         if role not in {ROLE_ADMIN, ROLE_SUPERADMIN}:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to create users.",
             )
 
-    @classmethod
-    def _ensure_can_modify_or_delete_users(cls, current_user: Dict[str, Any]) -> None:
+    def _ensure_can_modify_or_delete_users(
+        self,
+        current_user: Dict[str, Any],
+    ) -> None:
         """Only ADMIN and SUPERADMIN can update or delete users."""
-        role = cls._get_role(current_user)
+        role = self._get_role(current_user)
         if role not in {ROLE_ADMIN, ROLE_SUPERADMIN}:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to modify or delete users.",
             )
 
-    @staticmethod
     def _ensure_admin_cannot_manage_admin_like(
+        self,
         requester_role: str,
         target_role: str,
         operation: str,
@@ -105,8 +107,7 @@ class UserService:
 
     # ---------- Email / password helpers ----------
 
-    @staticmethod
-    def _hash_password(plain_password: str) -> str:
+    def _hash_password(self, plain_password: str) -> str:
         """Hash a plain-text password using Argon2."""
         return pwd_hasher.hash(plain_password)
 
