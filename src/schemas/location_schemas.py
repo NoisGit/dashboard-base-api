@@ -42,8 +42,37 @@ class LocationResponse(BaseModel):
         from_attributes = True
 
 
+class LocationAssignCompanyRequest(BaseModel):
+    """Payload to assign a location to a company."""
+
+    company_id: int
+
+
+class LocationAssignUserRequest(BaseModel):
+    """Payload to assign a user (janitor/porter) to a location."""
+
+    user_id: int
+
+
+class LocationUserAssignmentResponse(BaseModel):
+    """Response for a user–location assignment."""
+
+    id: int
+    location_id: int
+    user_id: int
+    created_by: int
+    created_at: datetime
+
+    class Config:
+        """Pydantic config to allow ORM objects."""
+        from_attributes = True
+
+
 __all__ = [
     "LocationCreateRequest",
     "LocationUpdateRequest",
     "LocationResponse",
+    "LocationAssignCompanyRequest",
+    "LocationAssignUserRequest",
+    "LocationUserAssignmentResponse",
 ]

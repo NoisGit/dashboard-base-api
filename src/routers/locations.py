@@ -12,6 +12,9 @@ from src.schemas import (
     LocationCreateRequest,
     LocationUpdateRequest,
     LocationResponse,
+    LocationAssignCompanyRequest,
+    LocationAssignUserRequest,
+    LocationUserAssignmentResponse,
 )
 from src.services.location_service import LocationService
 
@@ -33,11 +36,7 @@ async def list_locations(
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> List[LocationResponse]:
-    """
-    List active locations (porterías) visible for the current user.
-
-    RBAC rules are implemented inside LocationService.
-    """
+    """List active locations (porterías) visible for the current user."""
     locations = await service.list_locations(
         current_user=current_user,
         company_id=company_id,
@@ -57,11 +56,7 @@ async def get_location_detail(
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> LocationResponse:
-    """
-    Get a single active location by ID.
-
-    RBAC rules are implemented inside LocationService.
-    """
+    """Get a single active location by ID."""
     location = await service.get_location_detail(
         current_user=current_user,
         location_id=location_id,
@@ -79,11 +74,7 @@ async def create_location(
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> LocationResponse:
-    """
-    Create a new location (portería).
-
-    Only SUPERADMIN/ADMIN can create locations (enforced in LocationService).
-    """
+    """Create a new location (portería)."""
     location = await service.create_location(
         current_user=current_user,
         payload=payload,
@@ -101,11 +92,7 @@ async def update_location(
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> LocationResponse:
-    """
-    Update an existing location.
-
-    RBAC for who can update is enforced in LocationService.
-    """
+    """Update an existing location."""
     location = await service.update_location(
         current_user=current_user,
         location_id=location_id,
@@ -123,13 +110,48 @@ async def delete_location(
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> Response:
-    """
-    Soft delete a location (is_active = False).
-
-    RBAC for who can delete is enforced in LocationService.
-    """
+    """Soft delete a location (is_active = False)."""
     await service.soft_delete_location(
         current_user=current_user,
         location_id=location_id,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{location_id}/company",
+    response_model=LocationResponse,
+)
+async def assign_company_to_location(
+    location_id: int,
+    payload: LocationAssignCompanyRequest,
+    service: LocationService = Depends(get_location_service),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> LocationResponse:
+    """Assign a company to a location."""
+    location = await service.assign_company_to_location(
+        current_user=current_user,
+        location_id=location_id,
+        payload=payload,
+    )
+    return location
+
+
+@router.post(
+    "/{location_id}/users",
+    response_model=LocationUserAssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def assign_user_to_location(
+    location_id: int,
+    payload: LocationAssignUserRequest,
+    service: LocationService = Depends(get_location_service),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> LocationUserAssignmentResponse:
+    """Assign a user (janitor/portero) to a location."""
+    link = await service.assign_user_to_location(
+        current_user=current_user,
+        location_id=location_id,
+        payload=payload,
+    )
+    return link
