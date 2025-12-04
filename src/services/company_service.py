@@ -4,20 +4,22 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from src.core.enums import UserRole
 from src.models import Company, CompanyStaff, User
 
 # pylint: disable=no-member, singleton-comparison
 # noqa: E712
 
-ROLE_SUPERADMIN = "superadmin"
-ROLE_ADMIN = "admin"
-ROLE_SUBADMIN = "subadmin"
-ROLE_JANITOR = "janitor"
-ROLE_CLIENT = "client"
+# Role constants derived from the global UserRole enum
+ROLE_SUPERADMIN = UserRole.SUPERADMIN.value
+ROLE_ADMIN = UserRole.ADMIN.value
+ROLE_SUBADMIN = UserRole.SUBADMIN.value
+ROLE_JANITOR = UserRole.JANITOR.value
+ROLE_CLIENT = UserRole.CLIENT.value
 
 ROLES_CAN_VIEW_ASSOCIATED = {
     ROLE_SUPERADMIN,
@@ -44,34 +46,33 @@ class CompanyService:
         """Initialize the service with a database session."""
         self.session = session
 
-    @staticmethod
-    def _get_role(current_user: Dict[str, Any]) -> str:
+    # ---------- RBAC helpers ----------
+
+    def _get_role(self, current_user: Dict[str, Any]) -> str:
         """Extract the role from the current user payload."""
         role = current_user.get("role")
         if role is None:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=401,
                 detail="Role not found in token payload.",
             )
         return role
 
-    @staticmethod
-    def _get_user_id(current_user: Dict[str, Any]) -> int:
+    def _get_user_id(self, current_user: Dict[str, Any]) -> int:
         """Extract the user_id from the current user payload."""
         user_id = current_user.get("user_id")
         if user_id is None:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=401,
                 detail="user_id not found in token payload.",
             )
         return int(user_id)
 
-    @staticmethod
-    def _ensure_authenticated(current_user: Dict[str, Any]) -> None:
+    def _ensure_authenticated(self, current_user: Dict[str, Any]) -> None:
         """Ensure that the current user is authenticated."""
         if not current_user:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=401,
                 detail="Authentication required.",
             )
 
@@ -80,7 +81,7 @@ class CompanyService:
         role = self._get_role(current_user)
         if role not in ROLES_CAN_VIEW_ASSOCIATED:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="You are not allowed to view companies.",
             )
 
@@ -89,7 +90,7 @@ class CompanyService:
         role = self._get_role(current_user)
         if role not in ROLES_CAN_EDIT_COMPANY:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="You are not allowed to edit companies.",
             )
 
@@ -101,7 +102,7 @@ class CompanyService:
         role = self._get_role(current_user)
         if role not in ROLES_CAN_CREATE_DELETE_COMPANY:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="You are not allowed to create or delete companies.",
             )
 
@@ -127,13 +128,15 @@ class CompanyService:
 
         if not link:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="You are not allowed to access this company.",
             )
 
     async def _get_company_by_id(self, company_id: int) -> Optional[Company]:
         """Return a company by id or None if it does not exist."""
         return await self.session.get(Company, company_id)
+
+    # ---------- Public methods ----------
 
     async def list_companies(
         self,
@@ -171,7 +174,7 @@ class CompanyService:
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail="Company not found.",
             )
 
@@ -216,7 +219,7 @@ class CompanyService:
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail="Company not found.",
             )
 
@@ -235,14 +238,14 @@ class CompanyService:
         current_user: Dict[str, Any],
         company_id: int,
     ) -> None:
-        """Soft delete a company by setting is_active to False."""
+        """Soft delete a company by setting is_active = False."""
         self._ensure_authenticated(current_user)
         self._ensure_can_create_or_delete_companies(current_user)
 
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail="Company not found.",
             )
 
@@ -270,7 +273,7 @@ class CompanyService:
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail="Company not found.",
             )
 
@@ -283,7 +286,7 @@ class CompanyService:
         user = user_result.scalars().first()
         if not user or not user.is_active:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail="User not found.",
             )
 
@@ -298,7 +301,7 @@ class CompanyService:
                 return existing_link
 
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
+                status_code=409,
                 detail="User is already assigned to another company.",
             )
 

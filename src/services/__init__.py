@@ -7,8 +7,10 @@ business logic and database operations in the Sentinel Enterprise API.
 
 from .user_service import UserService
 from .company_service import CompanyService
+from .location_service import LocationService
 
 __all__ = [
     "UserService",
     "CompanyService",
+    "LocationService",
 ]

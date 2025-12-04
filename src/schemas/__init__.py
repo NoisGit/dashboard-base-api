@@ -27,6 +27,12 @@ from .company_schemas import (
     CompanyUserAssignmentResponse,
 )
 
+from .location_schemas import (
+    LocationCreateRequest,
+    LocationUpdateRequest,
+    LocationResponse,
+)
+
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -44,4 +50,8 @@ __all__ = [
     "CompanyResponse",
     "CompanyAssignUserRequest",
     "CompanyUserAssignmentResponse",
+    # Location schemas
+    "LocationCreateRequest",
+    "LocationUpdateRequest",
+    "LocationResponse",
 ]

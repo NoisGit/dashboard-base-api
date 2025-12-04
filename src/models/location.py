@@ -1,17 +1,17 @@
-from __future__ import annotations
-
 """
 Location database model for the Sentinel Enterprise API.
 
 Represents a physical or logical location managed by the system,
 including basic metadata and relationships with users, custom fields,
-emergency contacts, access lists, and access logs.
+emergency contacts, access lists, access logs and its owning company.
 """
 
-from datetime import datetime
-from typing import Optional, List, TYPE_CHECKING
+from __future__ import annotations
 
-from sqlmodel import SQLModel, Field, Relationship
+from datetime import datetime
+from typing import List, Optional, TYPE_CHECKING
+
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .user_location_access import UserLocationAccess
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .access_list import AccessList
     from .access_log import AccessLog
     from .user import User
+    from .company import Company
 
 
 class Location(SQLModel, table=True):
@@ -33,6 +34,8 @@ class Location(SQLModel, table=True):
     - address
     - country
     - logo
+    - company_id (owning company)
+    - is_active
     - created_by
     - created_at
     """
@@ -49,11 +52,24 @@ class Location(SQLModel, table=True):
     country: Optional[str] = Field(default=None, max_length=20)
     logo: Optional[str] = Field(default=None, max_length=255)
 
+    # Owning company (can be assigned later)
+    company_id: Optional[int] = Field(
+        default=None,
+        foreign_key="company.id",
+    )
+
+    # Soft delete flag (same pattern as User/Company)
+    is_active: bool = Field(default=True)
+
     # DBML: created_by int, created_at timestamp
     created_by: int = Field(foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
+    company: Optional["Company"] = Relationship(
+        back_populates="locations",
+    )
+
     user_locations: List["UserLocationAccess"] = Relationship(
         back_populates="location",
     )
