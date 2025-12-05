@@ -4,38 +4,37 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from src.core.enums import UserRole
 from src.models import Company, CompanyStaff, User
 
+from src.schemas import (
+    CompanyCreateRequest,
+    CompanyUpdateRequest,
+)
+
 # pylint: disable=no-member, singleton-comparison
 # noqa: E712
 
-# Role constants derived from the global UserRole enum
-ROLE_SUPERADMIN = UserRole.SUPERADMIN.value
-ROLE_ADMIN = UserRole.ADMIN.value
-ROLE_SUBADMIN = UserRole.SUBADMIN.value
-ROLE_JANITOR = UserRole.JANITOR.value
-ROLE_CLIENT = UserRole.CLIENT.value
-
+# Role sets derived directly from the UserRole enum
 ROLES_CAN_VIEW_ASSOCIATED = {
-    ROLE_SUPERADMIN,
-    ROLE_ADMIN,
-    ROLE_SUBADMIN,
-    ROLE_JANITOR,
-    ROLE_CLIENT,
+    UserRole.SUPERADMIN.value,
+    UserRole.ADMIN.value,
+    UserRole.SUBADMIN.value,
+    UserRole.JANITOR.value,
+    UserRole.CLIENT.value,
 }
 
 ROLES_CAN_EDIT_COMPANY = {
-    ROLE_SUPERADMIN,
-    ROLE_ADMIN,
+    UserRole.SUPERADMIN.value,
+    UserRole.ADMIN.value,
 }
 
 ROLES_CAN_CREATE_DELETE_COMPANY = {
-    ROLE_SUPERADMIN,
+    UserRole.SUPERADMIN.value,
 }
 
 
@@ -43,54 +42,48 @@ class CompanyService:
     """Application service for company-related operations."""
 
     def __init__(self, session: AsyncSession):
-        """Initialize the service with a database session."""
         self.session = session
 
     # ---------- RBAC helpers ----------
 
     def _get_role(self, current_user: Dict[str, Any]) -> str:
-        """Extract the role from the current user payload."""
         role = current_user.get("role")
         if role is None:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Role not found in token payload.",
             )
         return role
 
     def _get_user_id(self, current_user: Dict[str, Any]) -> int:
-        """Extract the user_id from the current user payload."""
         user_id = current_user.get("user_id")
         if user_id is None:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="user_id not found in token payload.",
             )
         return int(user_id)
 
     def _ensure_authenticated(self, current_user: Dict[str, Any]) -> None:
-        """Ensure that the current user is authenticated."""
         if not current_user:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required.",
             )
 
     def _ensure_can_view_companies(self, current_user: Dict[str, Any]) -> None:
-        """Ensure the current user is allowed to view companies."""
         role = self._get_role(current_user)
         if role not in ROLES_CAN_VIEW_ASSOCIATED:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to view companies.",
             )
 
     def _ensure_can_edit_companies(self, current_user: Dict[str, Any]) -> None:
-        """Ensure the current user is allowed to edit companies."""
         role = self._get_role(current_user)
         if role not in ROLES_CAN_EDIT_COMPANY:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to edit companies.",
             )
 
@@ -98,11 +91,10 @@ class CompanyService:
         self,
         current_user: Dict[str, Any],
     ) -> None:
-        """Ensure the current user is allowed to create or delete companies."""
         role = self._get_role(current_user)
         if role not in ROLES_CAN_CREATE_DELETE_COMPANY:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to create or delete companies.",
             )
 
@@ -111,9 +103,8 @@ class CompanyService:
         company_id: int,
         current_user: Dict[str, Any],
     ) -> None:
-        """Ensure the current user is linked to the given company."""
         role = self._get_role(current_user)
-        if role == ROLE_SUPERADMIN:
+        if role == UserRole.SUPERADMIN.value:
             return
 
         user_id = self._get_user_id(current_user)
@@ -128,12 +119,11 @@ class CompanyService:
 
         if not link:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to access this company.",
             )
 
     async def _get_company_by_id(self, company_id: int) -> Optional[Company]:
-        """Return a company by id or None if it does not exist."""
         return await self.session.get(Company, company_id)
 
     # ---------- Public methods ----------
@@ -149,7 +139,7 @@ class CompanyService:
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
-        if role == ROLE_SUPERADMIN:
+        if role == UserRole.SUPERADMIN.value:
             stmt = select(Company).where(Company.is_active == True)
         else:
             stmt = (
@@ -174,7 +164,7 @@ class CompanyService:
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Company not found.",
             )
 
@@ -184,7 +174,7 @@ class CompanyService:
     async def create_company(
         self,
         current_user: Dict[str, Any],
-        payload,
+        payload: CompanyCreateRequest,
     ) -> Company:
         """Create a new company."""
         self._ensure_authenticated(current_user)
@@ -210,7 +200,7 @@ class CompanyService:
         self,
         current_user: Dict[str, Any],
         company_id: int,
-        payload,
+        payload: CompanyUpdateRequest,
     ) -> Company:
         """Update an existing company."""
         self._ensure_authenticated(current_user)
@@ -219,7 +209,7 @@ class CompanyService:
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Company not found.",
             )
 
@@ -245,7 +235,7 @@ class CompanyService:
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Company not found.",
             )
 
@@ -258,10 +248,11 @@ class CompanyService:
         company_id: int,
         user_id: int,
     ) -> CompanyStaff:
-        """Assign an existing user to a company via CompanyStaff.
+        """
+        Assign an existing user to a company via CompanyStaff.
 
         Rules:
-        - Only SUPERADMIN/ADMIN (can edit companies) can assign users.
+        - Only roles allowed to edit companies can assign users.
         - ADMIN must be linked to the target company (SUPERADMIN bypasses).
         - The user must exist and be active.
         - The user must not already belong to another company (1:1 rule).
@@ -269,39 +260,34 @@ class CompanyService:
         self._ensure_authenticated(current_user)
         self._ensure_can_edit_companies(current_user)
 
-        # Validate company
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Company not found.",
             )
 
-        # Ensure caller can manage this company (admin restricted to their companies)
         await self._ensure_user_linked_to_company(company_id, current_user)
 
-        # Validate user exists and is active
         user_stmt = select(User).where(User.id == user_id)
         user_result = await self.session.execute(user_stmt)
         user = user_result.scalars().first()
         if not user or not user.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
             )
 
-        # Enforce 1:1 rule: user cannot belong to another company
         link_stmt = select(CompanyStaff).where(CompanyStaff.user_id == user_id)
         link_result = await self.session.execute(link_stmt)
         existing_link = link_result.scalars().first()
 
         if existing_link:
             if existing_link.company_id == company_id:
-                # Already assigned to this company -> idempotent
                 return existing_link
 
             raise HTTPException(
-                status_code=409,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="User is already assigned to another company.",
             )
 

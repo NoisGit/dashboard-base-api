@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, status
+from fastapi_pagination import Page, paginate
 
 from src.auth.utils import get_current_user
+from src.auth.permissions import RoleChecker
+from src.core.enums import UserRole
 from src.dependencies import get_user_service
 from src.schemas import UserCreateRequest, UserUpdateRequest, UserResponse
 from src.services.user_service import UserService
@@ -17,29 +20,39 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=List[UserResponse])
+@router.get(
+    "/",
+    response_model=Page[UserResponse],
+)
 async def list_users(
     role: Optional[str] = None,
     company_id: Optional[int] = None,
     search: Optional[str] = None,
-    page: int = 1,
-    page_size: int = 20,
     service: UserService = Depends(get_user_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
-) -> List[UserResponse]:
-    """List active users with pagination and filters."""
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+) -> Page[UserResponse]:
+    """List active users with filters and pagination."""
     users = await service.list_users(
         current_user=current_user,
         role=role,
         company_id=company_id,
         search=search,
-        page=page,
-        page_size=page_size,
     )
-    return users
+    return paginate(users)
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get(
+    "/{user_id}",
+    response_model=UserResponse,
+)
 async def get_user_detail(
     user_id: int,
     service: UserService = Depends(get_user_service),
@@ -62,6 +75,14 @@ async def create_user(
     payload: UserCreateRequest,
     service: UserService = Depends(get_user_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
 ) -> UserResponse:
     """Create a new user (email unique, password hashed with Argon2)."""
     user = await service.create_user(
@@ -71,7 +92,10 @@ async def create_user(
     return user
 
 
-@router.put("/{user_id}", response_model=UserResponse)
+@router.put(
+    "/{user_id}",
+    response_model=UserResponse,
+)
 async def update_user(
     user_id: int,
     payload: UserUpdateRequest,
@@ -95,10 +119,18 @@ async def delete_user(
     user_id: int,
     service: UserService = Depends(get_user_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
-) -> Response:
-    """Soft delete user by setting is_active to False."""
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+):
+    """Soft delete user by setting is_active = False."""
     await service.soft_delete_user(
         current_user=current_user,
         user_id=user_id,
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    # 204 => no body

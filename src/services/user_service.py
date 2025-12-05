@@ -1,4 +1,4 @@
-"""User service module for handling user-related operations in Sentinel Enterprise."""
+"""User service module for Sentinel Enterprise API."""
 
 # pylint: disable=no-member, singleton-comparison
 
@@ -14,28 +14,24 @@ from src.core.enums import UserRole
 from src.models import User, CompanyStaff
 from src.schemas import UserCreateRequest, UserUpdateRequest
 
-# Role constants derived from the global enum (single source of truth)
-ROLE_SUPERADMIN = UserRole.SUPERADMIN.value
-ROLE_ADMIN = UserRole.ADMIN.value
-ROLE_SUBADMIN = UserRole.SUBADMIN.value
-ROLE_JANITOR = UserRole.JANITOR.value
-ROLE_CLIENT = UserRole.CLIENT.value
-
-ADMIN_LIKE_ROLES = {ROLE_ADMIN, ROLE_SUPERADMIN}
+# Admin-like roles (string values from enum)
+ADMIN_LIKE_ROLES = {
+    UserRole.ADMIN.value,
+    UserRole.SUPERADMIN.value,
+}
 
 pwd_hasher = PasswordHasher()
 
 
 class UserService:
-    """Service for user-related database operations and RBAC."""
+    """Service for user operations and business RBAC rules."""
 
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    # ---------- RBAC helpers ----------
+    # ---------- Current user helpers ----------
 
     def _get_role(self, current_user: Dict[str, Any]) -> str:
-        """Extract the role from the current user payload."""
         role = current_user.get("role")
         if role is None:
             raise HTTPException(
@@ -45,7 +41,6 @@ class UserService:
         return role
 
     def _get_user_id(self, current_user: Dict[str, Any]) -> int:
-        """Extract the user_id from the current user payload."""
         user_id = current_user.get("user_id")
         if user_id is None:
             raise HTTPException(
@@ -55,41 +50,10 @@ class UserService:
         return int(user_id)
 
     def _ensure_authenticated(self, current_user: Dict[str, Any]) -> None:
-        """Ensure that the current user is authenticated."""
         if not current_user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required.",
-            )
-
-    def _ensure_can_list_users(self, current_user: Dict[str, Any]) -> None:
-        """Only ADMIN and SUPERADMIN can list users."""
-        role = self._get_role(current_user)
-        if role not in {ROLE_ADMIN, ROLE_SUPERADMIN}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to list users.",
-            )
-
-    def _ensure_can_create_users(self, current_user: Dict[str, Any]) -> None:
-        """Only ADMIN and SUPERADMIN can create users."""
-        role = self._get_role(current_user)
-        if role not in {ROLE_ADMIN, ROLE_SUPERADMIN}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to create users.",
-            )
-
-    def _ensure_can_modify_or_delete_users(
-        self,
-        current_user: Dict[str, Any],
-    ) -> None:
-        """Only ADMIN and SUPERADMIN can update or delete users."""
-        role = self._get_role(current_user)
-        if role not in {ROLE_ADMIN, ROLE_SUPERADMIN}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to modify or delete users.",
             )
 
     def _ensure_admin_cannot_manage_admin_like(
@@ -98,8 +62,16 @@ class UserService:
         target_role: str,
         operation: str,
     ) -> None:
-        """Block ADMIN from managing ADMIN/SUPERADMIN users."""
-        if requester_role == ROLE_ADMIN and target_role in ADMIN_LIKE_ROLES:
+        """
+        Prevent ADMIN from managing ADMIN/SUPERADMIN users.
+
+        High-level access control (who can call the endpoint) is handled
+        in the router with RoleChecker.
+        """
+        if (
+            requester_role == UserRole.ADMIN.value
+            and target_role in ADMIN_LIKE_ROLES
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Admins are not allowed to {operation} admin-like users.",
@@ -108,7 +80,6 @@ class UserService:
     # ---------- Email / password helpers ----------
 
     def _hash_password(self, plain_password: str) -> str:
-        """Hash a plain-text password using Argon2."""
         return pwd_hasher.hash(plain_password)
 
     async def _ensure_email_unique(
@@ -116,7 +87,6 @@ class UserService:
         email: str,
         exclude_user_id: Optional[int] = None,
     ) -> None:
-        """Ensure email is unique among active users (optionally excluding one)."""
         stmt = select(User).where(
             User.email == email,
             User.is_active == True,  # noqa: E712
@@ -135,12 +105,11 @@ class UserService:
     # ---------- Basic queries ----------
 
     async def _get_user_by_id(self, user_id: int) -> Optional[User]:
-        """Return a user by ID (without RBAC)."""
         stmt = select(User).where(User.id == user_id)
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    # ---------- Public methods (used from router) ----------
+    # ---------- Public methods ----------
 
     async def list_users(
         self,
@@ -148,12 +117,13 @@ class UserService:
         role: Optional[str],
         company_id: Optional[int],
         search: Optional[str],
-        page: int,
-        page_size: int,
     ) -> List[User]:
-        """Return a paginated list of active users with optional filters."""
+        """
+        Return a list of active users with optional filters.
+
+        Pagination is handled by fastapi-pagination in the router.
+        """
         self._ensure_authenticated(current_user)
-        self._ensure_can_list_users(current_user)
 
         stmt = select(User).where(User.is_active == True)  # noqa: E712
 
@@ -173,14 +143,6 @@ class UserService:
                 .where(CompanyStaff.company_id == company_id)
             )
 
-        if page < 1:
-            page = 1
-        if page_size <= 0:
-            page_size = 20
-
-        offset = (page - 1) * page_size
-        stmt = stmt.offset(offset).limit(page_size)
-
         result = await self.session.execute(stmt)
         users = result.scalars().all()
         return cast(List[User], users)
@@ -190,7 +152,7 @@ class UserService:
         current_user: Dict[str, Any],
         user_id: int,
     ) -> User:
-        """Return a single active user, applying RBAC for visibility."""
+        """Return a single active user, enforcing visibility rules."""
         self._ensure_authenticated(current_user)
         requester_role = self._get_role(current_user)
         requester_id = self._get_user_id(current_user)
@@ -203,6 +165,7 @@ class UserService:
                 detail="User not found.",
             )
 
+        # Non admin-like users can only view their own profile
         if requester_role not in ADMIN_LIKE_ROLES and requester_id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -216,13 +179,15 @@ class UserService:
         current_user: Dict[str, Any],
         payload: UserCreateRequest,
     ) -> User:
-        """Create a new user applying RBAC and email uniqueness rules."""
+        """
+        Create a new user with business RBAC and email uniqueness rules.
+
+        Router ensures only SUPERADMIN/ADMIN can access this endpoint.
+        """
         self._ensure_authenticated(current_user)
-        self._ensure_can_create_users(current_user)
 
         requester_role = self._get_role(current_user)
         requester_id = self._get_user_id(current_user)
-
         requested_role = payload.role
 
         self._ensure_admin_cannot_manage_admin_like(
@@ -260,7 +225,7 @@ class UserService:
         user_id: int,
         payload: UserUpdateRequest,
     ) -> User:
-        """Update an existing user, enforcing RBAC and email uniqueness."""
+        """Update an existing user, enforcing business rules and email uniqueness."""
         self._ensure_authenticated(current_user)
 
         requester_role = self._get_role(current_user)
@@ -275,6 +240,7 @@ class UserService:
             )
 
         if requester_role not in ADMIN_LIKE_ROLES:
+            # Non admin-like users can only update themselves with limited fields
             if requester_id != user_id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -292,8 +258,7 @@ class UserService:
                     detail="You are not allowed to change your status.",
                 )
         else:
-            self._ensure_can_modify_or_delete_users(current_user)
-
+            # Admin / Superadmin
             self._ensure_admin_cannot_manage_admin_like(
                 requester_role=requester_role,
                 target_role=user.role,
@@ -329,9 +294,12 @@ class UserService:
         current_user: Dict[str, Any],
         user_id: int,
     ) -> None:
-        """Soft delete a user by setting is_active = False, enforcing RBAC."""
+        """
+        Soft delete a user by setting is_active = False.
+
+        Router already restricts access to SUPERADMIN/ADMIN via RoleChecker.
+        """
         self._ensure_authenticated(current_user)
-        self._ensure_can_modify_or_delete_users(current_user)
 
         requester_role = self._get_role(current_user)
 

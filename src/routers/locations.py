@@ -1,12 +1,13 @@
 """Locations router module for Sentinel Enterprise API."""
 
-from __future__ import annotations
+from typing import Any, Dict, Optional
 
-from typing import Any, Dict, List, Optional
-
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, status
+from fastapi_pagination import Page, paginate
 
 from src.auth.utils import get_current_user
+from src.auth.permissions import RoleChecker
+from src.core.enums import UserRole
 from src.dependencies import get_location_service
 from src.schemas import (
     LocationCreateRequest,
@@ -26,25 +27,32 @@ router = APIRouter(
 
 @router.get(
     "/",
-    response_model=List[LocationResponse],
+    response_model=Page[LocationResponse],
 )
 async def list_locations(
     company_id: Optional[int] = Query(default=None),
     search: Optional[str] = Query(default=None),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
-) -> List[LocationResponse]:
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+                UserRole.JANITOR,
+                UserRole.CLIENT,
+            ],
+        ),
+    ),
+) -> Page[LocationResponse]:
     """List active locations (porterías) visible for the current user."""
     locations = await service.list_locations(
         current_user=current_user,
         company_id=company_id,
         search=search,
-        page=page,
-        page_size=page_size,
     )
-    return locations
+    return paginate(locations)
 
 
 @router.get(
@@ -55,6 +63,17 @@ async def get_location_detail(
     location_id: int,
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+                UserRole.JANITOR,
+                UserRole.CLIENT,
+            ],
+        ),
+    ),
 ) -> LocationResponse:
     """Get a single active location by ID."""
     location = await service.get_location_detail(
@@ -73,6 +92,14 @@ async def create_location(
     payload: LocationCreateRequest,
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
 ) -> LocationResponse:
     """Create a new location (portería)."""
     location = await service.create_location(
@@ -91,6 +118,15 @@ async def update_location(
     payload: LocationUpdateRequest,
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
 ) -> LocationResponse:
     """Update an existing location."""
     location = await service.update_location(
@@ -109,13 +145,21 @@ async def delete_location(
     location_id: int,
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
-) -> Response:
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+):
     """Soft delete a location (is_active = False)."""
     await service.soft_delete_location(
         current_user=current_user,
         location_id=location_id,
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    # 204 => no body
 
 
 @router.put(
@@ -127,6 +171,14 @@ async def assign_company_to_location(
     payload: LocationAssignCompanyRequest,
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
 ) -> LocationResponse:
     """Assign a company to a location."""
     location = await service.assign_company_to_location(
@@ -147,6 +199,15 @@ async def assign_user_to_location(
     payload: LocationAssignUserRequest,
     service: LocationService = Depends(get_location_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
+    _: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
 ) -> LocationUserAssignmentResponse:
     """Assign a user (janitor/portero) to a location."""
     link = await service.assign_user_to_location(

@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -26,14 +26,11 @@ from src.schemas import (
     LocationAssignUserRequest,
 )
 
-ROLE_SUPERADMIN = UserRole.SUPERADMIN.value
-ROLE_ADMIN = UserRole.ADMIN.value
-ROLE_SUBADMIN = UserRole.SUBADMIN.value
-ROLE_JANITOR = UserRole.JANITOR.value
-ROLE_CLIENT = UserRole.CLIENT.value
-
-ADMIN_LIKE_ROLES = {ROLE_ADMIN, ROLE_SUPERADMIN}
-COMPANY_SCOPED_ROLES = {ROLE_ADMIN, ROLE_SUBADMIN, ROLE_CLIENT}
+COMPANY_SCOPED_ROLES = {
+    UserRole.ADMIN.value,
+    UserRole.SUBADMIN.value,
+    UserRole.CLIENT.value,
+}
 
 
 class LocationService:
@@ -42,13 +39,13 @@ class LocationService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    # ---------- RBAC helpers ----------
+    # ---------- Helpers ----------
 
     def _get_role(self, current_user: Dict[str, Any]) -> str:
         role = current_user.get("role")
         if role is None:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Role not found in token payload.",
             )
         return role
@@ -57,43 +54,10 @@ class LocationService:
         user_id = current_user.get("user_id")
         if user_id is None:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="user_id not found in token payload.",
             )
         return int(user_id)
-
-    def _ensure_authenticated(self, current_user: Dict[str, Any]) -> None:
-        if not current_user:
-            raise HTTPException(
-                status_code=401,
-                detail="Authentication required.",
-            )
-
-    def _ensure_can_create_locations(self, current_user: Dict[str, Any]) -> None:
-        role = self._get_role(current_user)
-        if role not in {ROLE_SUPERADMIN, ROLE_ADMIN}:
-            raise HTTPException(
-                status_code=403,
-                detail="You are not allowed to create locations.",
-            )
-
-    def _ensure_can_update_locations(self, current_user: Dict[str, Any]) -> None:
-        role = self._get_role(current_user)
-        if role not in {ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_SUBADMIN}:
-            raise HTTPException(
-                status_code=403,
-                detail="You are not allowed to update locations.",
-            )
-
-    def _ensure_can_delete_locations(self, current_user: Dict[str, Any]) -> None:
-        role = self._get_role(current_user)
-        if role not in {ROLE_SUPERADMIN, ROLE_ADMIN}:
-            raise HTTPException(
-                status_code=403,
-                detail="You are not allowed to delete locations.",
-            )
-
-    # ---------- Helper queries ----------
 
     async def _get_location_by_id(self, location_id: int) -> Optional[Location]:
         stmt = select(Location).where(Location.id == location_id)
@@ -108,14 +72,6 @@ class LocationService:
         rows = result.all()
         return [row[0] for row in rows]
 
-    async def _get_user_location_ids(self, user_id: int) -> List[int]:
-        stmt = select(UserLocationAccess.location_id).where(
-            UserLocationAccess.user_id == user_id,
-        )
-        result = await self.session.execute(stmt)
-        rows = result.all()
-        return [row[0] for row in rows]
-
     async def _ensure_location_in_user_companies(
         self,
         location: Location,
@@ -123,14 +79,14 @@ class LocationService:
     ) -> None:
         if location.company_id is None:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="Location is not assigned to any company.",
             )
 
         company_ids = await self._get_user_company_ids(user_id)
         if location.company_id not in company_ids:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to access this location.",
             )
 
@@ -148,7 +104,7 @@ class LocationService:
 
         if not link:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to access this location.",
             )
 
@@ -159,12 +115,12 @@ class LocationService:
         current_user: Dict[str, Any],
         company_id: Optional[int],
         search: Optional[str],
-        page: int,
-        page_size: int,
     ) -> List[Location]:
-        """List locations visible for the current user with RBAC and paginación."""
-        self._ensure_authenticated(current_user)
+        """
+        List locations visible for the current user with RBAC.
 
+        Pagination is handled by fastapi-pagination in the router.
+        """
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
@@ -177,7 +133,7 @@ class LocationService:
                 | (Location.address.ilike(like_pattern))
             )
 
-        if role == ROLE_SUPERADMIN:
+        if role == UserRole.SUPERADMIN.value:
             if company_id is not None:
                 stmt = stmt.where(Location.company_id == company_id)
 
@@ -189,14 +145,14 @@ class LocationService:
             if company_id is not None:
                 if company_id not in user_company_ids:
                     raise HTTPException(
-                        status_code=403,
+                        status_code=status.HTTP_403_FORBIDDEN,
                         detail="You are not allowed to view locations for this company.",
                     )
                 stmt = stmt.where(Location.company_id == company_id)
             else:
                 stmt = stmt.where(Location.company_id.in_(user_company_ids))
 
-        elif role == ROLE_JANITOR:
+        elif role == UserRole.JANITOR.value:
             stmt = (
                 select(Location)
                 .join(
@@ -221,17 +177,9 @@ class LocationService:
 
         else:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to list locations.",
             )
-
-        if page < 1:
-            page = 1
-        if page_size <= 0:
-            page_size = 20
-
-        offset = (page - 1) * page_size
-        stmt = stmt.offset(offset).limit(page_size)
 
         result = await self.session.execute(stmt)
         locations = result.scalars().all()
@@ -243,26 +191,24 @@ class LocationService:
         location_id: int,
     ) -> Location:
         """Get a single location detail applying RBAC for visibility."""
-        self._ensure_authenticated(current_user)
-
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Location not found.",
             )
 
-        if role == ROLE_SUPERADMIN:
+        if role == UserRole.SUPERADMIN.value:
             return location
 
         if role in COMPANY_SCOPED_ROLES:
             await self._ensure_location_in_user_companies(location, user_id)
             return location
 
-        if role == ROLE_JANITOR:
+        if role == UserRole.JANITOR.value:
             await self._ensure_user_assigned_to_location(
                 location_id=location_id,
                 user_id=user_id,
@@ -270,7 +216,7 @@ class LocationService:
             return location
 
         raise HTTPException(
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to view this location.",
         )
 
@@ -279,10 +225,7 @@ class LocationService:
         current_user: Dict[str, Any],
         payload: LocationCreateRequest,
     ) -> Location:
-        """Create a new location enforcing RBAC rules."""
-        self._ensure_authenticated(current_user)
-        self._ensure_can_create_locations(current_user)
-
+        """Create a new location."""
         creator_id = self._get_user_id(current_user)
 
         location = Location(
@@ -307,21 +250,18 @@ class LocationService:
         location_id: int,
         payload: LocationUpdateRequest,
     ) -> Location:
-        """Update an existing location enforcing RBAC rules."""
-        self._ensure_authenticated(current_user)
-        self._ensure_can_update_locations(current_user)
-
+        """Update an existing location."""
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Location not found.",
             )
 
-        if role in {ROLE_ADMIN, ROLE_SUBADMIN}:
+        if role in {UserRole.ADMIN.value, UserRole.SUBADMIN.value}:
             await self._ensure_location_in_user_companies(location, user_id)
 
         update_data = payload.model_dump(exclude_none=True)
@@ -339,20 +279,17 @@ class LocationService:
         location_id: int,
     ) -> None:
         """Soft delete a location by setting is_active to False."""
-        self._ensure_authenticated(current_user)
-        self._ensure_can_delete_locations(current_user)
-
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Location not found.",
             )
 
-        if role == ROLE_ADMIN:
+        if role == UserRole.ADMIN.value:
             await self._ensure_location_in_user_companies(location, user_id)
 
         location.is_active = False
@@ -365,37 +302,29 @@ class LocationService:
         location_id: int,
         payload: LocationAssignCompanyRequest,
     ) -> Location:
-        """Assign a company to a location with RBAC checks."""
-        self._ensure_authenticated(current_user)
-
+        """Assign a company to a location."""
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
-
-        if role not in {ROLE_SUPERADMIN, ROLE_ADMIN}:
-            raise HTTPException(
-                status_code=403,
-                detail="You are not allowed to assign company to locations.",
-            )
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Location not found.",
             )
 
         company = await self.session.get(Company, payload.company_id)
         if not company or not company.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Company not found.",
             )
 
-        if role == ROLE_ADMIN:
+        if role == UserRole.ADMIN.value:
             user_company_ids = await self._get_user_company_ids(user_id)
             if payload.company_id not in user_company_ids:
                 raise HTTPException(
-                    status_code=403,
+                    status_code=status.HTTP_403_FORBIDDEN,
                     detail="You are not allowed to assign this company to the location.",
                 )
 
@@ -412,31 +341,23 @@ class LocationService:
         payload: LocationAssignUserRequest,
     ) -> UserLocationAccess:
         """Assign a janitor user to a location, validating company and role."""
-        self._ensure_authenticated(current_user)
-
         role = self._get_role(current_user)
         actor_id = self._get_user_id(current_user)
-
-        if role not in {ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_SUBADMIN}:
-            raise HTTPException(
-                status_code=403,
-                detail="You are not allowed to assign users to locations.",
-            )
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Location not found.",
             )
 
         if location.company_id is None:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Location must be assigned to a company before adding users.",
             )
 
-        if role in {ROLE_ADMIN, ROLE_SUBADMIN}:
+        if role in {UserRole.ADMIN.value, UserRole.SUBADMIN.value}:
             await self._ensure_location_in_user_companies(location, actor_id)
 
         user_stmt = select(User).where(User.id == payload.user_id)
@@ -445,13 +366,13 @@ class LocationService:
 
         if not target_user or not target_user.is_active:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
             )
 
-        if target_user.role != ROLE_JANITOR:
+        if target_user.role != UserRole.JANITOR.value:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only janitors can be assigned to locations.",
             )
 
@@ -464,7 +385,7 @@ class LocationService:
 
         if not staff_link:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User is not linked to the location's company.",
             )
 
