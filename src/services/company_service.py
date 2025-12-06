@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,16 +10,11 @@ from sqlmodel import select
 
 from src.core.enums import UserRole
 from src.models import Company, CompanyStaff, User
-
-from src.schemas import (
-    CompanyCreateRequest,
-    CompanyUpdateRequest,
-)
+from src.schemas import CompanyCreateRequest, CompanyUpdateRequest
 
 # pylint: disable=no-member, singleton-comparison
 # noqa: E712
 
-# Role sets derived directly from the UserRole enum
 ROLES_CAN_VIEW_ASSOCIATED = {
     UserRole.SUPERADMIN.value,
     UserRole.ADMIN.value,
@@ -39,12 +34,12 @@ ROLES_CAN_CREATE_DELETE_COMPANY = {
 
 
 class CompanyService:
-    """Application service for company-related operations."""
+    """Service for company operations and RBAC close to business rules."""
 
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    # ---------- RBAC helpers ----------
+    # ---------- Current user helpers ----------
 
     def _get_role(self, current_user: Dict[str, Any]) -> str:
         role = current_user.get("role")
@@ -150,7 +145,8 @@ class CompanyService:
             )
 
         result = await self.session.execute(stmt)
-        return result.scalars().all()
+        companies = result.scalars().all()
+        return cast(List[Company], companies)
 
     async def get_company_detail(
         self,

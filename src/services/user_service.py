@@ -1,5 +1,7 @@
 """User service module for Sentinel Enterprise API."""
 
+from __future__ import annotations
+
 # pylint: disable=no-member, singleton-comparison
 
 from datetime import datetime
@@ -14,10 +16,10 @@ from src.core.enums import UserRole
 from src.models import User, CompanyStaff
 from src.schemas import UserCreateRequest, UserUpdateRequest
 
-# Admin-like roles (string values from enum)
-ADMIN_LIKE_ROLES = {
-    UserRole.ADMIN.value,
-    UserRole.SUPERADMIN.value,
+# Admin-like roles (same enum used in auth / tokens)
+ADMIN_LIKE_ROLES: set[UserRole] = {
+    UserRole.ADMIN,
+    UserRole.SUPERADMIN,
 }
 
 pwd_hasher = PasswordHasher()
@@ -31,14 +33,21 @@ class UserService:
 
     # ---------- Current user helpers ----------
 
-    def _get_role(self, current_user: Dict[str, Any]) -> str:
-        role = current_user.get("role")
-        if role is None:
+    def _get_role(self, current_user: Dict[str, Any]) -> UserRole:
+        """Return the current user's role as UserRole."""
+        role_str = current_user.get("role")
+        if role_str is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Role not found in token payload.",
             )
-        return role
+        try:
+            return UserRole(role_str)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid user role.",
+            ) from exc
 
     def _get_user_id(self, current_user: Dict[str, Any]) -> int:
         user_id = current_user.get("user_id")
@@ -58,20 +67,17 @@ class UserService:
 
     def _ensure_admin_cannot_manage_admin_like(
         self,
-        requester_role: str,
-        target_role: str,
+        requester_role: UserRole,
+        target_role: UserRole,
         operation: str,
     ) -> None:
         """
         Prevent ADMIN from managing ADMIN/SUPERADMIN users.
 
-        High-level access control (who can call the endpoint) is handled
-        in the router with RoleChecker.
+        High-level access (who can call the endpoint) is enforced in the router
+        with RoleChecker; aquí sólo aplicamos la regla de negocio.
         """
-        if (
-            requester_role == UserRole.ADMIN.value
-            and target_role in ADMIN_LIKE_ROLES
-        ):
+        if requester_role is UserRole.ADMIN and target_role in ADMIN_LIKE_ROLES:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Admins are not allowed to {operation} admin-like users.",
@@ -114,12 +120,12 @@ class UserService:
     async def list_users(
         self,
         current_user: Dict[str, Any],
-        role: Optional[str],
+        role: Optional[UserRole],
         company_id: Optional[int],
         search: Optional[str],
     ) -> List[User]:
         """
-        Return a list of active users with optional filters.
+        Return active users with optional filters.
 
         Pagination is handled by fastapi-pagination in the router.
         """
@@ -127,7 +133,7 @@ class UserService:
 
         stmt = select(User).where(User.is_active == True)  # noqa: E712
 
-        if role:
+        if role is not None:
             stmt = stmt.where(User.role == role)
 
         if search:
@@ -180,9 +186,9 @@ class UserService:
         payload: UserCreateRequest,
     ) -> User:
         """
-        Create a new user with business RBAC and email uniqueness rules.
+        Create a new user.
 
-        Router ensures only SUPERADMIN/ADMIN can access this endpoint.
+        Router ya restringe el acceso a SUPERADMIN / ADMIN con RoleChecker.
         """
         self._ensure_authenticated(current_user)
 
@@ -190,6 +196,7 @@ class UserService:
         requester_id = self._get_user_id(current_user)
         requested_role = payload.role
 
+        # Admin no puede crear usuarios admin/superadmin
         self._ensure_admin_cannot_manage_admin_like(
             requester_role=requester_role,
             target_role=requested_role,
@@ -239,8 +246,8 @@ class UserService:
                 detail="User not found.",
             )
 
+        # No admin-like: sólo pueden editarse a sí mismos y con límites
         if requester_role not in ADMIN_LIKE_ROLES:
-            # Non admin-like users can only update themselves with limited fields
             if requester_id != user_id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -258,7 +265,7 @@ class UserService:
                     detail="You are not allowed to change your status.",
                 )
         else:
-            # Admin / Superadmin
+            # Admin / Superadmin con restricciones sobre admin-like
             self._ensure_admin_cannot_manage_admin_like(
                 requester_role=requester_role,
                 target_role=user.role,
@@ -297,7 +304,7 @@ class UserService:
         """
         Soft delete a user by setting is_active = False.
 
-        Router already restricts access to SUPERADMIN/ADMIN via RoleChecker.
+        Router already restricts access to SUPERADMIN/ADMIN with RoleChecker.
         """
         self._ensure_authenticated(current_user)
 

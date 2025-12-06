@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status, Response
 from fastapi_pagination import Page, paginate
 
 from src.auth.utils import get_current_user
@@ -25,9 +25,9 @@ router = APIRouter(
     response_model=Page[UserResponse],
 )
 async def list_users(
-    role: Optional[str] = None,
-    company_id: Optional[int] = None,
-    search: Optional[str] = None,
+    role: Optional[UserRole] = Query(default=None),
+    company_id: Optional[int] = Query(default=None),
+    search: Optional[str] = Query(default=None),
     service: UserService = Depends(get_user_service),
     current_user: Dict[str, Any] = Depends(get_current_user),
     _: int = Depends(
@@ -42,7 +42,7 @@ async def list_users(
     """List active users with filters and pagination."""
     users = await service.list_users(
         current_user=current_user,
-        role=role,
+        role=role.value if role is not None else None,
         company_id=company_id,
         search=search,
     )
@@ -114,6 +114,7 @@ async def update_user(
 @router.delete(
     "/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
 )
 async def delete_user(
     user_id: int,
@@ -127,10 +128,10 @@ async def delete_user(
             ],
         ),
     ),
-):
-    """Soft delete user by setting is_active = False."""
+) -> Response:
+    """Soft delete user by setting is_active to False."""
     await service.soft_delete_user(
         current_user=current_user,
         user_id=user_id,
     )
-    # 204 => no body
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

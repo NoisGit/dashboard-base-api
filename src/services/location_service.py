@@ -39,9 +39,10 @@ class LocationService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    # ---------- Helpers ----------
+    # ---------- Current user helpers ----------
 
     def _get_role(self, current_user: Dict[str, Any]) -> str:
+        """Extract role from JWT payload."""
         role = current_user.get("role")
         if role is None:
             raise HTTPException(
@@ -51,6 +52,7 @@ class LocationService:
         return role
 
     def _get_user_id(self, current_user: Dict[str, Any]) -> int:
+        """Extract user_id from JWT payload."""
         user_id = current_user.get("user_id")
         if user_id is None:
             raise HTTPException(
@@ -58,6 +60,16 @@ class LocationService:
                 detail="user_id not found in token payload.",
             )
         return int(user_id)
+
+    def _ensure_authenticated(self, current_user: Dict[str, Any]) -> None:
+        """Ensure the request is authenticated."""
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required.",
+            )
+
+    # ---------- Helper queries ----------
 
     async def _get_location_by_id(self, location_id: int) -> Optional[Location]:
         stmt = select(Location).where(Location.id == location_id)
@@ -77,6 +89,7 @@ class LocationService:
         location: Location,
         user_id: int,
     ) -> None:
+        """Ensure the location belongs to one of the user's companies."""
         if location.company_id is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -95,6 +108,7 @@ class LocationService:
         location_id: int,
         user_id: int,
     ) -> None:
+        """Ensure the janitor is assigned to the given location."""
         stmt = select(UserLocationAccess).where(
             UserLocationAccess.user_id == user_id,
             UserLocationAccess.location_id == location_id,
@@ -121,6 +135,8 @@ class LocationService:
 
         Pagination is handled by fastapi-pagination in the router.
         """
+        self._ensure_authenticated(current_user)
+
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
@@ -191,6 +207,8 @@ class LocationService:
         location_id: int,
     ) -> Location:
         """Get a single location detail applying RBAC for visibility."""
+        self._ensure_authenticated(current_user)
+
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
@@ -226,6 +244,8 @@ class LocationService:
         payload: LocationCreateRequest,
     ) -> Location:
         """Create a new location."""
+        self._ensure_authenticated(current_user)
+
         creator_id = self._get_user_id(current_user)
 
         location = Location(
@@ -251,6 +271,8 @@ class LocationService:
         payload: LocationUpdateRequest,
     ) -> Location:
         """Update an existing location."""
+        self._ensure_authenticated(current_user)
+
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
@@ -278,7 +300,9 @@ class LocationService:
         current_user: Dict[str, Any],
         location_id: int,
     ) -> None:
-        """Soft delete a location by setting is_active to False."""
+        """Soft delete a location by setting is_active = False."""
+        self._ensure_authenticated(current_user)
+
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
@@ -303,6 +327,8 @@ class LocationService:
         payload: LocationAssignCompanyRequest,
     ) -> Location:
         """Assign a company to a location."""
+        self._ensure_authenticated(current_user)
+
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
@@ -341,6 +367,8 @@ class LocationService:
         payload: LocationAssignUserRequest,
     ) -> UserLocationAccess:
         """Assign a janitor user to a location, validating company and role."""
+        self._ensure_authenticated(current_user)
+
         role = self._get_role(current_user)
         actor_id = self._get_user_id(current_user)
 

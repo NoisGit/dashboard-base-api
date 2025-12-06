@@ -1,8 +1,10 @@
 """Locations router module for Sentinel Enterprise API."""
 
+from __future__ import annotations
+
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, Response
 from fastapi_pagination import Page, paginate
 
 from src.auth.utils import get_current_user
@@ -140,6 +142,7 @@ async def update_location(
 @router.delete(
     "/{location_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
 )
 async def delete_location(
     location_id: int,
@@ -153,13 +156,13 @@ async def delete_location(
             ],
         ),
     ),
-):
+) -> Response:
     """Soft delete a location (is_active = False)."""
     await service.soft_delete_location(
         current_user=current_user,
         location_id=location_id,
     )
-    # 204 => no body
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put(

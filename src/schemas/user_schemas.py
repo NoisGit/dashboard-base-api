@@ -5,23 +5,25 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr
 
+from src.core.enums import UserRole
+
 
 class UserCreateRequest(BaseModel):
     """Schema for creating a user."""
     username: str
     full_name: str
     email: EmailStr
-    password: str  # plain text, will be hashed with Argon2 in the service
-    role: str      # "admin", "superadmin", "janitor", "subadmin", "client"
+    password: str  # plain text, will be hashed in the service
+    role: UserRole
     plan_id: int
     status: bool = True
 
 
 class UserUpdateRequest(BaseModel):
-    """Schema for updating a user profile."""
+    """Schema for updating a user."""
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
-    role: Optional[str] = None
+    role: Optional[UserRole] = None
     status: Optional[bool] = None
 
 
@@ -31,14 +33,14 @@ class UserResponse(BaseModel):
     username: str
     full_name: str
     email: EmailStr
-    role: str
+    role: UserRole
     status: bool
     is_active: bool
     plan_id: int
     created_at: Optional[datetime] = None
 
     class Config:
-        """Pydantic config to allow ORM objects."""
+        """Allow loading data directly from ORM objects."""
         from_attributes = True
 
 
