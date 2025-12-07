@@ -5,6 +5,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from .base_schemas import BaseResponse
+
 
 class LocationCreateRequest(BaseModel):
     """Schema for creating a location (portería)."""
@@ -24,7 +26,7 @@ class LocationUpdateRequest(BaseModel):
     logo: Optional[str] = None
 
 
-class LocationResponse(BaseModel):
+class LocationResponse(BaseResponse):
     """Schema for location response (without internal details)."""
 
     id: int
@@ -36,10 +38,6 @@ class LocationResponse(BaseModel):
     is_active: bool
     created_by: int
     created_at: Optional[datetime] = None
-
-    class Config:
-        """Pydantic config to allow ORM objects."""
-        from_attributes = True
 
 
 class LocationAssignCompanyRequest(BaseModel):
@@ -54,7 +52,7 @@ class LocationAssignUserRequest(BaseModel):
     user_id: int
 
 
-class LocationUserAssignmentResponse(BaseModel):
+class LocationUserAssignmentResponse(BaseResponse):
     """Response for a user–location assignment."""
 
     id: int
@@ -62,10 +60,6 @@ class LocationUserAssignmentResponse(BaseModel):
     user_id: int
     created_by: int
     created_at: datetime
-
-    class Config:
-        """Pydantic config to allow ORM objects."""
-        from_attributes = True
 
 
 __all__ = [

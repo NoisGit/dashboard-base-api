@@ -5,6 +5,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from .base_schemas import BaseResponse
+
 
 class CompanyCreateRequest(BaseModel):
     """Payload for creating a company."""
@@ -24,7 +26,7 @@ class CompanyUpdateRequest(BaseModel):
     type_document: Optional[str] = None
 
 
-class CompanyResponse(BaseModel):
+class CompanyResponse(BaseResponse):
     """Company response schema (without internal details)."""
     id: int
     name: str
@@ -35,9 +37,6 @@ class CompanyResponse(BaseModel):
     is_active: bool
     created_by: int
     created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class CompanyAssignUserRequest(BaseModel):

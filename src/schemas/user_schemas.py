@@ -6,6 +6,7 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 from src.core.enums import UserRole
+from .base_schemas import BaseResponse
 
 
 class UserCreateRequest(BaseModel):
@@ -27,7 +28,7 @@ class UserUpdateRequest(BaseModel):
     status: Optional[bool] = None
 
 
-class UserResponse(BaseModel):
+class UserResponse(BaseResponse):
     """Schema for user response (without sensitive data)."""
     id: int
     username: str
@@ -38,10 +39,6 @@ class UserResponse(BaseModel):
     is_active: bool
     plan_id: int
     created_at: Optional[datetime] = None
-
-    class Config:
-        """Allow loading data directly from ORM objects."""
-        from_attributes = True
 
 
 __all__ = [

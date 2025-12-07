@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query, status, Response
-from fastapi_pagination import Page, paginate
+from fastapi_pagination import Page, Params
 
 from src.auth.utils import get_current_user
 from src.auth.permissions import RoleChecker
@@ -25,6 +25,7 @@ router = APIRouter(
     response_model=Page[UserResponse],
 )
 async def list_users(
+    params: Params = Depends(),
     role: Optional[UserRole] = Query(default=None),
     company_id: Optional[int] = Query(default=None),
     search: Optional[str] = Query(default=None),
@@ -40,13 +41,13 @@ async def list_users(
     ),
 ) -> Page[UserResponse]:
     """List active users with filters and pagination."""
-    users = await service.list_users(
+    return await service.list_users(
         current_user=current_user,
-        role=role.value if role is not None else None,
+        role=role,
         company_id=company_id,
         search=search,
+        params=params,
     )
-    return paginate(users)
 
 
 @router.get(
@@ -128,10 +129,11 @@ async def delete_user(
             ],
         ),
     ),
-) -> Response:
-    """Soft delete user by setting is_active to False."""
+):
+    """Soft delete user by setting is_active = False."""
     await service.soft_delete_user(
         current_user=current_user,
         user_id=user_id,
     )
+    # 204 => no body
     return Response(status_code=status.HTTP_204_NO_CONTENT)

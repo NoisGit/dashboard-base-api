@@ -15,21 +15,22 @@ from src.schemas import CompanyCreateRequest, CompanyUpdateRequest
 # pylint: disable=no-member, singleton-comparison
 # noqa: E712
 
-ROLES_CAN_VIEW_ASSOCIATED = {
-    UserRole.SUPERADMIN.value,
-    UserRole.ADMIN.value,
-    UserRole.SUBADMIN.value,
-    UserRole.JANITOR.value,
-    UserRole.CLIENT.value,
+# Role sets using the UserRole enum (same pattern as User/Location services)
+ROLES_CAN_VIEW_ASSOCIATED: set[UserRole] = {
+    UserRole.SUPERADMIN,
+    UserRole.ADMIN,
+    UserRole.SUBADMIN,
+    UserRole.JANITOR,
+    UserRole.CLIENT,
 }
 
-ROLES_CAN_EDIT_COMPANY = {
-    UserRole.SUPERADMIN.value,
-    UserRole.ADMIN.value,
+ROLES_CAN_EDIT_COMPANY: set[UserRole] = {
+    UserRole.SUPERADMIN,
+    UserRole.ADMIN,
 }
 
-ROLES_CAN_CREATE_DELETE_COMPANY = {
-    UserRole.SUPERADMIN.value,
+ROLES_CAN_CREATE_DELETE_COMPANY: set[UserRole] = {
+    UserRole.SUPERADMIN,
 }
 
 
@@ -41,14 +42,21 @@ class CompanyService:
 
     # ---------- Current user helpers ----------
 
-    def _get_role(self, current_user: Dict[str, Any]) -> str:
-        role = current_user.get("role")
-        if role is None:
+    def _get_role(self, current_user: Dict[str, Any]) -> UserRole:
+        """Return the current user's role as UserRole enum."""
+        role_str = current_user.get("role")
+        if role_str is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Role not found in token payload.",
             )
-        return role
+        try:
+            return UserRole(role_str)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid user role.",
+            ) from exc
 
     def _get_user_id(self, current_user: Dict[str, Any]) -> int:
         user_id = current_user.get("user_id")
@@ -99,7 +107,7 @@ class CompanyService:
         current_user: Dict[str, Any],
     ) -> None:
         role = self._get_role(current_user)
-        if role == UserRole.SUPERADMIN.value:
+        if role is UserRole.SUPERADMIN:
             return
 
         user_id = self._get_user_id(current_user)
@@ -134,14 +142,14 @@ class CompanyService:
         role = self._get_role(current_user)
         user_id = self._get_user_id(current_user)
 
-        if role == UserRole.SUPERADMIN.value:
-            stmt = select(Company).where(Company.is_active == True)
+        if role is UserRole.SUPERADMIN:
+            stmt = select(Company).where(Company.is_active == True)  # noqa: E712
         else:
             stmt = (
                 select(Company)
                 .join(CompanyStaff, CompanyStaff.company_id == Company.id)
                 .where(CompanyStaff.user_id == user_id)
-                .where(Company.is_active == True)
+                .where(Company.is_active == True)  # noqa: E712
             )
 
         result = await self.session.execute(stmt)

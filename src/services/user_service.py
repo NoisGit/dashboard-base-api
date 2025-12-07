@@ -9,12 +9,14 @@ from typing import Any, Dict, List, Optional, cast
 
 from argon2 import PasswordHasher
 from fastapi import HTTPException, status
+from fastapi_pagination import Params, Page
+from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from src.core.enums import UserRole
 from src.models import User, CompanyStaff
-from src.schemas import UserCreateRequest, UserUpdateRequest
+from src.schemas import UserCreateRequest, UserUpdateRequest, UserResponse
 
 # Admin-like roles (same enum used in auth / tokens)
 ADMIN_LIKE_ROLES: set[UserRole] = {
@@ -123,11 +125,12 @@ class UserService:
         role: Optional[UserRole],
         company_id: Optional[int],
         search: Optional[str],
-    ) -> List[User]:
+        params: Params,
+    ) -> Page[UserResponse]:
         """
         Return active users with optional filters.
 
-        Pagination is handled by fastapi-pagination in the router.
+        Pagination is handled here using fastapi-pagination, same pattern as Residential.
         """
         self._ensure_authenticated(current_user)
 
@@ -149,9 +152,15 @@ class UserService:
                 .where(CompanyStaff.company_id == company_id)
             )
 
-        result = await self.session.execute(stmt)
-        users = result.scalars().all()
-        return cast(List[User], users)
+        return await sqlalchemy_paginate(
+            self.session,
+            stmt,
+            params,
+            transformer=lambda items: [
+                UserResponse.model_validate(user)
+                for user in cast(List[User], items)
+            ],
+        )
 
     async def get_user_detail(
         self,

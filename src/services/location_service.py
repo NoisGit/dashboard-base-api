@@ -26,10 +26,11 @@ from src.schemas import (
     LocationAssignUserRequest,
 )
 
-COMPANY_SCOPED_ROLES = {
-    UserRole.ADMIN.value,
-    UserRole.SUBADMIN.value,
-    UserRole.CLIENT.value,
+# Roles que operan restringidos al/los company del usuario
+COMPANY_SCOPED_ROLES: set[UserRole] = {
+    UserRole.ADMIN,
+    UserRole.SUBADMIN,
+    UserRole.CLIENT,
 }
 
 
@@ -41,15 +42,21 @@ class LocationService:
 
     # ---------- Current user helpers ----------
 
-    def _get_role(self, current_user: Dict[str, Any]) -> str:
-        """Extract role from JWT payload."""
-        role = current_user.get("role")
-        if role is None:
+    def _get_role(self, current_user: Dict[str, Any]) -> UserRole:
+        """Extract role from JWT payload as UserRole enum."""
+        role_str = current_user.get("role")
+        if role_str is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Role not found in token payload.",
             )
-        return role
+        try:
+            return UserRole(role_str)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid user role.",
+            ) from exc
 
     def _get_user_id(self, current_user: Dict[str, Any]) -> int:
         """Extract user_id from JWT payload."""
@@ -149,7 +156,7 @@ class LocationService:
                 | (Location.address.ilike(like_pattern))
             )
 
-        if role == UserRole.SUPERADMIN.value:
+        if role is UserRole.SUPERADMIN:
             if company_id is not None:
                 stmt = stmt.where(Location.company_id == company_id)
 
@@ -168,7 +175,7 @@ class LocationService:
             else:
                 stmt = stmt.where(Location.company_id.in_(user_company_ids))
 
-        elif role == UserRole.JANITOR.value:
+        elif role is UserRole.JANITOR:
             stmt = (
                 select(Location)
                 .join(
@@ -219,14 +226,14 @@ class LocationService:
                 detail="Location not found.",
             )
 
-        if role == UserRole.SUPERADMIN.value:
+        if role is UserRole.SUPERADMIN:
             return location
 
         if role in COMPANY_SCOPED_ROLES:
             await self._ensure_location_in_user_companies(location, user_id)
             return location
 
-        if role == UserRole.JANITOR.value:
+        if role is UserRole.JANITOR:
             await self._ensure_user_assigned_to_location(
                 location_id=location_id,
                 user_id=user_id,
@@ -283,7 +290,7 @@ class LocationService:
                 detail="Location not found.",
             )
 
-        if role in {UserRole.ADMIN.value, UserRole.SUBADMIN.value}:
+        if role in {UserRole.ADMIN, UserRole.SUBADMIN}:
             await self._ensure_location_in_user_companies(location, user_id)
 
         update_data = payload.model_dump(exclude_none=True)
@@ -313,7 +320,7 @@ class LocationService:
                 detail="Location not found.",
             )
 
-        if role == UserRole.ADMIN.value:
+        if role is UserRole.ADMIN:
             await self._ensure_location_in_user_companies(location, user_id)
 
         location.is_active = False
@@ -346,7 +353,7 @@ class LocationService:
                 detail="Company not found.",
             )
 
-        if role == UserRole.ADMIN.value:
+        if role is UserRole.ADMIN:
             user_company_ids = await self._get_user_company_ids(user_id)
             if payload.company_id not in user_company_ids:
                 raise HTTPException(
@@ -385,7 +392,7 @@ class LocationService:
                 detail="Location must be assigned to a company before adding users.",
             )
 
-        if role in {UserRole.ADMIN.value, UserRole.SUBADMIN.value}:
+        if role in {UserRole.ADMIN, UserRole.SUBADMIN}:
             await self._ensure_location_in_user_companies(location, actor_id)
 
         user_stmt = select(User).where(User.id == payload.user_id)
@@ -398,7 +405,7 @@ class LocationService:
                 detail="User not found.",
             )
 
-        if target_user.role != UserRole.JANITOR.value:
+        if target_user.role is not UserRole.JANITOR:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only janitors can be assigned to locations.",
