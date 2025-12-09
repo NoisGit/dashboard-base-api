@@ -26,9 +26,7 @@ Por favor, incluye un resumen de los cambios y el problema relacionado. Asegúra
 
 ## Screenshots / Videos (Opcional)
 
-| Antes | Después |
-|-------|---------|
-| [Imagen] | [Imagen] |
+Si aplica, añade capturas de pantalla o videos que demuestren los cambios realizados.
 
 ## Checklist
 
