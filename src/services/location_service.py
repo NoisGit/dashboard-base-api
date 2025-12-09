@@ -5,7 +5,7 @@ from __future__ import annotations
 # pylint: disable=no-member, singleton-comparison
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import List, Optional, cast
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +16,6 @@ from src.models import (
     Location,
     Company,
     CompanyStaff,
-    User,
     UserLocationAccess,
 )
 from src.schemas import (
@@ -25,8 +24,8 @@ from src.schemas import (
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
 )
+from src.services.user_service import UserService
 
-# Roles que operan restringidos al/los company del usuario
 COMPANY_SCOPED_ROLES: set[UserRole] = {
     UserRole.ADMIN,
     UserRole.SUBADMIN,
@@ -37,44 +36,13 @@ COMPANY_SCOPED_ROLES: set[UserRole] = {
 class LocationService:
     """Service for location (portería) operations with RBAC and soft delete."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(
+        self,
+        session: AsyncSession,
+        user_service: Optional[UserService] = None,
+    ) -> None:
         self.session = session
-
-    # ---------- Current user helpers ----------
-
-    def _get_role(self, current_user: Dict[str, Any]) -> UserRole:
-        """Extract role from JWT payload as UserRole enum."""
-        role_str = current_user.get("role")
-        if role_str is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Role not found in token payload.",
-            )
-        try:
-            return UserRole(role_str)
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid user role.",
-            ) from exc
-
-    def _get_user_id(self, current_user: Dict[str, Any]) -> int:
-        """Extract user_id from JWT payload."""
-        user_id = current_user.get("user_id")
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="user_id not found in token payload.",
-            )
-        return int(user_id)
-
-    def _ensure_authenticated(self, current_user: Dict[str, Any]) -> None:
-        """Ensure the request is authenticated."""
-        if not current_user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required.",
-            )
+        self.user_service = user_service or UserService(session)
 
     # ---------- Helper queries ----------
 
@@ -133,7 +101,8 @@ class LocationService:
 
     async def list_locations(
         self,
-        current_user: Dict[str, Any],
+        user_id: int,
+        role: UserRole,
         company_id: Optional[int],
         search: Optional[str],
     ) -> List[Location]:
@@ -142,10 +111,6 @@ class LocationService:
 
         Pagination is handled by fastapi-pagination in the router.
         """
-        self._ensure_authenticated(current_user)
-
-        role = self._get_role(current_user)
-        user_id = self._get_user_id(current_user)
 
         stmt = select(Location).where(Location.is_active == True)  # noqa: E712
 
@@ -210,14 +175,11 @@ class LocationService:
 
     async def get_location_detail(
         self,
-        current_user: Dict[str, Any],
+        user_id: int,
+        role: UserRole,
         location_id: int,
     ) -> Location:
         """Get a single location detail applying RBAC for visibility."""
-        self._ensure_authenticated(current_user)
-
-        role = self._get_role(current_user)
-        user_id = self._get_user_id(current_user)
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
@@ -247,13 +209,10 @@ class LocationService:
 
     async def create_location(
         self,
-        current_user: Dict[str, Any],
+        user_id: int,
         payload: LocationCreateRequest,
     ) -> Location:
         """Create a new location."""
-        self._ensure_authenticated(current_user)
-
-        creator_id = self._get_user_id(current_user)
 
         location = Location(
             name=payload.name,
@@ -262,7 +221,7 @@ class LocationService:
             logo=payload.logo,
             company_id=None,
             is_active=True,
-            created_by=creator_id,
+            created_by=user_id,
             created_at=datetime.now(),
         )
 
@@ -273,15 +232,12 @@ class LocationService:
 
     async def update_location(
         self,
-        current_user: Dict[str, Any],
+        user_id: int,
+        role: UserRole,
         location_id: int,
         payload: LocationUpdateRequest,
     ) -> Location:
         """Update an existing location."""
-        self._ensure_authenticated(current_user)
-
-        role = self._get_role(current_user)
-        user_id = self._get_user_id(current_user)
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
@@ -304,14 +260,11 @@ class LocationService:
 
     async def soft_delete_location(
         self,
-        current_user: Dict[str, Any],
+        user_id: int,
+        role: UserRole,
         location_id: int,
     ) -> None:
         """Soft delete a location by setting is_active = False."""
-        self._ensure_authenticated(current_user)
-
-        role = self._get_role(current_user)
-        user_id = self._get_user_id(current_user)
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
@@ -329,15 +282,12 @@ class LocationService:
 
     async def assign_company_to_location(
         self,
-        current_user: Dict[str, Any],
+        user_id: int,
+        role: UserRole,
         location_id: int,
         payload: LocationAssignCompanyRequest,
     ) -> Location:
         """Assign a company to a location."""
-        self._ensure_authenticated(current_user)
-
-        role = self._get_role(current_user)
-        user_id = self._get_user_id(current_user)
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
@@ -369,15 +319,12 @@ class LocationService:
 
     async def assign_user_to_location(
         self,
-        current_user: Dict[str, Any],
+        requester_id: int,
+        requester_role: UserRole,
         location_id: int,
         payload: LocationAssignUserRequest,
     ) -> UserLocationAccess:
         """Assign a janitor user to a location, validating company and role."""
-        self._ensure_authenticated(current_user)
-
-        role = self._get_role(current_user)
-        actor_id = self._get_user_id(current_user)
 
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
@@ -392,12 +339,13 @@ class LocationService:
                 detail="Location must be assigned to a company before adding users.",
             )
 
-        if role in {UserRole.ADMIN, UserRole.SUBADMIN}:
-            await self._ensure_location_in_user_companies(location, actor_id)
+        if requester_role in {UserRole.ADMIN, UserRole.SUBADMIN}:
+            await self._ensure_location_in_user_companies(
+                location,
+                requester_id,
+            )
 
-        user_stmt = select(User).where(User.id == payload.user_id)
-        user_result = await self.session.execute(user_stmt)
-        target_user = user_result.scalars().first()
+        target_user = await self.user_service.get_user_by_id(payload.user_id)
 
         if not target_user or not target_user.is_active:
             raise HTTPException(
@@ -437,7 +385,7 @@ class LocationService:
         new_link = UserLocationAccess(
             user_id=payload.user_id,
             location_id=location_id,
-            created_by=actor_id,
+            created_by=requester_id,
             created_at=datetime.now(),
         )
 

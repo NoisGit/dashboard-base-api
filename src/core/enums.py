@@ -1,19 +1,14 @@
-"""Core enums for the Sentinel Enterprise API.
-
-Currently contains:
-
-- UserRole: global user roles for the Enterprise dashboard.
-"""
+"""Core enums for the Sentinel Enterprise API."""
 
 from enum import Enum
 
 
 class UserRole(str, Enum):
-    """Global user roles enumeration for Enterprise."""
-    ADMIN = "admin"
-    JANITOR = "janitor"
+    """Global user roles enumeration for the Enterprise dashboard."""
     SUPERADMIN = "superadmin"
+    ADMIN = "admin"
     SUBADMIN = "subadmin"
+    JANITOR = "janitor"
     CLIENT = "client"
 
 

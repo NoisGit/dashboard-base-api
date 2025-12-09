@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status, Response
+from fastapi import APIRouter, Depends, Query, status
 from fastapi_pagination import Page, Params
 
-from src.auth.utils import get_current_user
+from src.auth.utils import get_user_data_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_user_service
@@ -30,7 +30,8 @@ async def list_users(
     company_id: Optional[int] = Query(default=None),
     search: Optional[str] = Query(default=None),
     service: UserService = Depends(get_user_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -41,8 +42,10 @@ async def list_users(
     ),
 ) -> Page[UserResponse]:
     """List active users with filters and pagination."""
+    _, requester_role = current_user_data
+
     return await service.list_users(
-        current_user=current_user,
+        requester_role=requester_role,
         role=role,
         company_id=company_id,
         search=search,
@@ -57,11 +60,15 @@ async def list_users(
 async def get_user_detail(
     user_id: int,
     service: UserService = Depends(get_user_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
 ) -> UserResponse:
     """Get a single active user by ID."""
+    requester_id, requester_role = current_user_data
+
     user = await service.get_user_detail(
-        current_user=current_user,
+        requester_id=requester_id,
+        requester_role=requester_role,
         user_id=user_id,
     )
     return user
@@ -75,7 +82,8 @@ async def get_user_detail(
 async def create_user(
     payload: UserCreateRequest,
     service: UserService = Depends(get_user_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -86,8 +94,11 @@ async def create_user(
     ),
 ) -> UserResponse:
     """Create a new user (email unique, password hashed with Argon2)."""
+    requester_id, requester_role = current_user_data
+
     user = await service.create_user(
-        current_user=current_user,
+        requester_id=requester_id,
+        requester_role=requester_role,
         payload=payload,
     )
     return user
@@ -101,11 +112,15 @@ async def update_user(
     user_id: int,
     payload: UserUpdateRequest,
     service: UserService = Depends(get_user_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
 ) -> UserResponse:
     """Update user profile (name, email, role, status)."""
+    requester_id, requester_role = current_user_data
+
     user = await service.update_user(
-        current_user=current_user,
+        requester_id=requester_id,
+        requester_role=requester_role,
         user_id=user_id,
         payload=payload,
     )
@@ -115,12 +130,12 @@ async def update_user(
 @router.delete(
     "/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
 )
 async def delete_user(
     user_id: int,
     service: UserService = Depends(get_user_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -131,9 +146,9 @@ async def delete_user(
     ),
 ):
     """Soft delete user by setting is_active = False."""
+    _, requester_role = current_user_data
+
     await service.soft_delete_user(
-        current_user=current_user,
+        requester_role=requester_role,
         user_id=user_id,
     )
-    # 204 => no body
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

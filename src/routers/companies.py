@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
-
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, paginate
 
-from src.auth.utils import get_current_user
+from src.auth.utils import get_user_data_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_company_service
@@ -32,7 +30,8 @@ router = APIRouter(
 )
 async def list_companies(
     service: CompanyService = Depends(get_company_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -45,9 +44,12 @@ async def list_companies(
         ),
     ),
 ) -> Page[CompanyResponse]:
-    """List active companies for the current user context."""
+    """List active companies for the current user."""
+    user_id, role = current_user_data
+
     companies = await service.list_companies(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
     )
     return paginate(companies)
 
@@ -59,7 +61,8 @@ async def list_companies(
 async def get_company_detail(
     company_id: int,
     service: CompanyService = Depends(get_company_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -73,8 +76,11 @@ async def get_company_detail(
     ),
 ) -> CompanyResponse:
     """Get a single active company by ID."""
+    user_id, role = current_user_data
+
     company = await service.get_company_detail(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         company_id=company_id,
     )
     return company
@@ -88,7 +94,8 @@ async def get_company_detail(
 async def create_company(
     payload: CompanyCreateRequest,
     service: CompanyService = Depends(get_company_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -98,8 +105,11 @@ async def create_company(
     ),
 ) -> CompanyResponse:
     """Create a new company."""
+    user_id, role = current_user_data
+
     company = await service.create_company(
-        current_user=current_user,
+        requester_id=user_id,
+        requester_role=role,
         payload=payload,
     )
     return company
@@ -113,7 +123,8 @@ async def update_company(
     company_id: int,
     payload: CompanyUpdateRequest,
     service: CompanyService = Depends(get_company_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -124,8 +135,11 @@ async def update_company(
     ),
 ) -> CompanyResponse:
     """Update an existing company."""
+    user_id, role = current_user_data
+
     company = await service.update_company(
-        current_user=current_user,
+        requester_id=user_id,
+        requester_role=role,
         company_id=company_id,
         payload=payload,
     )
@@ -139,7 +153,8 @@ async def update_company(
 async def delete_company(
     company_id: int,
     service: CompanyService = Depends(get_company_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -149,11 +164,13 @@ async def delete_company(
     ),
 ):
     """Soft delete a company by setting is_active = False."""
+    user_id, role = current_user_data
+
     await service.soft_delete_company(
-        current_user=current_user,
+        requester_id=user_id,
+        requester_role=role,
         company_id=company_id,
     )
-    # 204 => no body
 
 
 @router.post(
@@ -165,7 +182,8 @@ async def assign_user_to_company(
     company_id: int,
     payload: CompanyAssignUserRequest,
     service: CompanyService = Depends(get_company_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -176,8 +194,11 @@ async def assign_user_to_company(
     ),
 ) -> CompanyUserAssignmentResponse:
     """Assign an existing user to a company."""
+    user_id, role = current_user_data
+
     assignment = await service.assign_user_to_company(
-        current_user=current_user,
+        requester_id=user_id,
+        requester_role=role,
         company_id=company_id,
         user_id=payload.user_id,
     )

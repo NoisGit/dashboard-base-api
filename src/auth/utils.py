@@ -108,8 +108,6 @@ def get_user_data_from_token(
 ) -> Tuple[int, UserRole]:
     """
     Return (user_id, UserRole) from the current access token.
-
-    Thin wrapper over get_current_user to match the residential API style.
     """
     user_id = current_user.get("user_id")
     role_str = current_user.get("role")

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status, Response
+from fastapi import APIRouter, Depends, Query, status
 from fastapi_pagination import Page, paginate
 
-from src.auth.utils import get_current_user
+from src.auth.utils import get_user_data_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_location_service
@@ -35,7 +35,8 @@ async def list_locations(
     company_id: Optional[int] = Query(default=None),
     search: Optional[str] = Query(default=None),
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -49,8 +50,11 @@ async def list_locations(
     ),
 ) -> Page[LocationResponse]:
     """List active locations (porterías) visible for the current user."""
+    user_id, role = current_user_data
+
     locations = await service.list_locations(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         company_id=company_id,
         search=search,
     )
@@ -64,7 +68,8 @@ async def list_locations(
 async def get_location_detail(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -78,8 +83,11 @@ async def get_location_detail(
     ),
 ) -> LocationResponse:
     """Get a single active location by ID."""
+    user_id, role = current_user_data
+
     location = await service.get_location_detail(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         location_id=location_id,
     )
     return location
@@ -93,7 +101,8 @@ async def get_location_detail(
 async def create_location(
     payload: LocationCreateRequest,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -104,8 +113,10 @@ async def create_location(
     ),
 ) -> LocationResponse:
     """Create a new location (portería)."""
+    user_id, _ = current_user_data
+
     location = await service.create_location(
-        current_user=current_user,
+        user_id=user_id,
         payload=payload,
     )
     return location
@@ -119,7 +130,8 @@ async def update_location(
     location_id: int,
     payload: LocationUpdateRequest,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -131,8 +143,11 @@ async def update_location(
     ),
 ) -> LocationResponse:
     """Update an existing location."""
+    user_id, role = current_user_data
+
     location = await service.update_location(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         location_id=location_id,
         payload=payload,
     )
@@ -142,12 +157,12 @@ async def update_location(
 @router.delete(
     "/{location_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
 )
 async def delete_location(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -156,13 +171,15 @@ async def delete_location(
             ],
         ),
     ),
-) -> Response:
+):
     """Soft delete a location (is_active = False)."""
+    user_id, role = current_user_data
+
     await service.soft_delete_location(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         location_id=location_id,
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put(
@@ -173,7 +190,8 @@ async def assign_company_to_location(
     location_id: int,
     payload: LocationAssignCompanyRequest,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -184,8 +202,11 @@ async def assign_company_to_location(
     ),
 ) -> LocationResponse:
     """Assign a company to a location."""
+    user_id, role = current_user_data
+
     location = await service.assign_company_to_location(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         location_id=location_id,
         payload=payload,
     )
@@ -201,7 +222,8 @@ async def assign_user_to_location(
     location_id: int,
     payload: LocationAssignUserRequest,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user_data: tuple[int, UserRole] = Depends(
+        get_user_data_from_token),
     _: int = Depends(
         RoleChecker(
             [
@@ -213,8 +235,11 @@ async def assign_user_to_location(
     ),
 ) -> LocationUserAssignmentResponse:
     """Assign a user (janitor/portero) to a location."""
+    user_id, role = current_user_data
+
     link = await service.assign_user_to_location(
-        current_user=current_user,
+        requester_id=user_id,
+        requester_role=role,
         location_id=location_id,
         payload=payload,
     )
