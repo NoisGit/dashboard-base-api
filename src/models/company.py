@@ -10,8 +10,6 @@ Matches the `company` table in the ERD:
 - Audit fields for who created the record and when
 """
 
-from __future__ import annotations
-
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
 
@@ -59,4 +57,5 @@ class Company(SQLModel, table=True):
     # User who created this company
     creator: "User" = Relationship(
         back_populates="companies_created",
+        sa_relationship_kwargs={"foreign_keys": "[Company.created_by]"},
     )

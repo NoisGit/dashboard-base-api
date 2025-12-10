@@ -1,17 +1,20 @@
 """Locations router module for Sentinel Enterprise API."""
 
-from __future__ import annotations
+from typing import Optional
 
-from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Depends, Query, status
+from fastapi_pagination import Page, paginate
 
-from fastapi import APIRouter, Depends, Query, Response, status
-
-from src.auth.utils import get_current_user
+from src.auth.utils import get_user_data_from_token
+from src.auth.permissions import RoleChecker
+from src.core.enums import UserRole
 from src.dependencies import get_location_service
 from src.schemas import (
     LocationCreateRequest,
     LocationUpdateRequest,
     LocationResponse,
+    LocationAssignCompanyRequest,
+    LocationAssignUserRequest,
 )
 from src.services.location_service import LocationService
 
@@ -23,29 +26,24 @@ router = APIRouter(
 
 @router.get(
     "/",
-    response_model=List[LocationResponse],
+    response_model=Page[LocationResponse],
 )
 async def list_locations(
     company_id: Optional[int] = Query(default=None),
     search: Optional[str] = Query(default=None),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
-) -> List[LocationResponse]:
-    """
-    List active locations (porterías) visible for the current user.
+    current_user=Depends(get_user_data_from_token),
+):
+    """List active locations (porterías) visible for the current user."""
+    user_id, role = current_user
 
-    RBAC rules are implemented inside LocationService.
-    """
     locations = await service.list_locations(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         company_id=company_id,
         search=search,
-        page=page,
-        page_size=page_size,
     )
-    return locations
+    return paginate(locations)
 
 
 @router.get(
@@ -55,15 +53,14 @@ async def list_locations(
 async def get_location_detail(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
-) -> LocationResponse:
-    """
-    Get a single active location by ID.
+    current_user=Depends(get_user_data_from_token),
+):
+    """Get a single active location by ID."""
+    user_id, role = current_user
 
-    RBAC rules are implemented inside LocationService.
-    """
     location = await service.get_location_detail(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         location_id=location_id,
     )
     return location
@@ -77,15 +74,20 @@ async def get_location_detail(
 async def create_location(
     payload: LocationCreateRequest,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
-) -> LocationResponse:
-    """
-    Create a new location (portería).
+    current_user=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+):
+    """Create a new location (portería)."""
+    user_id, _ = current_user
 
-    Only SUPERADMIN/ADMIN can create locations (enforced in LocationService).
-    """
     location = await service.create_location(
-        current_user=current_user,
+        user_id=user_id,
         payload=payload,
     )
     return location
@@ -99,15 +101,22 @@ async def update_location(
     location_id: int,
     payload: LocationUpdateRequest,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
-) -> LocationResponse:
-    """
-    Update an existing location.
+    current_user=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+):
+    """Update an existing location."""
+    user_id, role = current_user
 
-    RBAC for who can update is enforced in LocationService.
-    """
     location = await service.update_location(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         location_id=location_id,
         payload=payload,
     )
@@ -121,15 +130,78 @@ async def update_location(
 async def delete_location(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
-) -> Response:
-    """
-    Soft delete a location (is_active = False).
+    current_user=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+):
+    """Soft delete a location (is_active = False)."""
+    user_id, role = current_user
 
-    RBAC for who can delete is enforced in LocationService.
-    """
     await service.soft_delete_location(
-        current_user=current_user,
+        user_id=user_id,
+        role=role,
         location_id=location_id,
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{location_id}/company",
+    response_model=LocationResponse,
+)
+async def assign_company_to_location(
+    location_id: int,
+    payload: LocationAssignCompanyRequest,
+    service: LocationService = Depends(get_location_service),
+    current_user=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+):
+    """Assign a company to a location."""
+    user_id, role = current_user
+
+    location = await service.assign_company_to_location(
+        user_id=user_id,
+        role=role,
+        location_id=location_id,
+        payload=payload,
+    )
+    return location
+
+
+@router.post(
+    "/{location_id}/users",
+    status_code=status.HTTP_201_CREATED,
+)
+async def assign_user_to_location(
+    location_id: int,
+    payload: LocationAssignUserRequest,
+    service: LocationService = Depends(get_location_service),
+    current_user=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+):
+    """Assign a user (janitor/portero) to a location."""
+    user_id, role = current_user
+
+    await service.assign_user_to_location(
+        requester_id=user_id,
+        requester_role=role,
+        location_id=location_id,
+        payload=payload,
+    )

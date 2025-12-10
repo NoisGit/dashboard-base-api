@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Emergency contact database model for the Sentinel Enterprise API.
 
@@ -38,4 +36,6 @@ class EmergencyContact(SQLModel, table=True):
     location: "Location" = Relationship(back_populates="emergency_contacts")
     creator: "User" = Relationship(
         back_populates="emergency_contacts_created",
+        sa_relationship_kwargs={
+            "foreign_keys": "[EmergencyContact.created_by]"},
     )

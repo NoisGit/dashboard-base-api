@@ -8,7 +8,7 @@ from typing import Any, Dict, Tuple
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from src.core.enums import UserRole
@@ -29,9 +29,15 @@ def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError as e:
-        raise HTTPException(status_code=401, detail="Token expired") from e
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+        ) from e
     except jwt.InvalidTokenError as e:
-        raise HTTPException(status_code=401, detail="Invalid token") from e
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        ) from e
 
 
 def get_user_id_from_token(
@@ -47,13 +53,22 @@ def get_user_id_from_token(
         user_id = payload.get("user_id")
 
         if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+            )
 
         return user_id
     except jwt.ExpiredSignatureError as e:
-        raise HTTPException(status_code=401, detail="Token expired") from e
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+        ) from e
     except jwt.InvalidTokenError as e:
-        raise HTTPException(status_code=401, detail="Invalid token") from e
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        ) from e
 
 
 def get_user_id_from_refresh_token(refresh_token: str) -> int:
@@ -63,21 +78,27 @@ def get_user_id_from_refresh_token(refresh_token: str) -> int:
 
         # Verify this is a refresh token
         if payload.get("type") != "refresh":
-            raise HTTPException(status_code=401, detail="Invalid token type")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+            )
 
         user_id = payload.get("user_id")
         if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+            )
 
         return user_id
     except jwt.ExpiredSignatureError as e:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token expired",
         ) from e
     except jwt.InvalidTokenError as e:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
         ) from e
 
@@ -87,15 +108,13 @@ def get_user_data_from_token(
 ) -> Tuple[int, UserRole]:
     """
     Return (user_id, UserRole) from the current access token.
-
-    Thin wrapper over get_current_user to match the residential API style.
     """
     user_id = current_user.get("user_id")
     role_str = current_user.get("role")
 
     if user_id is None or role_str is None:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
 
@@ -103,7 +122,7 @@ def get_user_data_from_token(
         role = UserRole(role_str)
     except ValueError as exc:
         raise HTTPException(
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid user role",
         ) from exc
 

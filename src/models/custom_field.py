@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Custom field database model for the Sentinel Enterprise API.
 
@@ -62,4 +60,5 @@ class CustomField(SQLModel, table=True):
     # User who created this custom field
     creator: "User" = Relationship(
         back_populates="custom_fields_created",
+        sa_relationship_kwargs={"foreign_keys": "[CustomField.created_by]"},
     )

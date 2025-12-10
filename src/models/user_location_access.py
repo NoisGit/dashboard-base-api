@@ -4,8 +4,6 @@ Represents the association between a user and a location (site/project),
 including who created the link and when it was created.
 """
 
-from __future__ import annotations
-
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -44,5 +42,13 @@ class UserLocationAccess(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
-    user: "User" = Relationship(back_populates="location_accesses")
+    user: "User" = Relationship(
+        back_populates="location_accesses",
+        sa_relationship_kwargs={
+            "foreign_keys": "[UserLocationAccess.user_id]"},
+    )
     location: "Location" = Relationship(back_populates="user_locations")
+    creator: "User" = Relationship(
+        sa_relationship_kwargs={
+            "foreign_keys": "[UserLocationAccess.created_by]"},
+    )

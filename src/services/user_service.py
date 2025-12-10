@@ -1,114 +1,31 @@
-"""User service module for handling user-related operations in Sentinel Enterprise."""
+"""User service module for Sentinel Enterprise API."""
 
 # pylint: disable=no-member, singleton-comparison
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import List, Optional, cast
 
 from argon2 import PasswordHasher
 from fastapi import HTTPException, status
+from fastapi_pagination import Page, Params
+from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from src.core.enums import UserRole
 from src.models import User, CompanyStaff
-from src.schemas import UserCreateRequest, UserUpdateRequest
-
-# Role constants derived from the global enum (single source of truth)
-ROLE_SUPERADMIN = UserRole.SUPERADMIN.value
-ROLE_ADMIN = UserRole.ADMIN.value
-ROLE_SUBADMIN = UserRole.SUBADMIN.value
-ROLE_JANITOR = UserRole.JANITOR.value
-ROLE_CLIENT = UserRole.CLIENT.value
-
-ADMIN_LIKE_ROLES = {ROLE_ADMIN, ROLE_SUPERADMIN}
+from src.schemas import UserCreateRequest, UserUpdateRequest, UserResponse
 
 pwd_hasher = PasswordHasher()
 
 
 class UserService:
-    """Service for user-related database operations and RBAC."""
+    """Service for user operations."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    # ---------- RBAC helpers ----------
-
-    def _get_role(self, current_user: Dict[str, Any]) -> str:
-        """Extract the role from the current user payload."""
-        role = current_user.get("role")
-        if role is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Role not found in token payload.",
-            )
-        return role
-
-    def _get_user_id(self, current_user: Dict[str, Any]) -> int:
-        """Extract the user_id from the current user payload."""
-        user_id = current_user.get("user_id")
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="user_id not found in token payload.",
-            )
-        return int(user_id)
-
-    def _ensure_authenticated(self, current_user: Dict[str, Any]) -> None:
-        """Ensure that the current user is authenticated."""
-        if not current_user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required.",
-            )
-
-    def _ensure_can_list_users(self, current_user: Dict[str, Any]) -> None:
-        """Only ADMIN and SUPERADMIN can list users."""
-        role = self._get_role(current_user)
-        if role not in {ROLE_ADMIN, ROLE_SUPERADMIN}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to list users.",
-            )
-
-    def _ensure_can_create_users(self, current_user: Dict[str, Any]) -> None:
-        """Only ADMIN and SUPERADMIN can create users."""
-        role = self._get_role(current_user)
-        if role not in {ROLE_ADMIN, ROLE_SUPERADMIN}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to create users.",
-            )
-
-    def _ensure_can_modify_or_delete_users(
-        self,
-        current_user: Dict[str, Any],
-    ) -> None:
-        """Only ADMIN and SUPERADMIN can update or delete users."""
-        role = self._get_role(current_user)
-        if role not in {ROLE_ADMIN, ROLE_SUPERADMIN}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to modify or delete users.",
-            )
-
-    def _ensure_admin_cannot_manage_admin_like(
-        self,
-        requester_role: str,
-        target_role: str,
-        operation: str,
-    ) -> None:
-        """Block ADMIN from managing ADMIN/SUPERADMIN users."""
-        if requester_role == ROLE_ADMIN and target_role in ADMIN_LIKE_ROLES:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Admins are not allowed to {operation} admin-like users.",
-            )
-
-    # ---------- Email / password helpers ----------
-
     def _hash_password(self, plain_password: str) -> str:
-        """Hash a plain-text password using Argon2."""
         return pwd_hasher.hash(plain_password)
 
     async def _ensure_email_unique(
@@ -116,7 +33,6 @@ class UserService:
         email: str,
         exclude_user_id: Optional[int] = None,
     ) -> None:
-        """Ensure email is unique among active users (optionally excluding one)."""
         stmt = select(User).where(
             User.email == email,
             User.is_active == True,  # noqa: E712
@@ -132,39 +48,33 @@ class UserService:
                 detail="Email is already in use.",
             )
 
-    # ---------- Basic queries ----------
-
     async def _get_user_by_id(self, user_id: int) -> Optional[User]:
-        """Return a user by ID (without RBAC)."""
         stmt = select(User).where(User.id == user_id)
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    # ---------- Public methods (used from router) ----------
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
+        """Public helper to retrieve a user by ID (used by other services)."""
+        return await self._get_user_by_id(user_id)
 
     async def list_users(
         self,
-        current_user: Dict[str, Any],
-        role: Optional[str],
+        role: Optional[UserRole],
         company_id: Optional[int],
         search: Optional[str],
-        page: int,
-        page_size: int,
-    ) -> List[User]:
-        """Return a paginated list of active users with optional filters."""
-        self._ensure_authenticated(current_user)
-        self._ensure_can_list_users(current_user)
-
+        params: Params,
+    ) -> Page[UserResponse]:
+        """Return active users with optional filters."""
         stmt = select(User).where(User.is_active == True)  # noqa: E712
 
-        if role:
+        if role is not None:
             stmt = stmt.where(User.role == role)
 
         if search:
             like_pattern = f"%{search}%"
             stmt = stmt.where(
                 (User.full_name.ilike(like_pattern))
-                | (User.username.ilike(like_pattern))
+                | (User.username.ilike(like_pattern)),
             )
 
         if company_id is not None:
@@ -173,28 +83,21 @@ class UserService:
                 .where(CompanyStaff.company_id == company_id)
             )
 
-        if page < 1:
-            page = 1
-        if page_size <= 0:
-            page_size = 20
-
-        offset = (page - 1) * page_size
-        stmt = stmt.offset(offset).limit(page_size)
-
-        result = await self.session.execute(stmt)
-        users = result.scalars().all()
-        return cast(List[User], users)
+        return await sqlalchemy_paginate(
+            self.session,
+            stmt,
+            params,
+            transformer=lambda items: [
+                UserResponse.model_validate(user)
+                for user in cast(List[User], items)
+            ],
+        )
 
     async def get_user_detail(
         self,
-        current_user: Dict[str, Any],
         user_id: int,
     ) -> User:
-        """Return a single active user, applying RBAC for visibility."""
-        self._ensure_authenticated(current_user)
-        requester_role = self._get_role(current_user)
-        requester_id = self._get_user_id(current_user)
-
+        """Return a single active user."""
         user = await self._get_user_by_id(user_id)
 
         if not user or not user.is_active:
@@ -203,34 +106,13 @@ class UserService:
                 detail="User not found.",
             )
 
-        if requester_role not in ADMIN_LIKE_ROLES and requester_id != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to view this user.",
-            )
-
         return user
 
     async def create_user(
         self,
-        current_user: Dict[str, Any],
         payload: UserCreateRequest,
     ) -> User:
-        """Create a new user applying RBAC and email uniqueness rules."""
-        self._ensure_authenticated(current_user)
-        self._ensure_can_create_users(current_user)
-
-        requester_role = self._get_role(current_user)
-        requester_id = self._get_user_id(current_user)
-
-        requested_role = payload.role
-
-        self._ensure_admin_cannot_manage_admin_like(
-            requester_role=requester_role,
-            target_role=requested_role,
-            operation="create",
-        )
-
+        """Create a new user."""
         await self._ensure_email_unique(payload.email)
 
         password_hash = self._hash_password(payload.password)
@@ -240,11 +122,10 @@ class UserService:
             full_name=payload.full_name,
             email=payload.email,
             password_hash=password_hash,
-            role=requested_role,
+            role=payload.role,
             plan_id=payload.plan_id,
             status=payload.status,
             is_active=True,
-            created_by=requester_id,
             created_at=datetime.now(),
         )
 
@@ -256,16 +137,10 @@ class UserService:
 
     async def update_user(
         self,
-        current_user: Dict[str, Any],
         user_id: int,
         payload: UserUpdateRequest,
     ) -> User:
-        """Update an existing user, enforcing RBAC and email uniqueness."""
-        self._ensure_authenticated(current_user)
-
-        requester_role = self._get_role(current_user)
-        requester_id = self._get_user_id(current_user)
-
+        """Update an existing user and keep email unique."""
         user = await self._get_user_by_id(user_id)
 
         if not user or not user.is_active:
@@ -273,39 +148,6 @@ class UserService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
             )
-
-        if requester_role not in ADMIN_LIKE_ROLES:
-            if requester_id != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not allowed to update this user.",
-                )
-
-            if payload.role is not None and payload.role != user.role:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not allowed to change your role.",
-                )
-            if payload.status is not None and payload.status != user.status:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not allowed to change your status.",
-                )
-        else:
-            self._ensure_can_modify_or_delete_users(current_user)
-
-            self._ensure_admin_cannot_manage_admin_like(
-                requester_role=requester_role,
-                target_role=user.role,
-                operation="update",
-            )
-
-            if payload.role is not None:
-                self._ensure_admin_cannot_manage_admin_like(
-                    requester_role=requester_role,
-                    target_role=payload.role,
-                    operation="assign role to",
-                )
 
         if payload.email is not None and payload.email != user.email:
             await self._ensure_email_unique(
@@ -326,15 +168,9 @@ class UserService:
 
     async def soft_delete_user(
         self,
-        current_user: Dict[str, Any],
         user_id: int,
-    ) -> None:
-        """Soft delete a user by setting is_active = False, enforcing RBAC."""
-        self._ensure_authenticated(current_user)
-        self._ensure_can_modify_or_delete_users(current_user)
-
-        requester_role = self._get_role(current_user)
-
+    ):
+        """Soft delete a user by setting is_active = False."""
         user = await self._get_user_by_id(user_id)
 
         if not user or not user.is_active:
@@ -342,12 +178,6 @@ class UserService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
             )
-
-        self._ensure_admin_cannot_manage_admin_like(
-            requester_role=requester_role,
-            target_role=user.role,
-            operation="delete",
-        )
 
         user.is_active = False
         self.session.add(user)

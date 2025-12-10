@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 External people database model for the Sentinel Enterprise API.
 
@@ -52,4 +50,5 @@ class ExternalPeople(SQLModel, table=True):
     )
     creator: Optional["User"] = Relationship(
         back_populates="external_people_created",
+        sa_relationship_kwargs={"foreign_keys": "[ExternalPeople.created_by]"},
     )

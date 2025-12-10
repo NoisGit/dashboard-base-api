@@ -31,6 +31,9 @@ from .location_schemas import (
     LocationCreateRequest,
     LocationUpdateRequest,
     LocationResponse,
+    LocationAssignCompanyRequest,
+    LocationAssignUserRequest,
+    LocationUserAssignmentResponse,
 )
 
 __all__ = [
@@ -54,4 +57,7 @@ __all__ = [
     "LocationCreateRequest",
     "LocationUpdateRequest",
     "LocationResponse",
+    "LocationAssignCompanyRequest",
+    "LocationAssignUserRequest",
+    "LocationUserAssignmentResponse",
 ]

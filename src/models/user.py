@@ -8,8 +8,6 @@ Represents a platform user (admin, janitor, superadmin, etc.) and its core relat
 - Can be the creator of other records (access lists, external people, tickets, etc.).
 """
 
-from __future__ import annotations
-
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
@@ -58,7 +56,7 @@ class User(SQLModel, table=True):
     role: UserRole = Field(max_length=10)
 
     # DBML: plan_id int
-    plan_id: int = Field(foreign_key="plan.id")
+    plan_id: int = Field(foreign_key="plans.id")
 
     # Optional fields (DBML: [null])
     last_session: Optional[datetime] = None
@@ -68,7 +66,7 @@ class User(SQLModel, table=True):
     recovery_password_mode: Optional[bool] = None
 
     # Who created this user (self-reference to users.id)
-    created_by: int = Field(foreign_key="users.id")
+    created_by: Optional[int] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.now)
 
     # -----------------------------
@@ -79,11 +77,14 @@ class User(SQLModel, table=True):
     # Access to locations via user_location_access join table
     location_accesses: List["UserLocationAccess"] = Relationship(
         back_populates="user",
+        sa_relationship_kwargs={
+            "foreign_keys": "[UserLocationAccess.user_id]"},
     )
 
     # Company memberships via company_staff join table
     company_staff_memberships: List["CompanyStaff"] = Relationship(
         back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "[CompanyStaff.user_id]"},
     )
 
     # Companies created by this user (Company.created_by)
@@ -95,6 +96,7 @@ class User(SQLModel, table=True):
     # Documents where this user is the owner (documents.user_id)
     documents: List["Document"] = Relationship(
         back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "[Document.user_id]"},
     )
 
     # -----------------------------------

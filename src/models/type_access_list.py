@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 TypeAccessList database model for the Sentinel Enterprise API.
 
@@ -45,4 +43,5 @@ class TypeAccessList(SQLModel, table=True):
     )
     creator: Optional["User"] = Relationship(
         back_populates="type_access_lists_created",
+        sa_relationship_kwargs={"foreign_keys": "[TypeAccessList.created_by]"},
     )

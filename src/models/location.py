@@ -6,8 +6,6 @@ including basic metadata and relationships with users, custom fields,
 emergency contacts, access lists, access logs and its owning company.
 """
 
-from __future__ import annotations
-
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
 
@@ -88,4 +86,5 @@ class Location(SQLModel, table=True):
 
     creator: "User" = Relationship(
         back_populates="locations_created",
+        sa_relationship_kwargs={"foreign_keys": "[Location.created_by]"},
     )

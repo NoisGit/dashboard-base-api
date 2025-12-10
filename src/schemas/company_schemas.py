@@ -5,9 +5,11 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from .base_schemas import BaseResponse
+
 
 class CompanyCreateRequest(BaseModel):
-    """Schema for creating a company."""
+    """Payload for creating a company."""
     name: str
     activity: Optional[str] = None
     id_number: Optional[str] = None
@@ -16,7 +18,7 @@ class CompanyCreateRequest(BaseModel):
 
 
 class CompanyUpdateRequest(BaseModel):
-    """Schema for updating a company."""
+    """Payload for updating a company."""
     name: Optional[str] = None
     activity: Optional[str] = None
     id_number: Optional[str] = None
@@ -24,8 +26,8 @@ class CompanyUpdateRequest(BaseModel):
     type_document: Optional[str] = None
 
 
-class CompanyResponse(BaseModel):
-    """Schema for company response (without internal details)."""
+class CompanyResponse(BaseResponse):
+    """Company response schema"""
     id: int
     name: str
     activity: Optional[str] = None
@@ -36,18 +38,14 @@ class CompanyResponse(BaseModel):
     created_by: int
     created_at: Optional[datetime] = None
 
-    class Config:
-        """Pydantic config to allow ORM objects."""
-        from_attributes = True
-
 
 class CompanyAssignUserRequest(BaseModel):
-    """Schema for assigning an existing user to a company."""
+    """Payload for assigning an existing user to a company."""
     user_id: int
 
 
 class CompanyUserAssignmentResponse(BaseModel):
-    """Schema representing a user-company assignment."""
+    """User–company assignment representation."""
     company_id: int
     user_id: int
 

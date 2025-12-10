@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 """
 Plan database model for the Sentinel Enterprise API.
@@ -7,8 +6,7 @@ Represents the subscription/usage plan assigned to users, including limits
 for locations, admins, janitors and daily reads.
 """
 
-from typing import Optional, List, TYPE_CHECKING
-
+from typing import Optional, TYPE_CHECKING, List
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
@@ -29,7 +27,7 @@ class Plan(SQLModel, table=True):
     - qty_daily_reads
     """
 
-    __tablename__ = "plan"
+    __tablename__ = "plans"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
