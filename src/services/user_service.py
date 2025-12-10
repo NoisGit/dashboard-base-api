@@ -243,7 +243,7 @@ class UserService:
         self,
         requester_role: UserRole,
         user_id: int,
-    ) -> None:
+    ):
         """Soft delete a user by setting is_active = False."""
         user = await self._get_user_by_id(user_id)
 

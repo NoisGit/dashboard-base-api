@@ -27,7 +27,7 @@ class CompanyUpdateRequest(BaseModel):
 
 
 class CompanyResponse(BaseResponse):
-    """Company response schema (without internal details)."""
+    """Company response schema"""
     id: int
     name: str
     activity: Optional[str] = None

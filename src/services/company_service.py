@@ -148,7 +148,7 @@ class CompanyService:
     async def soft_delete_company(
         self,
         company_id: int,
-    ) -> None:
+    ):
         """Soft delete a company by setting is_active = False."""
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
@@ -166,7 +166,7 @@ class CompanyService:
         requester_role: UserRole,
         company_id: int,
         user_id: int,
-    ) -> CompanyStaff:
+    ):
         """Assign an existing user to a company."""
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
@@ -188,26 +188,27 @@ class CompanyService:
                 detail="User not found.",
             )
 
-        link_stmt = select(CompanyStaff).where(CompanyStaff.user_id == user_id)
-        link_result = await self.session.execute(link_stmt)
-        existing_link = link_result.scalars().first()
+        assignment_stmt = select(CompanyStaff).where(
+            CompanyStaff.user_id == user_id,
+        )
+        assignment_result = await self.session.execute(assignment_stmt)
+        existing_assignment = assignment_result.scalars().first()
 
-        if existing_link:
-            if existing_link.company_id == company_id:
-                return existing_link
+        if existing_assignment:
+            if existing_assignment.company_id == company_id:
+                return
 
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="User is already assigned to another company.",
             )
 
-        new_link = CompanyStaff(
+        assignment = CompanyStaff(
             user_id=user_id,
             company_id=company_id,
             created_by=requester_id,
         )
 
-        self.session.add(new_link)
+        self.session.add(assignment)
         await self.session.commit()
-        await self.session.refresh(new_link)
-        return new_link
+        await self.session.refresh(assignment)

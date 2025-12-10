@@ -10,18 +10,18 @@ from .base_schemas import BaseResponse
 
 
 class UserCreateRequest(BaseModel):
-    """Schema for creating a user."""
+    """Schema for creating a user"""
     username: str
     full_name: str
     email: EmailStr
-    password: str  # plain text, will be hashed in the service
+    password: str
     role: UserRole
     plan_id: int
     status: bool = True
 
 
 class UserUpdateRequest(BaseModel):
-    """Schema for updating a user."""
+    """Schema for updating a user"""
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     role: Optional[UserRole] = None
@@ -29,7 +29,7 @@ class UserUpdateRequest(BaseModel):
 
 
 class UserResponse(BaseResponse):
-    """Schema for user response (without sensitive data)."""
+    """Schema for user response (without sensitive data)"""
     id: int
     username: str
     full_name: str

@@ -40,7 +40,7 @@ class LocationService:
         self,
         session: AsyncSession,
         user_service: Optional[UserService] = None,
-    ) -> None:
+    ):
         self.session = session
         self.user_service = user_service or UserService(session)
 
@@ -251,7 +251,7 @@ class LocationService:
         user_id: int,
         role: UserRole,
         location_id: int,
-    ) -> None:
+    ):
         """Soft delete a location by setting is_active = False."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
@@ -309,7 +309,7 @@ class LocationService:
         requester_role: UserRole,
         location_id: int,
         payload: LocationAssignUserRequest,
-    ) -> UserLocationAccess:
+    ):
         """Assign a janitor user to a location."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
@@ -356,24 +356,22 @@ class LocationService:
                 detail="User is not linked to the location's company.",
             )
 
-        link_stmt = select(UserLocationAccess).where(
+        assignment_stmt = select(UserLocationAccess).where(
             UserLocationAccess.user_id == payload.user_id,
             UserLocationAccess.location_id == location_id,
         )
-        link_result = await self.session.execute(link_stmt)
-        existing_link = link_result.scalars().first()
+        assignment_result = await self.session.execute(assignment_stmt)
+        existing_assignment = assignment_result.scalars().first()
 
-        if existing_link:
-            return existing_link
+        if existing_assignment:
+            return
 
-        new_link = UserLocationAccess(
+        assignment = UserLocationAccess(
             user_id=payload.user_id,
             location_id=location_id,
             created_by=requester_id,
             created_at=datetime.now(),
         )
 
-        self.session.add(new_link)
+        self.session.add(assignment)
         await self.session.commit()
-        await self.session.refresh(new_link)
-        return new_link

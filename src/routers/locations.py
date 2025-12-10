@@ -17,7 +17,6 @@ from src.schemas import (
     LocationResponse,
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
-    LocationUserAssignmentResponse,
 )
 from src.services.location_service import LocationService
 
@@ -180,7 +179,6 @@ async def assign_company_to_location(
 
 @router.post(
     "/{location_id}/users",
-    response_model=LocationUserAssignmentResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def assign_user_to_location(
@@ -196,14 +194,13 @@ async def assign_user_to_location(
             ],
         ),
     ),
-) -> LocationUserAssignmentResponse:
+):
     """Assign a user (janitor/portero) to a location."""
     user_id, role = current_user_data
 
-    link = await service.assign_user_to_location(
+    await service.assign_user_to_location(
         requester_id=user_id,
         requester_role=role,
         location_id=location_id,
         payload=payload,
     )
-    return link

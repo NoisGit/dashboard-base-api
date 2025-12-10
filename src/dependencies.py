@@ -18,13 +18,15 @@ def get_user_service(
 
 def get_company_service(
     session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> CompanyService:
     """Dependency to get a CompanyService instance."""
-    return CompanyService(session)
+    return CompanyService(session, user_service)
 
 
 def get_location_service(
     session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> LocationService:
     """Dependency to get a LocationService instance."""
-    return LocationService(session)
+    return LocationService(session, user_service)

@@ -9,8 +9,7 @@ from .base_schemas import BaseResponse
 
 
 class LocationCreateRequest(BaseModel):
-    """Schema for creating a location (portería)."""
-
+    """Schema for creating a location"""
     name: str
     address: str
     country: Optional[str] = None
@@ -18,8 +17,7 @@ class LocationCreateRequest(BaseModel):
 
 
 class LocationUpdateRequest(BaseModel):
-    """Schema for updating a location (portería)."""
-
+    """Schema for updating a location"""
     name: Optional[str] = None
     address: Optional[str] = None
     country: Optional[str] = None
@@ -27,8 +25,7 @@ class LocationUpdateRequest(BaseModel):
 
 
 class LocationResponse(BaseResponse):
-    """Schema for location response (without internal details)."""
-
+    """Schema for location response"""
     id: int
     name: str
     address: str
@@ -42,19 +39,16 @@ class LocationResponse(BaseResponse):
 
 class LocationAssignCompanyRequest(BaseModel):
     """Payload to assign a location to a company."""
-
     company_id: int
 
 
 class LocationAssignUserRequest(BaseModel):
-    """Payload to assign a user (janitor/porter) to a location."""
-
+    """Payload to assign a user to a location"""
     user_id: int
 
 
 class LocationUserAssignmentResponse(BaseResponse):
     """Response for a user–location assignment."""
-
     id: int
     location_id: int
     user_id: int

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status, HTTPException
+from fastapi import APIRouter, Depends, Query, status
 from fastapi_pagination import Page, Params
 
 from src.auth.utils import get_user_data_from_token
+from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_user_service
 from src.schemas import UserCreateRequest, UserUpdateRequest, UserResponse
@@ -29,24 +30,23 @@ async def list_users(
     company_id: Optional[int] = Query(default=None),
     search: Optional[str] = Query(default=None),
     service: UserService = Depends(get_user_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
 ) -> Page[UserResponse]:
     """List active users with filters and pagination."""
-    _, requester_role = current_user_data
-
-    if requester_role not in {UserRole.SUPERADMIN, UserRole.ADMIN}:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to list users.",
-        )
-
-    return await service.list_users(
+    users = await service.list_users(
         role=role,
         company_id=company_id,
         search=search,
         params=params,
     )
+    return users
 
 
 @router.get(
@@ -79,16 +79,16 @@ async def create_user(
     payload: UserCreateRequest,
     service: UserService = Depends(get_user_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
 ) -> UserResponse:
     """Create a new user (email unique, password hashed with Argon2)."""
     requester_id, requester_role = current_user_data
-
-    if requester_role not in {UserRole.SUPERADMIN, UserRole.ADMIN}:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to create users.",
-        )
 
     user = await service.create_user(
         requester_id=requester_id,
@@ -129,16 +129,15 @@ async def delete_user(
     user_id: int,
     service: UserService = Depends(get_user_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+            ],
+        ),
+    ),
 ):
     """Soft delete user by setting is_active = False."""
     _, requester_role = current_user_data
-
-    if requester_role is not UserRole.SUPERADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to delete users.",
-        )
 
     await service.soft_delete_user(
         requester_role=requester_role,

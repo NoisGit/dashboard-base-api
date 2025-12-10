@@ -95,7 +95,12 @@ async def update_company(
     payload: CompanyUpdateRequest,
     service: CompanyService = Depends(get_company_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        RoleChecker([UserRole.SUPERADMIN, UserRole.ADMIN]),
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
     ),
 ) -> CompanyResponse:
     """Update an existing company."""
@@ -143,13 +148,14 @@ async def assign_user_to_company(
     """Assign an existing user to a company."""
     requester_id, requester_role = current_user_data
 
-    assignment = await service.assign_user_to_company(
+    await service.assign_user_to_company(
         requester_id=requester_id,
         requester_role=requester_role,
         company_id=company_id,
         user_id=payload.user_id,
     )
+
     return CompanyUserAssignmentResponse(
-        company_id=assignment.company_id,
-        user_id=assignment.user_id,
+        company_id=company_id,
+        user_id=payload.user_id,
     )
