@@ -1,7 +1,5 @@
 """User service module for Sentinel Enterprise API."""
 
-from __future__ import annotations
-
 # pylint: disable=no-member, singleton-comparison
 
 from datetime import datetime
@@ -31,19 +29,6 @@ class UserService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-
-    def _ensure_admin_cannot_manage_admin_like(
-        self,
-        requester_role: UserRole,
-        target_role: UserRole,
-        operation: str,
-    ) -> None:
-        """Block ADMIN from managing ADMIN/SUPERADMIN users."""
-        if requester_role is UserRole.ADMIN and target_role in ADMIN_LIKE_ROLES:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Admins are not allowed to {operation} admin-like users.",
-            )
 
     def _hash_password(self, plain_password: str) -> str:
         return pwd_hasher.hash(plain_password)
@@ -138,18 +123,10 @@ class UserService:
 
     async def create_user(
         self,
-        requester_id: int,
-        requester_role: UserRole,
         payload: UserCreateRequest,
     ) -> User:
         """Create a new user."""
         requested_role = payload.role
-
-        self._ensure_admin_cannot_manage_admin_like(
-            requester_role=requester_role,
-            target_role=requested_role,
-            operation="create",
-        )
 
         await self._ensure_email_unique(payload.email)
 
@@ -164,7 +141,6 @@ class UserService:
             plan_id=payload.plan_id,
             status=payload.status,
             is_active=True,
-            created_by=requester_id,
             created_at=datetime.now(),
         )
 

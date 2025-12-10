@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Document database model for the Sentinel Enterprise API.
 
@@ -40,7 +38,11 @@ class Document(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
-    user: "User" = Relationship(back_populates="documents")
+    user: "User" = Relationship(
+        back_populates="documents",
+        sa_relationship_kwargs={"foreign_keys": "[Document.user_id]"},
+    )
     creator: Optional["User"] = Relationship(
         back_populates="documents_created",
+        sa_relationship_kwargs={"foreign_keys": "[Document.created_by]"},
     )

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 AccessLogCustomField database model for the Sentinel Enterprise API.
 

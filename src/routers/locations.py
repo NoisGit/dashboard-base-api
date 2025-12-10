@@ -1,7 +1,5 @@
 """Locations router module for Sentinel Enterprise API."""
 
-from __future__ import annotations
-
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status

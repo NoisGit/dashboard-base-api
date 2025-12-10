@@ -1,7 +1,5 @@
 """Companies router module for Sentinel Enterprise API."""
 
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, paginate
 

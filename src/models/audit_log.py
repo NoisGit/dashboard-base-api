@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 AuditLog database model for the Sentinel Enterprise API.
 

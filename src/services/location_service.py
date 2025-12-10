@@ -1,7 +1,5 @@
 """Location service module for the Sentinel Enterprise API."""
 
-from __future__ import annotations
-
 # pylint: disable=no-member, singleton-comparison
 
 from datetime import datetime

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Support ticket database model for the Sentinel Enterprise API.
 
@@ -50,4 +48,5 @@ class SupportTicket(SQLModel, table=True):
     )
     creator: Optional["User"] = Relationship(
         back_populates="support_tickets_created",
+        sa_relationship_kwargs={"foreign_keys": "[SupportTicket.created_by]"},
     )

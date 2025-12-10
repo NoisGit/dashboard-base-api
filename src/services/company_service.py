@@ -1,7 +1,5 @@
 """Company service module for the Sentinel Enterprise API."""
 
-from __future__ import annotations
-
 from typing import List, Optional, cast
 
 from fastapi import HTTPException, status

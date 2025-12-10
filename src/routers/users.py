@@ -1,7 +1,5 @@
 """User router module for Sentinel Enterprise API."""
 
-from __future__ import annotations
-
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
@@ -77,23 +75,11 @@ async def get_user_detail(
 )
 async def create_user(
     payload: UserCreateRequest,
-    service: UserService = Depends(get_user_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-            ],
-        ),
-    ),
+    service: UserService = Depends(get_user_service)
 ) -> UserResponse:
     """Create a new user (email unique, password hashed with Argon2)."""
-    requester_id, requester_role = current_user_data
-
     user = await service.create_user(
-        requester_id=requester_id,
-        requester_role=requester_role,
-        payload=payload,
+        payload=payload
     )
     return user
 

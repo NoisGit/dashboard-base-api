@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Access log database model for the Sentinel Enterprise API.
 
@@ -64,6 +62,7 @@ class AccessLog(SQLModel, table=True):
     # User who created the access log
     creator: "User" = Relationship(
         back_populates="access_logs_created",
+        sa_relationship_kwargs={"foreign_keys": "[AccessLog.created_by]"},
     )
 
     # Custom field values attached to this access log

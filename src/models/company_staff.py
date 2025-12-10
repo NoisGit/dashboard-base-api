@@ -1,7 +1,5 @@
 """Company staff association model for the Sentinel Enterprise API."""
 
-from __future__ import annotations
-
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -30,10 +28,12 @@ class CompanyStaff(SQLModel, table=True):
     # Relationships
     user: "User" = Relationship(
         back_populates="company_staff_memberships",
+        sa_relationship_kwargs={"foreign_keys": "[CompanyStaff.user_id]"},
     )
     company: "Company" = Relationship(
         back_populates="staff_memberships",
     )
     creator: "User" = Relationship(
         back_populates="company_staff_created",
+        sa_relationship_kwargs={"foreign_keys": "[CompanyStaff.created_by]"},
     )
