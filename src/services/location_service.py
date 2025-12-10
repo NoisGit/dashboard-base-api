@@ -24,15 +24,9 @@ from src.schemas import (
 )
 from src.services.user_service import UserService
 
-COMPANY_SCOPED_ROLES: set[UserRole] = {
-    UserRole.ADMIN,
-    UserRole.SUBADMIN,
-    UserRole.CLIENT,
-}
-
 
 class LocationService:
-    """Service for location (portería) operations with RBAC and soft delete."""
+    """Service for location operations and soft delete."""
 
     def __init__(
         self,
@@ -47,61 +41,16 @@ class LocationService:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def _get_user_company_ids(self, user_id: int) -> List[int]:
-        stmt = select(CompanyStaff.company_id).where(
-            CompanyStaff.user_id == user_id,
-        )
-        result = await self.session.execute(stmt)
-        rows = result.all()
-        return [row[0] for row in rows]
-
-    async def _ensure_location_in_user_companies(
-        self,
-        location: Location,
-        user_id: int,
-    ) -> None:
-        """Ensure the location belongs to one of the user's companies."""
-        if location.company_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Location is not assigned to any company.",
-            )
-
-        company_ids = await self._get_user_company_ids(user_id)
-        if location.company_id not in company_ids:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to access this location.",
-            )
-
-    async def _ensure_user_assigned_to_location(
-        self,
-        location_id: int,
-        user_id: int,
-    ) -> None:
-        """Ensure the janitor is assigned to the given location."""
-        stmt = select(UserLocationAccess).where(
-            UserLocationAccess.user_id == user_id,
-            UserLocationAccess.location_id == location_id,
-        )
-        result = await self.session.execute(stmt)
-        link = result.scalars().first()
-
-        if not link:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to access this location.",
-            )
-
     async def list_locations(
         self,
-        user_id: int,
-        role: UserRole,
         company_id: Optional[int],
         search: Optional[str],
     ) -> List[Location]:
-        """List locations visible for the current user with RBAC."""
+        """List locations with optional filters."""
         stmt = select(Location).where(Location.is_active == True)  # noqa: E712
+
+        if company_id is not None:
+            stmt = stmt.where(Location.company_id == company_id)
 
         if search:
             like_pattern = f"%{search}%"
@@ -110,65 +59,15 @@ class LocationService:
                 | (Location.address.ilike(like_pattern)),
             )
 
-        if role is UserRole.SUPERADMIN:
-            if company_id is not None:
-                stmt = stmt.where(Location.company_id == company_id)
-
-        elif role in COMPANY_SCOPED_ROLES:
-            user_company_ids = await self._get_user_company_ids(user_id)
-            if not user_company_ids:
-                return []
-
-            if company_id is not None:
-                if company_id not in user_company_ids:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="You are not allowed to view locations for this company.",
-                    )
-                stmt = stmt.where(Location.company_id == company_id)
-            else:
-                stmt = stmt.where(Location.company_id.in_(user_company_ids))
-
-        elif role is UserRole.JANITOR:
-            stmt = (
-                select(Location)
-                .join(
-                    UserLocationAccess,
-                    UserLocationAccess.location_id == Location.id,
-                )
-                .where(
-                    Location.is_active == True,  # noqa: E712
-                    UserLocationAccess.user_id == user_id,
-                )
-            )
-
-            if search:
-                like_pattern = f"%{search}%"
-                stmt = stmt.where(
-                    (Location.name.ilike(like_pattern))
-                    | (Location.address.ilike(like_pattern)),
-                )
-
-            if company_id is not None:
-                stmt = stmt.where(Location.company_id == company_id)
-
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to list locations.",
-            )
-
         result = await self.session.execute(stmt)
         locations = result.scalars().all()
         return cast(List[Location], locations)
 
     async def get_location_detail(
         self,
-        user_id: int,
-        role: UserRole,
         location_id: int,
     ) -> Location:
-        """Get a single location detail applying RBAC for visibility."""
+        """Get a single location by ID."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -176,24 +75,7 @@ class LocationService:
                 detail="Location not found.",
             )
 
-        if role is UserRole.SUPERADMIN:
-            return location
-
-        if role in COMPANY_SCOPED_ROLES:
-            await self._ensure_location_in_user_companies(location, user_id)
-            return location
-
-        if role is UserRole.JANITOR:
-            await self._ensure_user_assigned_to_location(
-                location_id=location_id,
-                user_id=user_id,
-            )
-            return location
-
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to view this location.",
-        )
+        return location
 
     async def create_location(
         self,
@@ -219,8 +101,6 @@ class LocationService:
 
     async def update_location(
         self,
-        user_id: int,
-        role: UserRole,
         location_id: int,
         payload: LocationUpdateRequest,
     ) -> Location:
@@ -231,9 +111,6 @@ class LocationService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Location not found.",
             )
-
-        if role in {UserRole.ADMIN, UserRole.SUBADMIN}:
-            await self._ensure_location_in_user_companies(location, user_id)
 
         update_data = payload.model_dump(exclude_none=True)
         for key, value in update_data.items():
@@ -246,8 +123,6 @@ class LocationService:
 
     async def soft_delete_location(
         self,
-        user_id: int,
-        role: UserRole,
         location_id: int,
     ):
         """Soft delete a location by setting is_active = False."""
@@ -258,17 +133,12 @@ class LocationService:
                 detail="Location not found.",
             )
 
-        if role is UserRole.ADMIN:
-            await self._ensure_location_in_user_companies(location, user_id)
-
         location.is_active = False
         self.session.add(location)
         await self.session.commit()
 
     async def assign_company_to_location(
         self,
-        user_id: int,
-        role: UserRole,
         location_id: int,
         payload: LocationAssignCompanyRequest,
     ) -> Location:
@@ -287,14 +157,6 @@ class LocationService:
                 detail="Company not found.",
             )
 
-        if role is UserRole.ADMIN:
-            user_company_ids = await self._get_user_company_ids(user_id)
-            if payload.company_id not in user_company_ids:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not allowed to assign this company to the location.",
-                )
-
         location.company_id = payload.company_id
         self.session.add(location)
         await self.session.commit()
@@ -304,7 +166,6 @@ class LocationService:
     async def assign_user_to_location(
         self,
         requester_id: int,
-        requester_role: UserRole,
         location_id: int,
         payload: LocationAssignUserRequest,
     ):
@@ -320,12 +181,6 @@ class LocationService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Location must be assigned to a company before adding users.",
-            )
-
-        if requester_role in {UserRole.ADMIN, UserRole.SUBADMIN}:
-            await self._ensure_location_in_user_companies(
-                location,
-                requester_id,
             )
 
         target_user = await self.user_service.get_user_by_id(payload.user_id)

@@ -32,11 +32,10 @@ async def list_locations(
     company_id: Optional[int] = Query(default=None),
     search: Optional[str] = Query(default=None),
     service: LocationService = Depends(get_location_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-) -> Page[LocationResponse]:
+    current_user=Depends(get_user_data_from_token),
+):
     """List active locations (porterías) visible for the current user."""
-    user_id, role = current_user_data
+    user_id, role = current_user
 
     locations = await service.list_locations(
         user_id=user_id,
@@ -54,11 +53,10 @@ async def list_locations(
 async def get_location_detail(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-) -> LocationResponse:
+    current_user=Depends(get_user_data_from_token),
+):
     """Get a single active location by ID."""
-    user_id, role = current_user_data
+    user_id, role = current_user
 
     location = await service.get_location_detail(
         user_id=user_id,
@@ -76,12 +74,17 @@ async def get_location_detail(
 async def create_location(
     payload: LocationCreateRequest,
     service: LocationService = Depends(get_location_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        RoleChecker([UserRole.SUPERADMIN, UserRole.ADMIN]),
+    current_user=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
     ),
-) -> LocationResponse:
+):
     """Create a new location (portería)."""
-    user_id, _ = current_user_data
+    user_id, _ = current_user
 
     location = await service.create_location(
         user_id=user_id,
@@ -98,7 +101,7 @@ async def update_location(
     location_id: int,
     payload: LocationUpdateRequest,
     service: LocationService = Depends(get_location_service),
-    current_user_data: tuple[int, UserRole] = Depends(
+    current_user=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -107,9 +110,9 @@ async def update_location(
             ],
         ),
     ),
-) -> LocationResponse:
+):
     """Update an existing location."""
-    user_id, role = current_user_data
+    user_id, role = current_user
 
     location = await service.update_location(
         user_id=user_id,
@@ -127,7 +130,7 @@ async def update_location(
 async def delete_location(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    current_user_data: tuple[int, UserRole] = Depends(
+    current_user=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -137,7 +140,7 @@ async def delete_location(
     ),
 ):
     """Soft delete a location (is_active = False)."""
-    user_id, role = current_user_data
+    user_id, role = current_user
 
     await service.soft_delete_location(
         user_id=user_id,
@@ -154,7 +157,7 @@ async def assign_company_to_location(
     location_id: int,
     payload: LocationAssignCompanyRequest,
     service: LocationService = Depends(get_location_service),
-    current_user_data: tuple[int, UserRole] = Depends(
+    current_user=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -162,9 +165,9 @@ async def assign_company_to_location(
             ],
         ),
     ),
-) -> LocationResponse:
+):
     """Assign a company to a location."""
-    user_id, role = current_user_data
+    user_id, role = current_user
 
     location = await service.assign_company_to_location(
         user_id=user_id,
@@ -183,7 +186,7 @@ async def assign_user_to_location(
     location_id: int,
     payload: LocationAssignUserRequest,
     service: LocationService = Depends(get_location_service),
-    current_user_data: tuple[int, UserRole] = Depends(
+    current_user=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -194,7 +197,7 @@ async def assign_user_to_location(
     ),
 ):
     """Assign a user (janitor/portero) to a location."""
-    user_id, role = current_user_data
+    user_id, role = current_user
 
     await service.assign_user_to_location(
         requester_id=user_id,

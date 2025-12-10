@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, paginate
 
-from src.auth.utils import get_user_data_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_company_service
@@ -28,16 +27,17 @@ router = APIRouter(
 )
 async def list_companies(
     service: CompanyService = Depends(get_company_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
 ) -> Page[CompanyResponse]:
-    """List active companies for the current user."""
-    user_id, role = current_user_data
-
-    companies = await service.list_companies(
-        user_id=user_id,
-        role=role,
-    )
+    """List active companies."""
+    companies = await service.list_companies()
     return paginate(companies)
 
 
@@ -48,15 +48,18 @@ async def list_companies(
 async def get_company_detail(
     company_id: int,
     service: CompanyService = Depends(get_company_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.CLIENT,
+            ],
+        ),
+    ),
 ) -> CompanyResponse:
     """Get a single active company by ID."""
-    user_id, role = current_user_data
-
     company = await service.get_company_detail(
-        user_id=user_id,
-        role=role,
         company_id=company_id,
     )
     return company
@@ -70,7 +73,7 @@ async def get_company_detail(
 async def create_company(
     payload: CompanyCreateRequest,
     service: CompanyService = Depends(get_company_service),
-    current_user_data: tuple[int, UserRole] = Depends(
+    current_user_data=Depends(
         RoleChecker([UserRole.SUPERADMIN]),
     ),
 ) -> CompanyResponse:
@@ -92,7 +95,7 @@ async def update_company(
     company_id: int,
     payload: CompanyUpdateRequest,
     service: CompanyService = Depends(get_company_service),
-    current_user_data: tuple[int, UserRole] = Depends(
+    _=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -102,11 +105,7 @@ async def update_company(
     ),
 ) -> CompanyResponse:
     """Update an existing company."""
-    requester_id, requester_role = current_user_data
-
     company = await service.update_company(
-        requester_id=requester_id,
-        requester_role=requester_role,
         company_id=company_id,
         payload=payload,
     )
@@ -120,7 +119,7 @@ async def update_company(
 async def delete_company(
     company_id: int,
     service: CompanyService = Depends(get_company_service),
-    _: tuple[int, UserRole] = Depends(
+    _=Depends(
         RoleChecker([UserRole.SUPERADMIN]),
     ),
 ):
@@ -139,16 +138,20 @@ async def assign_user_to_company(
     company_id: int,
     payload: CompanyAssignUserRequest,
     service: CompanyService = Depends(get_company_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        RoleChecker([UserRole.SUPERADMIN, UserRole.ADMIN]),
+    current_user_data=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
     ),
 ) -> CompanyUserAssignmentResponse:
     """Assign an existing user to a company."""
-    requester_id, requester_role = current_user_data
+    requester_id, _ = current_user_data
 
     await service.assign_user_to_company(
         requester_id=requester_id,
-        requester_role=requester_role,
         company_id=company_id,
         user_id=payload.user_id,
     )

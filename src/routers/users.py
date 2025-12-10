@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
 
 from src.auth.utils import get_user_data_from_token
@@ -12,10 +12,7 @@ from src.dependencies import get_user_service
 from src.schemas import UserCreateRequest, UserUpdateRequest, UserResponse
 from src.services.user_service import UserService
 
-router = APIRouter(
-    prefix="/users",
-    tags=["users"],
-)
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get(
@@ -24,9 +21,9 @@ router = APIRouter(
 )
 async def list_users(
     params: Params = Depends(),
-    role: Optional[UserRole] = Query(default=None),
-    company_id: Optional[int] = Query(default=None),
-    search: Optional[str] = Query(default=None),
+    role: Optional[UserRole] = None,
+    company_id: Optional[int] = None,
+    search: Optional[str] = None,
     service: UserService = Depends(get_user_service),
     _=Depends(
         RoleChecker(
@@ -54,15 +51,10 @@ async def list_users(
 async def get_user_detail(
     user_id: int,
     service: UserService = Depends(get_user_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
+    _=Depends(get_user_data_from_token),
 ) -> UserResponse:
-    """Get a single active user by ID."""
-    requester_id, requester_role = current_user_data
-
+    """Get user by ID."""
     user = await service.get_user_detail(
-        requester_id=requester_id,
-        requester_role=requester_role,
         user_id=user_id,
     )
     return user
@@ -75,11 +67,19 @@ async def get_user_detail(
 )
 async def create_user(
     payload: UserCreateRequest,
-    service: UserService = Depends(get_user_service)
+    service: UserService = Depends(get_user_service),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
 ) -> UserResponse:
-    """Create a new user (email unique, password hashed with Argon2)."""
+    """Create a new user."""
     user = await service.create_user(
-        payload=payload
+        payload=payload,
     )
     return user
 
@@ -92,15 +92,17 @@ async def update_user(
     user_id: int,
     payload: UserUpdateRequest,
     service: UserService = Depends(get_user_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
 ) -> UserResponse:
-    """Update user profile (name, email, role, status)."""
-    requester_id, requester_role = current_user_data
-
+    """Update user by ID."""
     user = await service.update_user(
-        requester_id=requester_id,
-        requester_role=requester_role,
         user_id=user_id,
         payload=payload,
     )
@@ -114,7 +116,7 @@ async def update_user(
 async def delete_user(
     user_id: int,
     service: UserService = Depends(get_user_service),
-    current_user_data: tuple[int, UserRole] = Depends(
+    _=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -123,9 +125,6 @@ async def delete_user(
     ),
 ):
     """Soft delete user by setting is_active = False."""
-    _, requester_role = current_user_data
-
     await service.soft_delete_user(
-        requester_role=requester_role,
         user_id=user_id,
     )

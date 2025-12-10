@@ -7,7 +7,7 @@ from typing import List, Optional, cast
 
 from argon2 import PasswordHasher
 from fastapi import HTTPException, status
-from fastapi_pagination import Params, Page
+from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -16,16 +16,11 @@ from src.core.enums import UserRole
 from src.models import User, CompanyStaff
 from src.schemas import UserCreateRequest, UserUpdateRequest, UserResponse
 
-ADMIN_LIKE_ROLES: set[UserRole] = {
-    UserRole.ADMIN,
-    UserRole.SUPERADMIN,
-}
-
 pwd_hasher = PasswordHasher()
 
 
 class UserService:
-    """Service for user operations and RBAC rules."""
+    """Service for user operations."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -100,23 +95,15 @@ class UserService:
 
     async def get_user_detail(
         self,
-        requester_id: int,
-        requester_role: UserRole,
         user_id: int,
     ) -> User:
-        """Return a single active user, enforcing visibility rules."""
+        """Return a single active user."""
         user = await self._get_user_by_id(user_id)
 
         if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
-            )
-
-        if requester_role not in ADMIN_LIKE_ROLES and requester_id != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to view this user.",
             )
 
         return user
@@ -126,8 +113,6 @@ class UserService:
         payload: UserCreateRequest,
     ) -> User:
         """Create a new user."""
-        requested_role = payload.role
-
         await self._ensure_email_unique(payload.email)
 
         password_hash = self._hash_password(payload.password)
@@ -137,7 +122,7 @@ class UserService:
             full_name=payload.full_name,
             email=payload.email,
             password_hash=password_hash,
-            role=requested_role,
+            role=payload.role,
             plan_id=payload.plan_id,
             status=payload.status,
             is_active=True,
@@ -152,12 +137,10 @@ class UserService:
 
     async def update_user(
         self,
-        requester_id: int,
-        requester_role: UserRole,
         user_id: int,
         payload: UserUpdateRequest,
     ) -> User:
-        """Update an existing user, enforcing business rules and email uniqueness."""
+        """Update an existing user and keep email unique."""
         user = await self._get_user_by_id(user_id)
 
         if not user or not user.is_active:
@@ -165,38 +148,6 @@ class UserService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
             )
-
-        if requester_role not in ADMIN_LIKE_ROLES:
-            if requester_id != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not allowed to update this user.",
-                )
-
-            if payload.role is not None and payload.role != user.role:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not allowed to change your role.",
-                )
-
-            if payload.status is not None and payload.status != user.status:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not allowed to change your status.",
-                )
-        else:
-            self._ensure_admin_cannot_manage_admin_like(
-                requester_role=requester_role,
-                target_role=user.role,
-                operation="update",
-            )
-
-            if payload.role is not None:
-                self._ensure_admin_cannot_manage_admin_like(
-                    requester_role=requester_role,
-                    target_role=payload.role,
-                    operation="assign role to",
-                )
 
         if payload.email is not None and payload.email != user.email:
             await self._ensure_email_unique(
@@ -217,7 +168,6 @@ class UserService:
 
     async def soft_delete_user(
         self,
-        requester_role: UserRole,
         user_id: int,
     ):
         """Soft delete a user by setting is_active = False."""
@@ -228,12 +178,6 @@ class UserService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
             )
-
-        self._ensure_admin_cannot_manage_admin_like(
-            requester_role=requester_role,
-            target_role=user.role,
-            operation="delete",
-        )
 
         user.is_active = False
         self.session.add(user)
