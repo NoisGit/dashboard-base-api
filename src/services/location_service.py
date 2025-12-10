@@ -44,8 +44,6 @@ class LocationService:
         self.session = session
         self.user_service = user_service or UserService(session)
 
-    # ---------- Helper queries ----------
-
     async def _get_location_by_id(self, location_id: int) -> Optional[Location]:
         stmt = select(Location).where(Location.id == location_id)
         result = await self.session.execute(stmt)
@@ -97,8 +95,6 @@ class LocationService:
                 detail="You are not allowed to access this location.",
             )
 
-    # ---------- Public methods ----------
-
     async def list_locations(
         self,
         user_id: int,
@@ -106,19 +102,14 @@ class LocationService:
         company_id: Optional[int],
         search: Optional[str],
     ) -> List[Location]:
-        """
-        List locations visible for the current user with RBAC.
-
-        Pagination is handled by fastapi-pagination in the router.
-        """
-
+        """List locations visible for the current user with RBAC."""
         stmt = select(Location).where(Location.is_active == True)  # noqa: E712
 
         if search:
             like_pattern = f"%{search}%"
             stmt = stmt.where(
                 (Location.name.ilike(like_pattern))
-                | (Location.address.ilike(like_pattern))
+                | (Location.address.ilike(like_pattern)),
             )
 
         if role is UserRole.SUPERADMIN:
@@ -157,7 +148,7 @@ class LocationService:
                 like_pattern = f"%{search}%"
                 stmt = stmt.where(
                     (Location.name.ilike(like_pattern))
-                    | (Location.address.ilike(like_pattern))
+                    | (Location.address.ilike(like_pattern)),
                 )
 
             if company_id is not None:
@@ -180,7 +171,6 @@ class LocationService:
         location_id: int,
     ) -> Location:
         """Get a single location detail applying RBAC for visibility."""
-
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -213,7 +203,6 @@ class LocationService:
         payload: LocationCreateRequest,
     ) -> Location:
         """Create a new location."""
-
         location = Location(
             name=payload.name,
             address=payload.address,
@@ -238,7 +227,6 @@ class LocationService:
         payload: LocationUpdateRequest,
     ) -> Location:
         """Update an existing location."""
-
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -265,7 +253,6 @@ class LocationService:
         location_id: int,
     ) -> None:
         """Soft delete a location by setting is_active = False."""
-
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -288,7 +275,6 @@ class LocationService:
         payload: LocationAssignCompanyRequest,
     ) -> Location:
         """Assign a company to a location."""
-
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -324,8 +310,7 @@ class LocationService:
         location_id: int,
         payload: LocationAssignUserRequest,
     ) -> UserLocationAccess:
-        """Assign a janitor user to a location, validating company and role."""
-
+        """Assign a janitor user to a location."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -346,7 +331,6 @@ class LocationService:
             )
 
         target_user = await self.user_service.get_user_by_id(payload.user_id)
-
         if not target_user or not target_user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

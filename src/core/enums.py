@@ -5,13 +5,11 @@ from enum import Enum
 
 class UserRole(str, Enum):
     """Global user roles enumeration for the Enterprise dashboard."""
-    SUPERADMIN = "superadmin"
-    ADMIN = "admin"
-    SUBADMIN = "subadmin"
-    JANITOR = "janitor"
-    CLIENT = "client"
+    SUPERADMIN = "SUPERADMIN"
+    ADMIN = "ADMIN"
+    SUBADMIN = "SUBADMIN"
+    JANITOR = "JANITOR"
+    CLIENT = "CLIENT"
 
 
-__all__ = [
-    "UserRole",
-]
+__all__ = ["UserRole"]

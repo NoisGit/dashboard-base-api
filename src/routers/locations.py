@@ -37,17 +37,6 @@ async def list_locations(
     service: LocationService = Depends(get_location_service),
     current_user_data: tuple[int, UserRole] = Depends(
         get_user_data_from_token),
-    _: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
-                UserRole.JANITOR,
-                UserRole.CLIENT,
-            ],
-        ),
-    ),
 ) -> Page[LocationResponse]:
     """List active locations (porterías) visible for the current user."""
     user_id, role = current_user_data
@@ -70,17 +59,6 @@ async def get_location_detail(
     service: LocationService = Depends(get_location_service),
     current_user_data: tuple[int, UserRole] = Depends(
         get_user_data_from_token),
-    _: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
-                UserRole.JANITOR,
-                UserRole.CLIENT,
-            ],
-        ),
-    ),
 ) -> LocationResponse:
     """Get a single active location by ID."""
     user_id, role = current_user_data
@@ -102,14 +80,7 @@ async def create_location(
     payload: LocationCreateRequest,
     service: LocationService = Depends(get_location_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-    _: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-            ],
-        ),
+        RoleChecker([UserRole.SUPERADMIN, UserRole.ADMIN]),
     ),
 ) -> LocationResponse:
     """Create a new location (portería)."""
@@ -131,8 +102,6 @@ async def update_location(
     payload: LocationUpdateRequest,
     service: LocationService = Depends(get_location_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-    _: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -162,8 +131,6 @@ async def delete_location(
     location_id: int,
     service: LocationService = Depends(get_location_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-    _: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -191,8 +158,6 @@ async def assign_company_to_location(
     payload: LocationAssignCompanyRequest,
     service: LocationService = Depends(get_location_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-    _: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -223,8 +188,6 @@ async def assign_user_to_location(
     payload: LocationAssignUserRequest,
     service: LocationService = Depends(get_location_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-    _: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,

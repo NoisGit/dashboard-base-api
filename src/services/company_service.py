@@ -16,23 +16,6 @@ from src.services.user_service import UserService
 # pylint: disable=no-member, singleton-comparison
 # noqa: E712
 
-ROLES_CAN_VIEW_ASSOCIATED: set[UserRole] = {
-    UserRole.SUPERADMIN,
-    UserRole.ADMIN,
-    UserRole.SUBADMIN,
-    UserRole.JANITOR,
-    UserRole.CLIENT,
-}
-
-ROLES_CAN_EDIT_COMPANY: set[UserRole] = {
-    UserRole.SUPERADMIN,
-    UserRole.ADMIN,
-}
-
-ROLES_CAN_CREATE_DELETE_COMPANY: set[UserRole] = {
-    UserRole.SUPERADMIN,
-}
-
 
 class CompanyService:
     """Service for company operations and RBAC."""
@@ -81,12 +64,6 @@ class CompanyService:
         if role is UserRole.SUPERADMIN:
             stmt = select(Company).where(Company.is_active == True)  # noqa: E712
         else:
-            if role not in ROLES_CAN_VIEW_ASSOCIATED:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not allowed to view companies.",
-                )
-
             stmt = (
                 select(Company)
                 .join(CompanyStaff, CompanyStaff.company_id == Company.id)
@@ -105,12 +82,6 @@ class CompanyService:
         company_id: int,
     ) -> Company:
         """Get a single active company by ID if the user can access it."""
-        if role not in ROLES_CAN_VIEW_ASSOCIATED:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to view companies.",
-            )
-
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
@@ -128,16 +99,9 @@ class CompanyService:
     async def create_company(
         self,
         requester_id: int,
-        requester_role: UserRole,
         payload: CompanyCreateRequest,
     ) -> Company:
         """Create a new company."""
-        if requester_role not in ROLES_CAN_CREATE_DELETE_COMPANY:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to create companies.",
-            )
-
         company = Company(
             name=payload.name,
             activity=payload.activity,
@@ -160,12 +124,6 @@ class CompanyService:
         payload: CompanyUpdateRequest,
     ) -> Company:
         """Update an existing company."""
-        if requester_role not in ROLES_CAN_EDIT_COMPANY:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to edit companies.",
-            )
-
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
@@ -189,16 +147,9 @@ class CompanyService:
 
     async def soft_delete_company(
         self,
-        requester_role: UserRole,
         company_id: int,
     ) -> None:
         """Soft delete a company by setting is_active = False."""
-        if requester_role not in ROLES_CAN_CREATE_DELETE_COMPANY:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to delete companies.",
-            )
-
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(
@@ -217,12 +168,6 @@ class CompanyService:
         user_id: int,
     ) -> CompanyStaff:
         """Assign an existing user to a company."""
-        if requester_role not in ROLES_CAN_EDIT_COMPANY:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to edit companies.",
-            )
-
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
             raise HTTPException(

@@ -32,17 +32,6 @@ async def list_companies(
     service: CompanyService = Depends(get_company_service),
     current_user_data: tuple[int, UserRole] = Depends(
         get_user_data_from_token),
-    _: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
-                UserRole.JANITOR,
-                UserRole.CLIENT,
-            ],
-        ),
-    ),
 ) -> Page[CompanyResponse]:
     """List active companies for the current user."""
     user_id, role = current_user_data
@@ -63,17 +52,6 @@ async def get_company_detail(
     service: CompanyService = Depends(get_company_service),
     current_user_data: tuple[int, UserRole] = Depends(
         get_user_data_from_token),
-    _: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
-                UserRole.JANITOR,
-                UserRole.CLIENT,
-            ],
-        ),
-    ),
 ) -> CompanyResponse:
     """Get a single active company by ID."""
     user_id, role = current_user_data
@@ -95,21 +73,14 @@ async def create_company(
     payload: CompanyCreateRequest,
     service: CompanyService = Depends(get_company_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-    _: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-            ],
-        ),
+        RoleChecker([UserRole.SUPERADMIN]),
     ),
 ) -> CompanyResponse:
     """Create a new company."""
-    user_id, role = current_user_data
+    requester_id, _ = current_user_data
 
     company = await service.create_company(
-        requester_id=user_id,
-        requester_role=role,
+        requester_id=requester_id,
         payload=payload,
     )
     return company
@@ -124,22 +95,15 @@ async def update_company(
     payload: CompanyUpdateRequest,
     service: CompanyService = Depends(get_company_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-    _: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-            ],
-        ),
+        RoleChecker([UserRole.SUPERADMIN, UserRole.ADMIN]),
     ),
 ) -> CompanyResponse:
     """Update an existing company."""
-    user_id, role = current_user_data
+    requester_id, requester_role = current_user_data
 
     company = await service.update_company(
-        requester_id=user_id,
-        requester_role=role,
+        requester_id=requester_id,
+        requester_role=requester_role,
         company_id=company_id,
         payload=payload,
     )
@@ -153,22 +117,12 @@ async def update_company(
 async def delete_company(
     company_id: int,
     service: CompanyService = Depends(get_company_service),
-    current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-    _: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-            ],
-        ),
+    _: tuple[int, UserRole] = Depends(
+        RoleChecker([UserRole.SUPERADMIN]),
     ),
 ):
     """Soft delete a company by setting is_active = False."""
-    user_id, role = current_user_data
-
     await service.soft_delete_company(
-        requester_id=user_id,
-        requester_role=role,
         company_id=company_id,
     )
 
@@ -183,22 +137,15 @@ async def assign_user_to_company(
     payload: CompanyAssignUserRequest,
     service: CompanyService = Depends(get_company_service),
     current_user_data: tuple[int, UserRole] = Depends(
-        get_user_data_from_token),
-    _: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-            ],
-        ),
+        RoleChecker([UserRole.SUPERADMIN, UserRole.ADMIN]),
     ),
 ) -> CompanyUserAssignmentResponse:
     """Assign an existing user to a company."""
-    user_id, role = current_user_data
+    requester_id, requester_role = current_user_data
 
     assignment = await service.assign_user_to_company(
-        requester_id=user_id,
-        requester_role=role,
+        requester_id=requester_id,
+        requester_role=requester_role,
         company_id=company_id,
         user_id=payload.user_id,
     )
