@@ -65,6 +65,13 @@ class AccessTokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class StatusResponse(BaseModel):
+    """Schema for status response"""
+    status: str
+    message: str
+    code: int
+
+
 __all__ = [
     "UserCreateRequest",
     "UserUpdateRequest",

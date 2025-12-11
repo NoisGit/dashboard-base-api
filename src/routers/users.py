@@ -17,7 +17,8 @@ from src.schemas import (
     UserLoginRequest,
     UserTokenResponse,
     RefreshTokenRequest,
-    AccessTokenResponse)
+    AccessTokenResponse,
+)
 from src.services.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -168,12 +169,3 @@ async def delete_user(
     await service.soft_delete_user(
         user_id=user_id,
     )
-
-
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout_user(
-    service: UserService = Depends(get_user_service),
-    user_id=Depends(get_user_id_from_token)
-):
-    """Logout user by clearing FCM token"""
-    await service.logout_user(user_id)

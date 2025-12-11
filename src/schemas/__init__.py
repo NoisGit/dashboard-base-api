@@ -21,6 +21,7 @@ from .user_schemas import (
     UserTokenResponse,
     RefreshTokenRequest,
     AccessTokenResponse,
+    StatusResponse,
 )
 
 from .company_schemas import (
