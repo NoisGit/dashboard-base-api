@@ -28,6 +28,17 @@ class UserUpdateRequest(BaseModel):
     status: Optional[bool] = None
 
 
+class UserLoginRequest(BaseModel):
+    """Schema for user login"""
+    email: EmailStr
+    password: str
+
+
+class RefreshTokenRequest(BaseModel):
+    """Schema for refresh token request"""
+    refresh_token: str
+
+
 class UserResponse(BaseResponse):
     """Schema for user response (without sensitive data)"""
     id: int
@@ -41,8 +52,25 @@ class UserResponse(BaseResponse):
     created_at: Optional[datetime] = None
 
 
+class UserTokenResponse(BaseModel):
+    """Schema for user token response"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class AccessTokenResponse(BaseModel):
+    """Schema for access token only response"""
+    access_token: str
+    token_type: str = "bearer"
+
+
 __all__ = [
     "UserCreateRequest",
     "UserUpdateRequest",
     "UserResponse",
+    "UserLoginRequest",
+    "UserTokenResponse",
+    "RefreshTokenRequest",
+    "AccessTokenResponse",
 ]

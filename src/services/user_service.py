@@ -6,17 +6,28 @@ from datetime import datetime
 from typing import List, Optional, cast
 
 from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from fastapi import HTTPException, status
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+from src.auth import create_token_pair, create_access_token
+from src.auth.utils import get_user_id_from_refresh_token
+
 
 from src.core.enums import UserRole
 from src.models import User, CompanyStaff
-from src.schemas import UserCreateRequest, UserUpdateRequest, UserResponse
+from src.schemas import (
+    UserCreateRequest,
+    UserUpdateRequest,
+    UserLoginRequest,
+    RefreshTokenRequest,
+    UserResponse,
+    UserTokenResponse,
+    AccessTokenResponse)
 
-pwd_hasher = PasswordHasher()
+ph = PasswordHasher()
 
 
 class UserService:
@@ -26,7 +37,7 @@ class UserService:
         self.session = session
 
     def _hash_password(self, plain_password: str) -> str:
-        return pwd_hasher.hash(plain_password)
+        return ph.hash(plain_password)
 
     async def _ensure_email_unique(
         self,
@@ -56,6 +67,110 @@ class UserService:
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
         """Public helper to retrieve a user by ID (used by other services)."""
         return await self._get_user_by_id(user_id)
+
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """Get user by email"""
+        statement = select(User).where(User.email == email)
+        result = await self.session.execute(statement)
+        user = result.scalar_one_or_none()
+        return user
+
+    async def update_user_password(self, user_id: int, new_password: str):
+        """Update user details"""
+        user = await self.get_user_by_id(user_id)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        new_password_hashed = ph.hash(new_password)
+        user.password_hash = new_password_hashed
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+
+    async def login_user(self, user_data: UserLoginRequest) -> UserTokenResponse:
+        """Authenticate user and return token pair"""
+        user = await self.get_user_by_email(user_data.email)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        # Verify password match with Argon2 Hash
+        try:
+            ph.verify(user.password_hash, user_data.password)
+        # if password does not match
+        except VerifyMismatchError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        # Rehash password if needed
+        if ph.check_needs_rehash(user.password_hash):
+            user.password_hash = ph.hash(user_data.password)
+            await self.update_user_password(user.id, user.password_hash)
+
+        await self.update_user_last_login(user.id)
+
+        token_pair = create_token_pair(user.id, user.role)
+        user_token_response = UserTokenResponse(**token_pair)
+        return user_token_response
+
+    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> UserTokenResponse:
+        """Refresh access token using a valid refresh token"""
+        user_id = get_user_id_from_refresh_token(refresh_data.refresh_token)
+
+        user = await self.get_user_by_id(user_id)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        token_pair = create_token_pair(user.id, user.role)
+        user_token_response = UserTokenResponse(**token_pair)
+        return user_token_response
+
+    async def refresh_access_token_only(
+        self,
+        refresh_data: RefreshTokenRequest
+    ) -> AccessTokenResponse:
+        """Refresh access token only using a valid refresh token"""
+        user_id = get_user_id_from_refresh_token(refresh_data.refresh_token)
+
+        user = await self.get_user_by_id(user_id)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        access_token = create_access_token(user.id, user.role)
+        user_access_token = AccessTokenResponse(access_token=access_token)
+        return user_access_token
+
+    async def update_user_last_login(self, user_id: int):
+        """Update user's last login time"""
+        user = await self.get_user_by_id(user_id)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        user.last_session = datetime.now()
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
 
     async def list_users(
         self,
