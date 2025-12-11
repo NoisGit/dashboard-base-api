@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
 
 from src.auth import get_current_user
-from src.auth.utils import get_user_data_from_token
+from src.auth.utils import get_user_data_from_token, get_user_id_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_user_service
@@ -168,3 +168,12 @@ async def delete_user(
     await service.soft_delete_user(
         user_id=user_id,
     )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout_user(
+    service: UserService = Depends(get_user_service),
+    user_id=Depends(get_user_id_from_token)
+):
+    """Logout user by clearing FCM token"""
+    await service.logout_user(user_id)

@@ -120,6 +120,9 @@ class UserService:
 
         token_pair = create_token_pair(user.id, user.role)
         user_token_response = UserTokenResponse(**token_pair)
+
+        await self.update_refresh_token(user.id, user_token_response.refresh_token)
+
         return user_token_response
 
     async def refresh_token(self, refresh_data: RefreshTokenRequest) -> UserTokenResponse:
@@ -136,6 +139,9 @@ class UserService:
 
         token_pair = create_token_pair(user.id, user.role)
         user_token_response = UserTokenResponse(**token_pair)
+
+        await self.update_refresh_token(user.id, user_token_response.refresh_token)
+
         return user_token_response
 
     async def refresh_access_token_only(
@@ -168,6 +174,21 @@ class UserService:
             )
 
         user.last_session = datetime.now()
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+
+    async def update_refresh_token(self, user_id: int, refresh_token: Optional[str]):
+        """Update user's refresh token"""
+        user = await self.get_user_by_id(user_id)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        user.refresh_token = refresh_token
         self.session.add(user)
         await self.session.commit()
         await self.session.refresh(user)
@@ -297,3 +318,21 @@ class UserService:
         user.is_active = False
         self.session.add(user)
         await self.session.commit()
+
+    async def logout_user(
+        self,
+        user_id: int
+    ):
+        """Logout user details"""
+        user = await self.get_user_by_id(user_id)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        user.refresh_token = None
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
