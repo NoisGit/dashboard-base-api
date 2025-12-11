@@ -5,14 +5,54 @@ from typing import Optional
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
 
+from src.auth import get_current_user
 from src.auth.utils import get_user_data_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_user_service
-from src.schemas import UserCreateRequest, UserUpdateRequest, UserResponse
+from src.schemas import (
+    UserCreateRequest,
+    UserUpdateRequest,
+    UserResponse,
+    UserLoginRequest,
+    UserTokenResponse,
+    RefreshTokenRequest,
+    AccessTokenResponse)
 from src.services.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.post("/login", response_model=UserTokenResponse)
+async def login_user(
+    user_data: UserLoginRequest,
+    service: UserService = Depends(get_user_service)
+):
+    """User login endpoint"""
+    user_token = await service.login_user(user_data)
+    return user_token
+
+
+@router.post("/refresh", response_model=UserTokenResponse)
+async def refresh_token(
+    refresh_data: RefreshTokenRequest,
+    service: UserService = Depends(get_user_service),
+    _=Depends(get_current_user)
+):
+    """Refresh access token using a valid refresh token"""
+    user_token = await service.refresh_token(refresh_data)
+    return user_token
+
+
+@router.post("/refresh-access-token", response_model=AccessTokenResponse)
+async def refresh_access_token_only(
+    refresh_data: RefreshTokenRequest,
+    service: UserService = Depends(get_user_service),
+    _=Depends(get_current_user)
+):
+    """Refresh access token only using a valid refresh token"""
+    user_access_token = await service.refresh_access_token_only(refresh_data)
+    return user_access_token
 
 
 @router.get(
