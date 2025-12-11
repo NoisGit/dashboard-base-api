@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Optional, cast
 
 from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from fastapi import HTTPException, status
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
@@ -100,12 +101,17 @@ class UserService:
                 detail="Invalid credentials"
             )
 
-        if not ph.verify(user.password_hash, user_data.password):
+        # Verify password match with Argon2 Hash
+        try:
+            ph.verify(user.password_hash, user_data.password)
+        # if password does not match
+        except VerifyMismatchError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
             )
 
+        # Rehash password if needed
         if ph.check_needs_rehash(user.password_hash):
             user.password_hash = ph.hash(user_data.password)
             await self.update_user_password(user.id, user.password_hash)
