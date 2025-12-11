@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
 
 from src.auth import get_current_user
-from src.auth.utils import get_user_data_from_token
+from src.auth.utils import get_user_data_from_token, get_user_id_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_user_service
@@ -14,6 +14,7 @@ from src.schemas import (
     UserCreateRequest,
     UserUpdateRequest,
     UserResponse,
+    UserMeResponse,
     UserLoginRequest,
     UserTokenResponse,
     RefreshTokenRequest,
@@ -53,6 +54,16 @@ async def refresh_access_token_only(
     """Refresh access token only using a valid refresh token"""
     user_access_token = await service.refresh_access_token_only(refresh_data)
     return user_access_token
+
+
+@router.get("/me", response_model=UserMeResponse)
+async def get_current_user_profile(
+    service: UserService = Depends(get_user_service),
+    user_id: int = Depends(get_user_id_from_token),
+) -> UserMeResponse:
+    """Get current user profile."""
+    user = await service.get_user_profile(user_id=user_id)
+    return user
 
 
 @router.get(
