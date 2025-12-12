@@ -6,25 +6,18 @@ from datetime import datetime
 from typing import List, Optional, cast
 
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
 from fastapi import HTTPException, status
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
-from src.auth import create_token_pair, create_access_token
-from src.auth.utils import get_user_id_from_refresh_token
 
 from src.core.enums import UserRole
 from src.models import User, CompanyStaff
 from src.schemas import (
     UserCreateRequest,
     UserUpdateRequest,
-    UserLoginRequest,
-    RefreshTokenRequest,
     UserResponse,
-    UserTokenResponse,
-    AccessTokenResponse,
     UserMeResponse)
 
 ph = PasswordHasher()
@@ -90,78 +83,6 @@ class UserService:
         self.session.add(user)
         await self.session.commit()
         await self.session.refresh(user)
-
-    async def login_user(self, user_data: UserLoginRequest) -> UserTokenResponse:
-        """Authenticate user and return token pair"""
-        user = await self.get_user_by_email(user_data.email)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials"
-            )
-
-        # Verify password match with Argon2 Hash
-        try:
-            ph.verify(user.password_hash, user_data.password)
-        # if password does not match
-        except VerifyMismatchError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials"
-            )
-
-        # Rehash password if needed
-        if ph.check_needs_rehash(user.password_hash):
-            user.password_hash = ph.hash(user_data.password)
-            await self.update_user_password(user.id, user.password_hash)
-
-        await self.update_user_last_login(user.id)
-
-        token_pair = create_token_pair(user.id, user.role)
-        user_token_response = UserTokenResponse(**token_pair)
-
-        await self.update_refresh_token(user.id, user_token_response.refresh_token)
-
-        return user_token_response
-
-    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> UserTokenResponse:
-        """Refresh access token using a valid refresh token"""
-        user_id = get_user_id_from_refresh_token(refresh_data.refresh_token)
-
-        user = await self.get_user_by_id(user_id)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-
-        token_pair = create_token_pair(user.id, user.role)
-        user_token_response = UserTokenResponse(**token_pair)
-
-        await self.update_refresh_token(user.id, user_token_response.refresh_token)
-
-        return user_token_response
-
-    async def refresh_access_token_only(
-        self,
-        refresh_data: RefreshTokenRequest
-    ) -> AccessTokenResponse:
-        """Refresh access token only using a valid refresh token"""
-        user_id = get_user_id_from_refresh_token(refresh_data.refresh_token)
-
-        user = await self.get_user_by_id(user_id)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-
-        access_token = create_access_token(user.id, user.role)
-        user_access_token = AccessTokenResponse(access_token=access_token)
-        return user_access_token
 
     async def update_user_last_login(self, user_id: int):
         """Update user's last login time"""
