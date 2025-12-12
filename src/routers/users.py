@@ -18,7 +18,8 @@ from src.schemas import (
     UserLoginRequest,
     UserTokenResponse,
     RefreshTokenRequest,
-    AccessTokenResponse)
+    AccessTokenResponse,
+)
 from src.services.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])

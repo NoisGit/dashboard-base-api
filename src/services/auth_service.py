@@ -1,36 +1,28 @@
-"""User service module for Sentinel Enterprise API."""
-
-# pylint: disable=no-member, singleton-comparison
+"""Auth service module for Sentinel Enterprise API."""
 
 from datetime import datetime
-from typing import List, Optional, cast
+from typing import Optional
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import HTTPException, status
-from fastapi_pagination import Page, Params
-from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from src.auth import create_token_pair, create_access_token
 from src.auth.utils import get_user_id_from_refresh_token
 
-from src.core.enums import UserRole
-from src.models import User, CompanyStaff
+from src.models import User
 from src.schemas import (
-    UserCreateRequest,
-    UserUpdateRequest,
     UserLoginRequest,
     RefreshTokenRequest,
-    UserResponse,
     UserTokenResponse,
     AccessTokenResponse,
-    UserMeResponse)
+)
 
 ph = PasswordHasher()
 
 
-class UserService:
+class AuthService:
     """Service for user operations."""
 
     def __init__(self, session: AsyncSession) -> None:
@@ -193,157 +185,20 @@ class UserService:
         await self.session.commit()
         await self.session.refresh(user)
 
-    async def list_users(
+    async def logout_user(
         self,
-        role: Optional[UserRole],
-        company_id: Optional[int],
-        search: Optional[str],
-        params: Params,
-    ) -> Page[UserResponse]:
-        """Return active users with optional filters."""
-        stmt = select(User).where(User.is_active == True)  # noqa: E712
-
-        if role is not None:
-            stmt = stmt.where(User.role == role)
-
-        if search:
-            like_pattern = f"%{search}%"
-            stmt = stmt.where(
-                (User.full_name.ilike(like_pattern))
-                | (User.username.ilike(like_pattern)),
-            )
-
-        if company_id is not None:
-            stmt = (
-                stmt.join(CompanyStaff, CompanyStaff.user_id == User.id)
-                .where(CompanyStaff.company_id == company_id)
-            )
-
-        return await sqlalchemy_paginate(
-            self.session,
-            stmt,
-            params,
-            transformer=lambda items: [
-                UserResponse.model_validate(user)
-                for user in cast(List[User], items)
-            ],
-        )
-
-    async def get_user_detail(
-        self,
-        user_id: int,
-    ) -> User:
-        """Return a single active user."""
-        user = await self._get_user_by_id(user_id)
-
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        return user
-
-    async def create_user(
-        self,
-        payload: UserCreateRequest,
-    ) -> User:
-        """Create a new user."""
-        await self._ensure_email_unique(payload.email)
-
-        password_hash = self._hash_password(payload.password)
-
-        user = User(
-            username=payload.username,
-            full_name=payload.full_name,
-            email=payload.email,
-            password_hash=password_hash,
-            role=payload.role,
-            plan_id=payload.plan_id,
-            status=payload.status,
-            is_active=True,
-            created_at=datetime.now(),
-        )
-
-        self.session.add(user)
-        await self.session.commit()
-        await self.session.refresh(user)
-
-        return user
-
-    async def update_user(
-        self,
-        user_id: int,
-        payload: UserUpdateRequest,
-    ) -> User:
-        """Update an existing user and keep email unique."""
-        user = await self._get_user_by_id(user_id)
-
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        if payload.email is not None and payload.email != user.email:
-            await self._ensure_email_unique(
-                email=payload.email,
-                exclude_user_id=user_id,
-            )
-
-        update_data = payload.model_dump(exclude_none=True)
-        for key, value in update_data.items():
-            setattr(user, key, value)
-
-        user.last_update = datetime.now()
-
-        self.session.add(user)
-        await self.session.commit()
-        await self.session.refresh(user)
-        return user
-
-    async def soft_delete_user(
-        self,
-        user_id: int,
+        user_id: int
     ):
-        """Soft delete a user by setting is_active = False."""
-        user = await self._get_user_by_id(user_id)
+        """Logout user details"""
+        user = await self.get_user_by_id(user_id)
 
-        if not user or not user.is_active:
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
+                detail="User not found"
             )
 
-        user.is_active = False
+        user.refresh_token = None
         self.session.add(user)
         await self.session.commit()
-
-    async def get_user_profile(
-        self,
-        user_id: int,
-    ) -> UserMeResponse:
-        """Return current user profile for /auth/me."""
-        user = await self._get_user_by_id(user_id)
-
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        stmt = select(CompanyStaff.company_id).where(
-            CompanyStaff.user_id == user_id,
-        )
-        result = await self.session.execute(stmt)
-        company_row = result.first()
-        company_id = company_row[0] if company_row else None
-
-        return UserMeResponse(
-            id=user.id,
-            full_name=user.full_name,
-            email=user.email,
-            role=user.role,
-            company_id=company_id,
-            avatar=None,
-        )
+        await self.session.refresh(user)

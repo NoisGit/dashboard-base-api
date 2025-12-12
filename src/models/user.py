@@ -63,6 +63,8 @@ class User(SQLModel, table=True):
     reason_suspension: Optional[str] = Field(default=None, max_length=255)
     date_change_status: Optional[datetime] = None
     last_update: Optional[datetime] = None
+    refresh_token: Optional[str] = Field(default=None, max_length=255)
+
     recovery_password_mode: Optional[bool] = None
 
     # Who created this user (self-reference to users.id)
