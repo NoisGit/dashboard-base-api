@@ -14,6 +14,7 @@ from src.schemas import (
     UserCreateRequest,
     UserUpdateRequest,
     UserResponse,
+    UserMeResponse,
     UserLoginRequest,
     UserTokenResponse,
     RefreshTokenRequest,
@@ -54,6 +55,16 @@ async def refresh_access_token_only(
     """Refresh access token only using a valid refresh token"""
     user_access_token = await service.refresh_access_token_only(refresh_data)
     return user_access_token
+
+
+@router.get("/me", response_model=UserMeResponse)
+async def get_current_user_profile(
+    service: UserService = Depends(get_user_service),
+    user_id: int = Depends(get_user_id_from_token),
+) -> UserMeResponse:
+    """Get current user profile."""
+    user = await service.get_user_profile(user_id=user_id)
+    return user
 
 
 @router.get(

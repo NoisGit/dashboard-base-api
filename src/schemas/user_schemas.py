@@ -52,6 +52,16 @@ class UserResponse(BaseResponse):
     created_at: Optional[datetime] = None
 
 
+class UserMeResponse(BaseModel):
+    """Schema for current user profile (/auth/me)"""
+    id: int
+    full_name: str
+    email: EmailStr
+    role: UserRole
+    company_id: Optional[int] = None
+    avatar: Optional[str] = None
+
+
 class UserTokenResponse(BaseModel):
     """Schema for user token response"""
     access_token: str
@@ -69,6 +79,7 @@ __all__ = [
     "UserCreateRequest",
     "UserUpdateRequest",
     "UserResponse",
+    "UserMeResponse",
     "UserLoginRequest",
     "UserTokenResponse",
     "RefreshTokenRequest",

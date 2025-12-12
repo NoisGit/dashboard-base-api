@@ -15,7 +15,6 @@ from sqlmodel import select
 from src.auth import create_token_pair, create_access_token
 from src.auth.utils import get_user_id_from_refresh_token
 
-
 from src.core.enums import UserRole
 from src.models import User, CompanyStaff
 from src.schemas import (
@@ -26,7 +25,7 @@ from src.schemas import (
     UserResponse,
     UserTokenResponse,
     AccessTokenResponse,
-)
+    UserMeResponse)
 
 ph = PasswordHasher()
 
@@ -319,3 +318,32 @@ class UserService:
         user.is_active = False
         self.session.add(user)
         await self.session.commit()
+
+    async def get_user_profile(
+        self,
+        user_id: int,
+    ) -> UserMeResponse:
+        """Return current user profile for /auth/me."""
+        user = await self._get_user_by_id(user_id)
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        stmt = select(CompanyStaff.company_id).where(
+            CompanyStaff.user_id == user_id,
+        )
+        result = await self.session.execute(stmt)
+        company_row = result.first()
+        company_id = company_row[0] if company_row else None
+
+        return UserMeResponse(
+            id=user.id,
+            full_name=user.full_name,
+            email=user.email,
+            role=user.role,
+            company_id=company_id,
+            avatar=None,
+        )
