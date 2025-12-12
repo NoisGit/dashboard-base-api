@@ -24,7 +24,7 @@ class CompanyService:
         self.session = session
         self.user_service = user_service or UserService(session)
 
-    async def _get_company_by_id(self, company_id: int) -> Optional[Company]:
+    async def _get_company_by_id(self, company_id: int) -> Optional[CompanyResponse]:
         return await self.session.get(Company, company_id)
 
     async def list_companies(self, params: Params) -> Page[CompanyResponse]:

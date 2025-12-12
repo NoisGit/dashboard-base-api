@@ -8,7 +8,7 @@ from typing import List, Optional, cast
 from argon2 import PasswordHasher
 from fastapi import HTTPException, status
 from fastapi_pagination import Page, Params
-from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
+from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -53,9 +53,7 @@ class UserService:
             )
 
     async def _get_user_by_id(self, user_id: int) -> Optional[User]:
-        stmt = select(User).where(User.id == user_id)
-        result = await self.session.execute(stmt)
-        return result.scalars().first()
+        return await self.session.get(User, user_id)
 
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
         """Public helper to retrieve a user by ID (used by other services)."""
@@ -63,10 +61,9 @@ class UserService:
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Get user by email"""
-        statement = select(User).where(User.email == email)
-        result = await self.session.execute(statement)
-        user = result.scalar_one_or_none()
-        return user
+        stmt = select(User).where(User.email == email)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
 
     async def update_user_password(self, user_id: int, new_password: str):
         """Update user details"""
@@ -99,7 +96,11 @@ class UserService:
         await self.session.commit()
         await self.session.refresh(user)
 
-    async def update_refresh_token(self, user_id: int, refresh_token: Optional[str]):
+    async def update_refresh_token(
+        self,
+        user_id: int,
+        refresh_token: Optional[str]
+    ):
         """Update user's refresh token"""
         user = await self.get_user_by_id(user_id)
 
@@ -140,12 +141,22 @@ class UserService:
                 .where(CompanyStaff.company_id == company_id)
             )
 
-        return await sqlalchemy_paginate(
+        return await paginate(
             self.session,
             stmt,
             params,
             transformer=lambda items: [
-                UserResponse.model_validate(user)
+                UserResponse(
+                    id=user.id,
+                    username=user.username,
+                    full_name=user.full_name,
+                    email=user.email,
+                    role=user.role,
+                    status=user.status,
+                    is_active=user.is_active,
+                    plan_id=user.plan_id,
+                    created_at=user.created_at,
+                )
                 for user in cast(List[User], items)
             ],
         )
