@@ -39,6 +39,13 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class UserChangePasswordRequest(BaseModel):
+    """Schema for changing user password"""
+    current_password: str
+    new_password: str
+    confirm_new_password: str
+
+
 class UserResponse(BaseResponse):
     """Schema for user response (without sensitive data)"""
     id: int
@@ -84,4 +91,5 @@ __all__ = [
     "UserTokenResponse",
     "RefreshTokenRequest",
     "AccessTokenResponse",
+    "UserChangePasswordRequest",
 ]

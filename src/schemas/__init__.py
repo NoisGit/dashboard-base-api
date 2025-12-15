@@ -22,6 +22,7 @@ from .user_schemas import (
     UserTokenResponse,
     RefreshTokenRequest,
     AccessTokenResponse,
+    UserChangePasswordRequest,
 )
 
 from .company_schemas import (
@@ -57,6 +58,7 @@ __all__ = [
     "UserTokenResponse",
     "RefreshTokenRequest",
     "AccessTokenResponse",
+    "UserChangePasswordRequest",
     # Company schemas
     "CompanyCreateRequest",
     "CompanyUpdateRequest",

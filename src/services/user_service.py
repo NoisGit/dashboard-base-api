@@ -18,7 +18,9 @@ from src.schemas import (
     UserCreateRequest,
     UserUpdateRequest,
     UserResponse,
-    UserMeResponse)
+    UserMeResponse,
+    UserChangePasswordRequest,
+)
 
 ph = PasswordHasher()
 
@@ -278,4 +280,53 @@ class UserService:
             role=user.role,
             company_id=company_id,
             avatar=None,
+        )
+
+    async def verify_user_password(
+        self,
+        user_id: int,
+        password: str,
+    ) -> bool:
+        """Verify user's password"""
+        user = await self.get_user_by_id(user_id)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        if not ph.verify(user.password_hash, password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        return True
+
+    async def change_user_password(
+        self,
+        user_id: int,
+        payload: UserChangePasswordRequest,
+    ):
+        """Change password for authenticated user"""
+        await self.verify_user_password(
+            user_id=user_id,
+            password=payload.current_password,
+        )
+
+        if payload.new_password != payload.confirm_new_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password and confirmation do not match",
+            )
+
+        await self.update_user_password(
+            user_id=user_id,
+            new_password=payload.new_password,
+        )
+
+        await self.update_refresh_token(
+            user_id=user_id,
+            refresh_token=None,
         )
