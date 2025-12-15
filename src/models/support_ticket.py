@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 
 
 class SupportTicket(SQLModel, table=True):
+    """Support ticket table"""
+
     __tablename__ = "support_ticket"
 
     id: Optional[int] = Field(default=None, primary_key=True)
