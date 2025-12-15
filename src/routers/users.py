@@ -14,6 +14,7 @@ from src.schemas import (
     UserUpdateRequest,
     UserResponse,
     UserMeResponse,
+    UserChangePasswordRequest,
 )
 from src.services.user_service import UserService
 
@@ -142,4 +143,20 @@ async def delete_user(
     """Soft delete user by setting is_active = False."""
     await service.soft_delete_user(
         user_id=user_id,
+    )
+
+
+@router.post(
+    "/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def change_password(
+    payload: UserChangePasswordRequest,
+    service: UserService = Depends(get_user_service),
+    user_id: int = Depends(get_user_id_from_token),
+):
+    """Change password for authenticated user."""
+    await service.change_user_password(
+        user_id=user_id,
+        payload=payload,
     )
