@@ -2,16 +2,15 @@
 
 from typing import List, Optional, cast
 
+from fastapi_pagination import Params, Page
+from fastapi_pagination.ext.sqlalchemy import paginate
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from src.models import Company, CompanyStaff
-from src.schemas import CompanyCreateRequest, CompanyUpdateRequest
+from src.schemas import CompanyCreateRequest, CompanyUpdateRequest, CompanyResponse
 from src.services.user_service import UserService
-
-# pylint: disable=no-member, singleton-comparison
-# noqa: E712
 
 
 class CompanyService:
@@ -25,15 +24,31 @@ class CompanyService:
         self.session = session
         self.user_service = user_service or UserService(session)
 
-    async def _get_company_by_id(self, company_id: int) -> Optional[Company]:
+    async def _get_company_by_id(self, company_id: int) -> Optional[CompanyResponse]:
         return await self.session.get(Company, company_id)
 
-    async def list_companies(self) -> List[Company]:
+    async def list_companies(self, params: Params) -> Page[CompanyResponse]:
         """List active companies."""
-        stmt = select(Company).where(Company.is_active == True)  # noqa: E712
-        result = await self.session.execute(stmt)
-        companies = result.scalars().all()
-        return cast(List[Company], companies)
+        stmt = select(Company).where(Company.is_active == True)
+        return await paginate(
+            self.session,
+            stmt,
+            params,
+            transformer=lambda items: [
+                CompanyResponse(
+                    id=company.id,
+                    name=company.name,
+                    activity=company.activity,
+                    id_number=company.id_number,
+                    logo=company.logo,
+                    type_document=company.type_document,
+                    is_active=company.is_active,
+                    created_by=company.created_by,
+                    created_at=company.created_at,
+                )
+                for company in cast(List[Company], items)
+            ],
+        )
 
     async def get_company_detail(
         self,
@@ -51,6 +66,7 @@ class CompanyService:
 
     async def create_company(
         self,
+        user_id: int,
         payload: CompanyCreateRequest,
     ) -> Company:
         """Create a new company."""
@@ -60,6 +76,7 @@ class CompanyService:
             id_number=payload.id_number,
             logo=payload.logo,
             type_document=payload.type_document,
+            created_by=user_id,
         )
 
         self.session.add(company)

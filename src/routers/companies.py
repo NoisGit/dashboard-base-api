@@ -1,7 +1,7 @@
 """Companies router module for Sentinel Enterprise API."""
 
 from fastapi import APIRouter, Depends, status
-from fastapi_pagination import Page, paginate
+from fastapi_pagination import Page, Params
 
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
@@ -26,6 +26,7 @@ router = APIRouter(
     response_model=Page[CompanyResponse],
 )
 async def list_companies(
+    params: Params = Depends(),
     service: CompanyService = Depends(get_company_service),
     _=Depends(
         RoleChecker(
@@ -37,8 +38,8 @@ async def list_companies(
     ),
 ) -> Page[CompanyResponse]:
     """List active companies."""
-    companies = await service.list_companies()
-    return paginate(companies)
+    companies = await service.list_companies(params)
+    return companies
 
 
 @router.get(
@@ -73,16 +74,15 @@ async def get_company_detail(
 async def create_company(
     payload: CompanyCreateRequest,
     service: CompanyService = Depends(get_company_service),
-    current_user_data=Depends(
+    user_id=Depends(
         RoleChecker([UserRole.SUPERADMIN]),
     ),
 ) -> CompanyResponse:
     """Create a new company."""
-    requester_id, _ = current_user_data
 
     company = await service.create_company(
-        requester_id=requester_id,
-        payload=payload,
+        user_id,
+        payload,
     )
     return company
 

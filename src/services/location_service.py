@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import List, Optional, cast
 
 from fastapi import HTTPException, status
+from fastapi_pagination import Params, Page
+from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -21,6 +23,7 @@ from src.schemas import (
     LocationUpdateRequest,
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
+    LocationResponse,
 )
 from src.services.user_service import UserService
 
@@ -36,16 +39,20 @@ class LocationService:
         self.session = session
         self.user_service = user_service or UserService(session)
 
-    async def _get_location_by_id(self, location_id: int) -> Optional[Location]:
+    async def _get_location_by_id(
+        self,
+        location_id: int,
+    ) -> Optional[LocationResponse]:
         stmt = select(Location).where(Location.id == location_id)
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
     async def list_locations(
         self,
+        params: Params,
         company_id: Optional[int],
         search: Optional[str],
-    ) -> List[Location]:
+    ) -> Page[LocationResponse]:
         """List locations with optional filters."""
         stmt = select(Location).where(Location.is_active == True)  # noqa: E712
 
@@ -59,9 +66,25 @@ class LocationService:
                 | (Location.address.ilike(like_pattern)),
             )
 
-        result = await self.session.execute(stmt)
-        locations = result.scalars().all()
-        return cast(List[Location], locations)
+        return await paginate(
+            self.session,
+            stmt,
+            params,
+            transformer=lambda items: [
+                LocationResponse(
+                    id=location.id,
+                    name=location.name,
+                    address=location.address,
+                    country=location.country,
+                    logo=location.logo,
+                    company_id=location.company_id,
+                    is_active=location.is_active,
+                    created_by=location.created_by,
+                    created_at=location.created_at,
+                )
+                for location in cast(List[Location], items)
+            ],
+        )
 
     async def get_location_detail(
         self,
