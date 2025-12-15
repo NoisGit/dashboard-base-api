@@ -41,6 +41,12 @@ from .location_schemas import (
     LocationUserAssignmentResponse,
 )
 
+from .support_ticket_schemas import (
+    SupportTicketCreateRequest,
+    SupportTicketUpdateRequest,
+    SupportTicketResponse,
+)
+
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -70,4 +76,8 @@ __all__ = [
     "LocationAssignCompanyRequest",
     "LocationAssignUserRequest",
     "LocationUserAssignmentResponse",
+    # Support ticket schemas
+    "SupportTicketCreateRequest",
+    "SupportTicketUpdateRequest",
+    "SupportTicketResponse",
 ]
