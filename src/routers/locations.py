@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
 
+from src.auth.utils import get_user_data_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_location_service
@@ -32,17 +33,7 @@ async def list_locations(
     company_id: Optional[int] = None,
     search: Optional[str] = None,
     service: LocationService = Depends(get_location_service),
-    _=Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
-                UserRole.CLIENT,
-                UserRole.JANITOR,
-            ],
-        ),
-    ),
+    _=Depends(get_user_data_from_token),
 ) -> Page[LocationResponse]:
     """List active locations (porterías) visible for the current user."""
     locations = await service.list_locations(
@@ -60,17 +51,7 @@ async def list_locations(
 async def get_location_detail(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    _=Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
-                UserRole.CLIENT,
-                UserRole.JANITOR,
-            ],
-        ),
-    ),
+    _=Depends(get_user_data_from_token),
 ) -> LocationResponse:
     """Get a single active location by ID."""
     location = await service.get_location_detail(
@@ -185,7 +166,7 @@ async def assign_user_to_location(
     location_id: int,
     payload: LocationAssignUserRequest,
     service: LocationService = Depends(get_location_service),
-    current_user_data=Depends(
+    requester_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -196,8 +177,6 @@ async def assign_user_to_location(
     ),
 ):
     """Assign a user (janitor/portero) to a location."""
-    requester_id, _ = current_user_data
-
     await service.assign_user_to_location(
         requester_id=requester_id,
         location_id=location_id,
