@@ -13,6 +13,11 @@ from .base_schemas import (
     ErrorResponse,
 )
 
+from .audit_log_schema import (
+    AuditLogRequest,
+    AuditLogResponse,
+)
+
 from .user_schemas import (
     UserCreateRequest,
     UserUpdateRequest,
@@ -48,6 +53,9 @@ __all__ = [
     "PaginatedResponse",
     "SuccessResponse",
     "ErrorResponse",
+    # Audit log schemas
+    "AuditLogRequest",
+    "AuditLogResponse",
     # User schemas
     "UserCreateRequest",
     "UserUpdateRequest",

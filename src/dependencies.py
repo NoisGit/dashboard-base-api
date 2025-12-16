@@ -4,10 +4,18 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_session
+from src.services.audit_log_service import AuditLogService
 from src.services.auth_service import AuthService
 from src.services.user_service import UserService
 from src.services.company_service import CompanyService
 from src.services.location_service import LocationService
+
+
+def get_audit_log_service(
+    session: AsyncSession = Depends(get_session),
+) -> AuditLogService:
+    """Dependency to get an AuditLogService instance."""
+    return AuditLogService(session)
 
 
 def get_auth_service(

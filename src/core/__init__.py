@@ -5,8 +5,8 @@ This package currently exposes:
 - UserRole: global user roles enumeration for the Enterprise dashboard.
 """
 
-from .enums import UserRole
+from .enums import UserRole, AuditAction, TableName
 
 __all__ = [
-    "UserRole",
+    "UserRole", "AuditAction", "TableName"
 ]
