@@ -5,6 +5,7 @@ This module handles the registration of all API routers with the FastAPI applica
 """
 
 from src.routers import (
+    audit_log_router,
     auth_router,
     companies_router,
     users_router,
@@ -14,6 +15,7 @@ from src.routers import (
 
 def include_routers(app):
     """Include all routers in the FastAPI application."""
+    app.include_router(audit_log_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(companies_router, prefix="/api/v1")
     app.include_router(users_router, prefix="/api/v1")
