@@ -4,7 +4,7 @@ Support ticket database model for the Sentinel Enterprise API.
 Represents a support request opened by a user, including:
 - Title and detailed description
 - Optional media name (screenshot, video, etc.)
-- Status flag (open/closed or active/inactive)
+- Status value using a fixed set of states
 - Who created the ticket and when
 - Related responses from the support team
 """
@@ -13,6 +13,8 @@ from datetime import datetime
 from typing import Optional, List, TYPE_CHECKING
 
 from sqlmodel import SQLModel, Field, Relationship
+
+from src.core.enums import SupportTicketStatus
 
 if TYPE_CHECKING:
     from .support_response import SupportResponse
@@ -35,8 +37,8 @@ class SupportTicket(SQLModel, table=True):
     # DBML: media_name varchar(255) [null]
     media_name: Optional[str] = Field(default=None, max_length=255)
 
-    # DBML: status bool
-    status: bool
+    # DBML: status varchar(20)
+    status: SupportTicketStatus = Field(default=SupportTicketStatus.OPEN)
 
     # Audit fields (DBML: created_by int, created_at timestamp)
     created_by: int = Field(

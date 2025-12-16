@@ -28,4 +28,18 @@ class TableName(str, Enum):
     USERS = "users"
 
 
-__all__ = ["UserRole", "AuditAction", "TableName"]
+class SupportTicketStatus(str, Enum):
+    """Support ticket status enumeration"""
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESOLVED = "RESOLVED"
+    CLOSED = "CLOSED"
+    CANCELED = "CANCELED"
+
+
+__all__ = [
+    "UserRole",
+    "AuditAction",
+    "TableName",
+    "SupportTicketStatus",
+]
