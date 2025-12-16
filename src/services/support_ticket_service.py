@@ -10,6 +10,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from src.core.enums import SupportTicketStatus
 from src.models import SupportTicket
 from src.schemas import (
     SupportTicketCreateRequest,
@@ -31,14 +32,18 @@ class SupportTicketService:
         self,
         ticket_id: int,
     ) -> Optional[SupportTicketResponse]:
-        return await self.session.get(SupportTicket, ticket_id)
+        stmt = select(SupportTicket).where(SupportTicket.id == ticket_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
 
     async def list_support_tickets(
         self,
         params: Params,
     ) -> Page[SupportTicketResponse]:
-        """List active support tickets"""
-        stmt = select(SupportTicket).where(SupportTicket.status == True)  # noqa: E712
+        """List support tickets excluding canceled ones"""
+        stmt = select(SupportTicket).where(
+            SupportTicket.status != SupportTicketStatus.CANCELED,
+        )
 
         return await paginate(
             self.session,
@@ -62,9 +67,9 @@ class SupportTicketService:
         self,
         ticket_id: int,
     ) -> SupportTicket:
-        """Get a single active support ticket by ID"""
+        """Get a single support ticket by ID"""
         ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket or not ticket.status:
+        if not ticket or ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Support ticket not found",
@@ -82,7 +87,7 @@ class SupportTicketService:
             title=payload.title,
             description=payload.description,
             media_name=payload.media_name,
-            status=payload.status,
+            status=SupportTicketStatus.OPEN,
             created_by=user_id,
         )
 
@@ -98,7 +103,7 @@ class SupportTicketService:
     ) -> SupportTicket:
         """Update an existing support ticket"""
         ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket or not ticket.status:
+        if not ticket or ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Support ticket not found",
@@ -108,6 +113,7 @@ class SupportTicketService:
         for key, value in update_data.items():
             setattr(ticket, key, value)
 
+        self.session.add(ticket)
         await self.session.commit()
         await self.session.refresh(ticket)
         return ticket
@@ -116,13 +122,14 @@ class SupportTicketService:
         self,
         ticket_id: int,
     ):
-        """Soft delete a support ticket by setting status = False"""
+        """Soft delete a support ticket by setting status = CANCELED"""
         ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket or not ticket.status:
+        if not ticket or ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Support ticket not found",
             )
 
-        ticket.status = False
+        ticket.status = SupportTicketStatus.CANCELED
+        self.session.add(ticket)
         await self.session.commit()

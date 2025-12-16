@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
 
-from src.auth.utils import get_user_data_from_token, get_user_id_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_support_ticket_service
@@ -27,9 +26,15 @@ router = APIRouter(
 async def list_support_tickets(
     params: Params = Depends(),
     service: SupportTicketService = Depends(get_support_ticket_service),
-    _=Depends(get_user_data_from_token),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+            ],
+        ),
+    ),
 ) -> Page[SupportTicketResponse]:
-    """List active support tickets"""
+    """List support tickets"""
     tickets = await service.list_support_tickets(
         params=params,
     )
@@ -43,7 +48,13 @@ async def list_support_tickets(
 async def get_support_ticket_detail(
     ticket_id: int,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    _=Depends(get_user_data_from_token),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+            ],
+        ),
+    ),
 ) -> SupportTicketResponse:
     """Get a single support ticket by ID"""
     ticket = await service.get_support_ticket_detail(
@@ -60,7 +71,14 @@ async def get_support_ticket_detail(
 async def create_support_ticket(
     payload: SupportTicketCreateRequest,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
 ) -> SupportTicketResponse:
     """Create a new support ticket"""
     ticket = await service.create_support_ticket(
@@ -113,7 +131,7 @@ async def delete_support_ticket(
         ),
     ),
 ):
-    """Soft delete a support ticket by setting status = False"""
+    """Soft delete a support ticket"""
     await service.soft_delete_support_ticket(
         ticket_id=ticket_id,
     )

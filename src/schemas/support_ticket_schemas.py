@@ -5,6 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from src.core.enums import SupportTicketStatus
 from .base_schemas import BaseResponse
 
 
@@ -13,7 +14,6 @@ class SupportTicketCreateRequest(BaseModel):
     title: str
     description: str
     media_name: Optional[str] = None
-    status: bool = True
 
 
 class SupportTicketUpdateRequest(BaseModel):
@@ -21,7 +21,7 @@ class SupportTicketUpdateRequest(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     media_name: Optional[str] = None
-    status: Optional[bool] = None
+    status: Optional[SupportTicketStatus] = None
 
 
 class SupportTicketResponse(BaseResponse):
@@ -30,6 +30,6 @@ class SupportTicketResponse(BaseResponse):
     title: str
     description: str
     media_name: Optional[str] = None
-    status: bool
+    status: SupportTicketStatus
     created_by: int
     created_at: datetime
