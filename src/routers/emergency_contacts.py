@@ -30,12 +30,6 @@ async def list_emergency_contacts(
 ):
     """
     List emergency contacts for a location.
-
-    Returns both:
-    - Default country emergency numbers (is_default=TRUE)
-    - Location-specific emergency numbers (location_id matches)
-
-    Requires authentication. All authenticated users can view emergency contacts.
     """
     emergency_contacts = await service.list_emergency_contacts(location_id, params)
     return emergency_contacts
@@ -52,8 +46,6 @@ async def get_emergency_contact_detail(
 ):
     """
     Get a single emergency contact by ID.
-
-    Requires authentication. All authenticated users can view emergency contacts.
     """
     contact = await service.get_emergency_contact_detail(contact_id=contact_id)
     return contact
@@ -75,14 +67,6 @@ async def create_emergency_contact(
 ):
     """
     Create a new emergency contact.
-
-    Business rules:
-    - If is_default=TRUE, location_id must be NULL (only SUPERADMIN can create)
-    - If location_id is provided, is_default must be FALSE
-    - Only SUPERADMIN can create default country numbers (is_default=TRUE)
-    - ADMIN and SUPERADMIN can create location-specific numbers
-
-    Requires ADMIN or SUPERADMIN role.
     """
 
     await service.create_emergency_contact(payload, user_id)
@@ -105,13 +89,6 @@ async def update_emergency_contact(
 ):
     """
     Update an existing emergency contact.
-
-    Business rules:
-    - Only SUPERADMIN can modify default numbers (is_default=TRUE)
-    - Only SUPERADMIN can change is_default to TRUE
-    - Consistency rules apply: is_default=TRUE requires location_id=NULL
-
-    Requires ADMIN or SUPERADMIN role.
     """
     await service.update_emergency_contact(user_id, contact_id, payload)
 
@@ -131,11 +108,5 @@ async def delete_emergency_contact(
 ) -> None:
     """
     Delete an emergency contact.
-
-    Business rules:
-    - Only SUPERADMIN can delete default numbers (is_default=TRUE)
-    - ADMIN and SUPERADMIN can delete location-specific numbers
-
-    Requires ADMIN or SUPERADMIN role.
     """
     await service.delete_emergency_contact(user_id, contact_id)

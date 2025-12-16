@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 
 class EmergencyContact(SQLModel, table=True):
+    """Database model for emergency contacts."""
     __tablename__ = "emergency_contacts"
 
     id: Optional[int] = Field(default=None, primary_key=True)
