@@ -47,6 +47,12 @@ from .location_schemas import (
     LocationUserAssignmentResponse,
 )
 
+from .emergency_contact_schemas import (
+    EmergencyContactCreateRequest,
+    EmergencyContactUpdateRequest,
+    EmergencyContactResponse,
+)
+
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -80,4 +86,8 @@ __all__ = [
     "LocationAssignCompanyRequest",
     "LocationAssignUserRequest",
     "LocationUserAssignmentResponse",
+    # Emergency contact schemas
+    "EmergencyContactCreateRequest",
+    "EmergencyContactUpdateRequest",
+    "EmergencyContactResponse",
 ]

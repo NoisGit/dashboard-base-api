@@ -9,6 +9,7 @@ from src.services.auth_service import AuthService
 from src.services.user_service import UserService
 from src.services.company_service import CompanyService
 from src.services.location_service import LocationService
+from src.services.emergency_contact_service import EmergencyContactService
 
 
 def get_audit_log_service(
@@ -46,3 +47,11 @@ def get_location_service(
 ) -> LocationService:
     """Dependency to get a LocationService instance."""
     return LocationService(session, user_service)
+
+
+def get_emergency_contact_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+) -> EmergencyContactService:
+    """Dependency to get an EmergencyContactService instance."""
+    return EmergencyContactService(session, user_service)
