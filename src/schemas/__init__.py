@@ -59,12 +59,6 @@ from .support_ticket_schemas import (
     SupportTicketResponse,
 )
 
-from .support_ticket_schemas import (
-    SupportTicketCreateRequest,
-    SupportTicketUpdateRequest,
-    SupportTicketResponse,
-)
-
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -102,10 +96,6 @@ __all__ = [
     "EmergencyContactCreateRequest",
     "EmergencyContactUpdateRequest",
     "EmergencyContactResponse",
-    # Support ticket schemas
-    "SupportTicketCreateRequest",
-    "SupportTicketUpdateRequest",
-    "SupportTicketResponse",
     # Support ticket schemas
     "SupportTicketCreateRequest",
     "SupportTicketUpdateRequest",

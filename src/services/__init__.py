@@ -11,7 +11,6 @@ from .company_service import CompanyService
 from .location_service import LocationService
 from .emergency_contact_service import EmergencyContactService
 from .support_ticket_service import SupportTicketService
-from .support_ticket_service import SupportTicketService
 
 __all__ = [
     "AuthService",
