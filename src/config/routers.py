@@ -11,6 +11,7 @@ from src.routers import (
     companies_router,
     users_router,
     locations_router,
+    support_tickets_router,
 )
 
 
@@ -22,3 +23,4 @@ def include_routers(app):
     app.include_router(companies_router, prefix="/api/v1")
     app.include_router(users_router, prefix="/api/v1")
     app.include_router(locations_router, prefix="/api/v1")
+    app.include_router(support_tickets_router, prefix="/api/v1")
