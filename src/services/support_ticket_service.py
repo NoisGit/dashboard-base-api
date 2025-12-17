@@ -39,11 +39,12 @@ class SupportTicketService:
     async def list_support_tickets(
         self,
         params: Params,
+        status_filter: Optional[SupportTicketStatus],
     ) -> Page[SupportTicketResponse]:
-        """List support tickets excluding canceled ones"""
-        stmt = select(SupportTicket).where(
-            SupportTicket.status != SupportTicketStatus.CANCELED,
-        )
+        """List support tickets with status filter"""
+        stmt = select(SupportTicket)
+        if status_filter is not None:
+            stmt = stmt.where(SupportTicket.status == status_filter)
 
         return await paginate(
             self.session,
@@ -69,7 +70,7 @@ class SupportTicketService:
     ) -> SupportTicket:
         """Get a single support ticket by ID"""
         ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket or ticket.status == SupportTicketStatus.CANCELED:
+        if not ticket:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Support ticket not found",

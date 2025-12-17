@@ -1,10 +1,12 @@
 """Support ticket router module for Sentinel Enterprise API"""
 
-from fastapi import APIRouter, Depends, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, status, Query
 from fastapi_pagination import Page, Params
 
 from src.auth.permissions import RoleChecker
-from src.core.enums import UserRole
+from src.core.enums import UserRole, SupportTicketStatus
 from src.dependencies import get_support_ticket_service
 from src.schemas import (
     SupportTicketCreateRequest,
@@ -25,6 +27,7 @@ router = APIRouter(
 )
 async def list_support_tickets(
     params: Params = Depends(),
+    status_filter: Optional[SupportTicketStatus] = Query(None, alias="status"),
     service: SupportTicketService = Depends(get_support_ticket_service),
     _=Depends(
         RoleChecker(
@@ -37,6 +40,7 @@ async def list_support_tickets(
     """List support tickets"""
     tickets = await service.list_support_tickets(
         params=params,
+        status_filter=status_filter,
     )
     return tickets
 
