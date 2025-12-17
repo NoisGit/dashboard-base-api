@@ -57,6 +57,9 @@ from .support_ticket_schemas import (
     SupportTicketCreateRequest,
     SupportTicketUpdateRequest,
     SupportTicketResponse,
+    SupportTicketCommentCreateRequest,
+    SupportTicketCommentUpdateRequest,
+    SupportTicketCommentResponse,
 )
 
 __all__ = [
@@ -100,4 +103,7 @@ __all__ = [
     "SupportTicketCreateRequest",
     "SupportTicketUpdateRequest",
     "SupportTicketResponse",
+    "SupportTicketCommentCreateRequest",
+    "SupportTicketCommentUpdateRequest",
+    "SupportTicketCommentResponse",
 ]

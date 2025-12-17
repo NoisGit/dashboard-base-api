@@ -33,3 +33,23 @@ class SupportTicketResponse(BaseResponse):
     status: SupportTicketStatus
     created_by: int
     created_at: datetime
+
+
+class SupportTicketCommentCreateRequest(BaseModel):
+    """Schema for creating a support ticket comment"""
+    content: str
+
+
+class SupportTicketCommentUpdateRequest(BaseModel):
+    """Schema for updating a support ticket comment"""
+    content: Optional[str] = None
+
+
+class SupportTicketCommentResponse(BaseResponse):
+    """Schema for support ticket comment response"""
+    id: int
+    ticket_id: int
+    content: str
+    created_by: int
+    created_at: datetime
+    edited_at: Optional[datetime] = None
