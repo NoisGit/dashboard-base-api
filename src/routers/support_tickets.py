@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, status, Query
 from fastapi_pagination import Page, Params
 
+from src.auth.utils import get_user_data_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole, SupportTicketStatus
 from src.dependencies import get_support_ticket_service
@@ -12,6 +13,9 @@ from src.schemas import (
     SupportTicketCreateRequest,
     SupportTicketUpdateRequest,
     SupportTicketResponse,
+    SupportTicketCommentCreateRequest,
+    SupportTicketCommentUpdateRequest,
+    SupportTicketCommentResponse,
 )
 from src.services.support_ticket_service import SupportTicketService
 
@@ -138,4 +142,147 @@ async def delete_support_ticket(
     """Soft delete a support ticket"""
     await service.soft_delete_support_ticket(
         ticket_id=ticket_id,
+    )
+
+
+@router.get(
+    "/{ticket_id}/comments",
+    response_model=list[SupportTicketCommentResponse],
+)
+async def list_support_ticket_comments(
+    ticket_id: int,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> list[SupportTicketCommentResponse]:
+    """List support ticket comments"""
+    comments = await service.list_support_ticket_comments(
+        ticket_id=ticket_id,
+    )
+    return comments
+
+
+@router.get(
+    "/{ticket_id}/comments/{comment_id}",
+    response_model=SupportTicketCommentResponse,
+)
+async def get_support_ticket_comment_detail(
+    ticket_id: int,
+    comment_id: int,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> SupportTicketCommentResponse:
+    """Get support ticket comment by ID"""
+    comment = await service.get_support_ticket_comment_detail(
+        ticket_id=ticket_id,
+        comment_id=comment_id,
+    )
+    return comment
+
+
+@router.post(
+    "/{ticket_id}/comments",
+    response_model=SupportTicketCommentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_support_ticket_comment(
+    ticket_id: int,
+    payload: SupportTicketCommentCreateRequest,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> SupportTicketCommentResponse:
+    """Create support ticket comment"""
+    comment = await service.create_support_ticket_comment(
+        ticket_id=ticket_id,
+        user_id=user_id,
+        payload=payload,
+    )
+    return comment
+
+
+@router.put(
+    "/{ticket_id}/comments/{comment_id}",
+    response_model=SupportTicketCommentResponse,
+)
+async def update_support_ticket_comment(
+    ticket_id: int,
+    comment_id: int,
+    payload: SupportTicketCommentUpdateRequest,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+    user_data: dict = Depends(get_user_data_from_token),
+) -> SupportTicketCommentResponse:
+    """Update support ticket comment"""
+    role = user_data.get("role")
+    owner_user_id = None if role in (
+        UserRole.SUPERADMIN, UserRole.SUPERADMIN.value) else user_id
+
+    comment = await service.update_support_ticket_comment(
+        ticket_id=ticket_id,
+        comment_id=comment_id,
+        payload=payload,
+        owner_user_id=owner_user_id,
+    )
+    return comment
+
+
+@router.delete(
+    "/{ticket_id}/comments/{comment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_support_ticket_comment(
+    ticket_id: int,
+    comment_id: int,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+    user_data: dict = Depends(get_user_data_from_token),
+):
+    """Delete support ticket comment"""
+    role = user_data.get("role")
+    owner_user_id = None if role in (
+        UserRole.SUPERADMIN, UserRole.SUPERADMIN.value) else user_id
+
+    await service.delete_support_ticket_comment(
+        ticket_id=ticket_id,
+        comment_id=comment_id,
+        owner_user_id=owner_user_id,
     )
