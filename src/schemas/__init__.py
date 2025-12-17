@@ -55,6 +55,9 @@ from .support_ticket_schemas import (
     SupportTicketCreateRequest,
     SupportTicketUpdateRequest,
     SupportTicketResponse,
+    SupportTicketCommentCreateRequest,
+    SupportTicketCommentUpdateRequest,
+    SupportTicketCommentResponse,
 )
 from .notification_schemas import (
     SimpleNoticationRequest,
@@ -106,6 +109,9 @@ __all__ = [
     "SupportTicketCreateRequest",
     "SupportTicketUpdateRequest",
     "SupportTicketResponse",
+    "SupportTicketCommentCreateRequest",
+    "SupportTicketCommentUpdateRequest",
+    "SupportTicketCommentResponse",
     # Notification schemas
     "SimpleNoticationRequest",
     "NotificationResponse",
