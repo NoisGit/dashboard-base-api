@@ -232,21 +232,19 @@ async def update_support_ticket_comment(
     comment_id: int,
     payload: SupportTicketCommentUpdateRequest,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    user_id: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
-            ],
-        ),
-    ),
-    user_data: dict = Depends(get_user_data_from_token),
+    user_data=Depends(get_user_data_from_token),
 ) -> SupportTicketCommentResponse:
     """Update support ticket comment"""
-    role = user_data.get("role")
-    owner_user_id = None if role in (
-        UserRole.SUPERADMIN, UserRole.SUPERADMIN.value) else user_id
+    RoleChecker(
+        [
+            UserRole.SUPERADMIN,
+            UserRole.ADMIN,
+            UserRole.SUBADMIN,
+        ],
+    )(user_data)
+
+    user_id, role = user_data
+    owner_user_id = None if role == UserRole.SUPERADMIN else user_id
 
     comment = await service.update_support_ticket_comment(
         ticket_id=ticket_id,
@@ -265,21 +263,19 @@ async def delete_support_ticket_comment(
     ticket_id: int,
     comment_id: int,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    user_id: int = Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
-            ],
-        ),
-    ),
-    user_data: dict = Depends(get_user_data_from_token),
+    user_data=Depends(get_user_data_from_token),
 ):
     """Delete support ticket comment"""
-    role = user_data.get("role")
-    owner_user_id = None if role in (
-        UserRole.SUPERADMIN, UserRole.SUPERADMIN.value) else user_id
+    RoleChecker(
+        [
+            UserRole.SUPERADMIN,
+            UserRole.ADMIN,
+            UserRole.SUBADMIN,
+        ],
+    )(user_data)
+
+    user_id, role = user_data
+    owner_user_id = None if role == UserRole.SUPERADMIN else user_id
 
     await service.delete_support_ticket_comment(
         ticket_id=ticket_id,
