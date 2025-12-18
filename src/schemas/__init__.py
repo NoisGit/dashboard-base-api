@@ -12,20 +12,18 @@ from .base_schemas import (
     SuccessResponse,
     ErrorResponse,
 )
-
 from .audit_log_schema import (
     AuditLogRequest,
     AuditLogResponse,
 )
-
 from .user_schemas import (
     UserCreateRequest,
     UserUpdateRequest,
     UserResponse,
     UserMeResponse,
     UserLoginRequest,
+    UserChangePasswordRequest,
 )
-
 from .company_schemas import (
     CompanyCreateRequest,
     CompanyUpdateRequest,
@@ -33,7 +31,6 @@ from .company_schemas import (
     CompanyAssignUserRequest,
     CompanyUserAssignmentResponse,
 )
-
 from .location_schemas import (
     LocationCreateRequest,
     LocationUpdateRequest,
@@ -42,23 +39,27 @@ from .location_schemas import (
     LocationAssignUserRequest,
     LocationUserAssignmentResponse,
 )
-
 from .auth_schemas import (
     AuthRecoveryPasswordRequest,
     AuthResetPasswordRequest,
     AuthTokenResponse,
     RefreshTokenRequest,
     AccessTokenResponse,
+)
 from .emergency_contact_schemas import (
     EmergencyContactCreateRequest,
     EmergencyContactUpdateRequest,
     EmergencyContactResponse,
 )
-
 from .support_ticket_schemas import (
     SupportTicketCreateRequest,
     SupportTicketUpdateRequest,
     SupportTicketResponse,
+)
+from .notification_schemas import (
+    SimpleNoticationRequest,
+    NotificationResponse,
+    NotificationMessageResponse,
 )
 
 __all__ = [
@@ -77,6 +78,7 @@ __all__ = [
     "UserResponse",
     "UserMeResponse",
     "UserLoginRequest",
+    "UserChangePasswordRequest",
     # Company schemas
     "CompanyCreateRequest",
     "CompanyUpdateRequest",
@@ -104,4 +106,8 @@ __all__ = [
     "SupportTicketCreateRequest",
     "SupportTicketUpdateRequest",
     "SupportTicketResponse",
+    # Notification schemas
+    "SimpleNoticationRequest",
+    "NotificationResponse",
+    "NotificationMessageResponse",
 ]

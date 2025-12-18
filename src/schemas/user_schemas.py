@@ -80,12 +80,3 @@ class AccessTokenResponse(BaseModel):
     """Schema for access token only response"""
     access_token: str
     token_type: str = "bearer"
-
-
-__all__ = [
-    "UserCreateRequest",
-    "UserUpdateRequest",
-    "UserResponse",
-    "UserMeResponse",
-    "UserLoginRequest",
-]

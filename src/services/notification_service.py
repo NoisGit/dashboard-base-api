@@ -1,0 +1,173 @@
+""" Notification service for managing push notifications and FCM operations. """
+
+import logging
+
+from datetime import datetime
+from typing import Optional
+from sqlmodel import select, desc
+from firebase_admin import messaging
+from firebase_admin.exceptions import FirebaseError
+from fastapi_pagination import Params, Page
+from fastapi_pagination.ext.sqlalchemy import paginate
+from fastapi import HTTPException, status
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
+
+from src.services.user_service import UserService
+from src.models import Notification
+from src.schemas import (
+    SimpleNoticationRequest,
+    NotificationResponse,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class NotificationService:
+    """Service for notification-related operations including FCM"""
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        user_service: UserService
+    ):
+        self.session = session
+        self.user_service = user_service
+
+    async def create_notification(
+        self,
+        user_id: int,
+        notification: SimpleNoticationRequest,
+        created_by_user_id: int
+    ):
+        """Create a new notification record in database"""
+        notification = Notification(
+            title=notification.title,
+            message=notification.message,
+            created_by_user_id=created_by_user_id,
+            user_id=user_id,
+        )
+        self.session.add(notification)
+        await self.session.commit()
+        await self.session.refresh(notification)
+
+    async def get_notification_by_id(
+        self,
+        notification_id: int
+    ) -> Optional[Notification]:
+        """Retrieve a notification by its ID"""
+        result = await self.session.execute(
+            select(Notification).where(Notification.id == notification_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def mark_notification_as_read(
+        self,
+        notification_id: int
+    ):
+        """Mark a notification as read by setting the read_at timestamp"""
+        notification = await self.get_notification_by_id(notification_id)
+
+        if not notification:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Notification not found"
+            )
+
+        notification.read_at = datetime.now()
+        self.session.add(notification)
+        await self.session.commit()
+        await self.session.refresh(notification)
+
+    async def get_notifications_for_user(
+        self,
+        user_id: int,
+        params: Params = Params()
+    ) -> Page[NotificationResponse]:
+        """Get paginated notifications for a specific user"""
+        query = select(Notification) \
+            .where(Notification.user_id == user_id) \
+            .order_by(desc(Notification.created_at))
+
+        return await paginate(
+            self.session,
+            query,
+            params,
+            transformer=lambda items: [
+                NotificationResponse(
+                    id=notification.id,
+                    title=notification.title,
+                    message=notification.message,
+                    read_at=notification.read_at,
+                    created_at=notification.created_at
+                ) for notification in items
+            ]
+        )
+
+    async def get_unread_notifications_for_user(
+        self,
+        user_id: int,
+        params: Params = Params()
+    ) -> Page[NotificationResponse]:
+        """Get paginated unread notifications for a specific user"""
+        query = select(Notification) \
+            .where(Notification.user_id == user_id) \
+            .where(Notification.read_at == None) \
+            .order_by(desc(Notification.created_at))  # pylint: disable=singleton-comparison
+
+        return await paginate(
+            self.session,
+            query,
+            params,
+            transformer=lambda items: [
+                NotificationResponse(
+                    id=notification.id,
+                    title=notification.title,
+                    message=notification.message,
+                    read_at=notification.read_at,
+                    created_at=notification.created_at
+                ) for notification in items
+            ]
+        )
+
+    async def send_notification_to_all_users(
+        self,
+        notification: SimpleNoticationRequest,
+    ) -> NotificationResponse:
+        """Send notification to all users in the system."""
+        try:
+            # Get all user FCM tokens
+            registration_tokens = await self.user_service.get_all_fcm_tokens()
+
+            if not registration_tokens:
+                logger.info("🌐 No users with FCM tokens found.")
+                return NotificationResponse(success=0, failed=0)
+
+            logger.info(
+                "Sending notification to %d users",
+                len(registration_tokens)
+            )
+
+            multicast_message = messaging.MulticastMessage(
+                notification=messaging.Notification(
+                    title=notification.title,
+                    body=notification.body
+                ),
+                tokens=registration_tokens,
+                data={},
+            )
+
+            response = messaging.send_multicast(multicast_message)
+
+            return NotificationResponse(
+                success=response.success_count,
+                failed=response.failure_count
+            )
+
+        except (SQLAlchemyError, FirebaseError) as e:
+            logger.error(
+                "Error sending notification to all users: %s",
+                str(e)
+            )
+            return NotificationResponse(success=0, failed=0)
