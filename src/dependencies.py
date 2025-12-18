@@ -4,11 +4,21 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_session
+from src.services.audit_log_service import AuditLogService
 from src.services.auth_service import AuthService
 from src.services.user_service import UserService
 from src.services.email_service import EmailService
 from src.services.company_service import CompanyService
 from src.services.location_service import LocationService
+from src.services.emergency_contact_service import EmergencyContactService
+from src.services.support_ticket_service import SupportTicketService
+
+
+def get_audit_log_service(
+    session: AsyncSession = Depends(get_session),
+) -> AuditLogService:
+    """Dependency to get an AuditLogService instance."""
+    return AuditLogService(session)
 
 
 def get_email_service() -> EmailService:
@@ -45,3 +55,18 @@ def get_location_service(
 ) -> LocationService:
     """Dependency to get a LocationService instance."""
     return LocationService(session, user_service)
+
+
+def get_emergency_contact_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+) -> EmergencyContactService:
+    """Dependency to get an EmergencyContactService instance."""
+    return EmergencyContactService(session, user_service)
+
+
+def get_support_ticket_service(
+    session: AsyncSession = Depends(get_session),
+) -> SupportTicketService:
+    """Dependency to get a SupportTicketService instance"""
+    return SupportTicketService(session)

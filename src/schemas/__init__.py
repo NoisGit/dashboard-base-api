@@ -13,6 +13,11 @@ from .base_schemas import (
     ErrorResponse,
 )
 
+from .audit_log_schema import (
+    AuditLogRequest,
+    AuditLogResponse,
+)
+
 from .user_schemas import (
     UserCreateRequest,
     UserUpdateRequest,
@@ -44,6 +49,16 @@ from .auth_schemas import (
     AuthTokenResponse,
     RefreshTokenRequest,
     AccessTokenResponse,
+from .emergency_contact_schemas import (
+    EmergencyContactCreateRequest,
+    EmergencyContactUpdateRequest,
+    EmergencyContactResponse,
+)
+
+from .support_ticket_schemas import (
+    SupportTicketCreateRequest,
+    SupportTicketUpdateRequest,
+    SupportTicketResponse,
 )
 
 __all__ = [
@@ -53,6 +68,9 @@ __all__ = [
     "PaginatedResponse",
     "SuccessResponse",
     "ErrorResponse",
+    # Audit log schemas
+    "AuditLogRequest",
+    "AuditLogResponse",
     # User schemas
     "UserCreateRequest",
     "UserUpdateRequest",
@@ -78,4 +96,12 @@ __all__ = [
     "RefreshTokenRequest",
     "AuthTokenResponse",
     "AccessTokenResponse",
+    # Emergency contact schemas
+    "EmergencyContactCreateRequest",
+    "EmergencyContactUpdateRequest",
+    "EmergencyContactResponse",
+    # Support ticket schemas
+    "SupportTicketCreateRequest",
+    "SupportTicketUpdateRequest",
+    "SupportTicketResponse",
 ]

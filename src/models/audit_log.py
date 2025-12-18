@@ -9,8 +9,10 @@ Represents an audit trail entry for user actions in the system:
 
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
+from sqlalchemy import Enum as SaEnum
+from sqlmodel import SQLModel, Field, Relationship, Column
 
-from sqlmodel import SQLModel, Field, Relationship
+from src.core import AuditAction, TableName
 
 if TYPE_CHECKING:
     from .user import User
@@ -30,10 +32,15 @@ class AuditLog(SQLModel, table=True):
     user_id: int = Field(foreign_key="users.id")
 
     # DBML: action varchar(100)
-    action: str = Field(max_length=100)
+    action: AuditAction = Field(
+        sa_column=Column(SaEnum(AuditAction), nullable=False)
+    )
 
     # DBML: table_name varchar(100) [null]
-    table_name: Optional[str] = Field(default=None, max_length=100)
+    table_name: Optional[TableName] = Field(
+        default=None,
+        sa_column=Column(SaEnum(TableName), nullable=True)
+    )
 
     # DBML: record_id int [null]
     record_id: Optional[int] = Field(default=None)

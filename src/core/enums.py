@@ -12,4 +12,34 @@ class UserRole(str, Enum):
     CLIENT = "CLIENT"
 
 
-__all__ = ["UserRole"]
+class AuditAction(str, Enum):
+    """Audit log action enumeration"""
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    DELETE = "DELETE"
+    LOGIN = "LOGIN"
+    LOGOUT = "LOGOUT"
+    ACCESS_GRANTED = "ACCESS_GRANTED"
+    ACCESS_DENIED = "ACCESS_DENIED"
+
+
+class TableName(str, Enum):
+    """Database table names enumeration"""
+    USERS = "users"
+
+
+class SupportTicketStatus(str, Enum):
+    """Support ticket status enumeration"""
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESOLVED = "RESOLVED"
+    CLOSED = "CLOSED"
+    CANCELED = "CANCELED"
+
+
+__all__ = [
+    "UserRole",
+    "AuditAction",
+    "TableName",
+    "SupportTicketStatus",
+]
