@@ -108,7 +108,7 @@ class SupportTicketService:
         self,
         user_id: int,
         payload: SupportTicketCreateRequest,
-    ) -> SupportTicket:
+    ) -> SupportTicketResponse:
         """Create a new support ticket"""
         ticket = SupportTicket(
             title=payload.title,
@@ -121,13 +121,22 @@ class SupportTicketService:
         self.session.add(ticket)
         await self.session.commit()
         await self.session.refresh(ticket)
-        return ticket
+
+        return SupportTicketResponse(
+            id=ticket.id,
+            title=ticket.title,
+            description=ticket.description,
+            media_name=ticket.media_name,
+            status=ticket.status,
+            created_by=ticket.created_by,
+            created_at=ticket.created_at,
+        )
 
     async def update_support_ticket(
         self,
         ticket_id: int,
         payload: SupportTicketUpdateRequest,
-    ) -> SupportTicket:
+    ) -> SupportTicketResponse:
         """Update an existing support ticket"""
         ticket = await self._get_support_ticket_by_id(ticket_id)
         if not ticket or ticket.status == SupportTicketStatus.CANCELED:
@@ -142,7 +151,16 @@ class SupportTicketService:
 
         await self.session.commit()
         await self.session.refresh(ticket)
-        return ticket
+
+        return SupportTicketResponse(
+            id=ticket.id,
+            title=ticket.title,
+            description=ticket.description,
+            media_name=ticket.media_name,
+            status=ticket.status,
+            created_by=ticket.created_by,
+            created_at=ticket.created_at,
+        )
 
     async def soft_delete_support_ticket(
         self,
