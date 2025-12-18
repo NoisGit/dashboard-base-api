@@ -65,8 +65,6 @@ class User(SQLModel, table=True):
     last_update: Optional[datetime] = None
     refresh_token: Optional[str] = Field(default=None, max_length=255)
 
-    recovery_password_mode: Optional[bool] = None
-
     # Recovery Password Fields
     reset_token: Optional[str] = Field(default=None, max_length=255)
     reset_token_expiry: Optional[datetime] = None
