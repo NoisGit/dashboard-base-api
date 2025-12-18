@@ -19,7 +19,7 @@ from src.models import User
 from src.schemas import (
     UserLoginRequest,
     RefreshTokenRequest,
-    UserTokenResponse,
+    AuthTokenResponse,
     AccessTokenResponse,
     AuthRecoveryPasswordRequest,
     AuthResetPasswordRequest,
@@ -92,7 +92,7 @@ class AuthService:
         await self.session.commit()
         await self.session.refresh(user)
 
-    async def login_user(self, user_data: UserLoginRequest) -> UserTokenResponse:
+    async def login_user(self, user_data: UserLoginRequest) -> AuthTokenResponse:
         """Authenticate user and return token pair"""
         user = await self.get_user_by_email(user_data.email)
 
@@ -120,13 +120,13 @@ class AuthService:
         await self.update_user_last_login(user.id)
 
         token_pair = create_token_pair(user.id, user.role)
-        user_token_response = UserTokenResponse(**token_pair)
+        user_token_response = AuthTokenResponse(**token_pair)
 
         await self.update_refresh_token(user.id, user_token_response.refresh_token)
 
         return user_token_response
 
-    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> UserTokenResponse:
+    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> AuthTokenResponse:
         """Refresh access token using a valid refresh token"""
         user_id = get_user_id_from_refresh_token(refresh_data.refresh_token)
 
@@ -139,7 +139,7 @@ class AuthService:
             )
 
         token_pair = create_token_pair(user.id, user.role)
-        user_token_response = UserTokenResponse(**token_pair)
+        user_token_response = AuthTokenResponse(**token_pair)
 
         await self.update_refresh_token(user.id, user_token_response.refresh_token)
 

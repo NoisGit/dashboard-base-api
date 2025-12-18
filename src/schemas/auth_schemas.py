@@ -20,7 +20,28 @@ class AuthResetPasswordRequest(BaseModel):
     confirm_new_password: str
 
 
+class RefreshTokenRequest(BaseModel):
+    """Schema for refresh token request"""
+    refresh_token: str
+
+
+class AuthTokenResponse(BaseModel):
+    """Schema for user token response"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class AccessTokenResponse(BaseModel):
+    """Schema for access token only response"""
+    access_token: str
+    token_type: str = "bearer"
+
+
 __all__ = [
     "AuthRecoveryPasswordRequest",
     "AuthResetPasswordRequest",
+    "RefreshTokenRequest",
+    "AuthTokenResponse",
+    "AuthAccessTokenResponse",
 ]

@@ -19,9 +19,6 @@ from .user_schemas import (
     UserResponse,
     UserMeResponse,
     UserLoginRequest,
-    UserTokenResponse,
-    RefreshTokenRequest,
-    AccessTokenResponse,
 )
 
 from .company_schemas import (
@@ -44,6 +41,9 @@ from .location_schemas import (
 from .auth_schemas import (
     AuthRecoveryPasswordRequest,
     AuthResetPasswordRequest,
+    AuthTokenResponse,
+    RefreshTokenRequest,
+    AccessTokenResponse,
 )
 
 __all__ = [
@@ -59,9 +59,6 @@ __all__ = [
     "UserResponse",
     "UserMeResponse",
     "UserLoginRequest",
-    "UserTokenResponse",
-    "RefreshTokenRequest",
-    "AccessTokenResponse",
     # Company schemas
     "CompanyCreateRequest",
     "CompanyUpdateRequest",
@@ -78,4 +75,7 @@ __all__ = [
     # Auth schemas
     "AuthRecoveryPasswordRequest",
     "AuthResetPasswordRequest",
+    "RefreshTokenRequest",
+    "AuthTokenResponse",
+    "AccessTokenResponse",
 ]
