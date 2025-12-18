@@ -24,10 +24,6 @@ from .user_schemas import (
     UserResponse,
     UserMeResponse,
     UserLoginRequest,
-    UserTokenResponse,
-    RefreshTokenRequest,
-    AccessTokenResponse,
-    UserChangePasswordRequest,
 )
 
 from .company_schemas import (
@@ -47,6 +43,12 @@ from .location_schemas import (
     LocationUserAssignmentResponse,
 )
 
+from .auth_schemas import (
+    AuthRecoveryPasswordRequest,
+    AuthResetPasswordRequest,
+    AuthTokenResponse,
+    RefreshTokenRequest,
+    AccessTokenResponse,
 from .emergency_contact_schemas import (
     EmergencyContactCreateRequest,
     EmergencyContactUpdateRequest,
@@ -75,10 +77,6 @@ __all__ = [
     "UserResponse",
     "UserMeResponse",
     "UserLoginRequest",
-    "UserTokenResponse",
-    "RefreshTokenRequest",
-    "AccessTokenResponse",
-    "UserChangePasswordRequest",
     # Company schemas
     "CompanyCreateRequest",
     "CompanyUpdateRequest",
@@ -92,6 +90,12 @@ __all__ = [
     "LocationAssignCompanyRequest",
     "LocationAssignUserRequest",
     "LocationUserAssignmentResponse",
+    # Auth schemas
+    "AuthRecoveryPasswordRequest",
+    "AuthResetPasswordRequest",
+    "RefreshTokenRequest",
+    "AuthTokenResponse",
+    "AccessTokenResponse",
     # Emergency contact schemas
     "EmergencyContactCreateRequest",
     "EmergencyContactUpdateRequest",

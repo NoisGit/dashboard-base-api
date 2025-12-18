@@ -1,6 +1,6 @@
 """Auth service module for Sentinel Enterprise API."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from argon2 import PasswordHasher
@@ -10,13 +10,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from src.auth import create_token_pair, create_access_token
 from src.auth.utils import get_user_id_from_refresh_token
+from src.services.email_service import EmailService
+from src.config.config import settings
+import secrets
+
 
 from src.models import User
 from src.schemas import (
     UserLoginRequest,
     RefreshTokenRequest,
-    UserTokenResponse,
+    AuthTokenResponse,
     AccessTokenResponse,
+    AuthRecoveryPasswordRequest,
+    AuthResetPasswordRequest,
 )
 
 ph = PasswordHasher()
@@ -25,8 +31,11 @@ ph = PasswordHasher()
 class AuthService:
     """Service for user operations."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self,
+                 email_service: EmailService,
+                 session: AsyncSession) -> None:
         self.session = session
+        self.email_service = email_service
 
     def _hash_password(self, plain_password: str) -> str:
         return ph.hash(plain_password)
@@ -83,7 +92,7 @@ class AuthService:
         await self.session.commit()
         await self.session.refresh(user)
 
-    async def login_user(self, user_data: UserLoginRequest) -> UserTokenResponse:
+    async def login_user(self, user_data: UserLoginRequest) -> AuthTokenResponse:
         """Authenticate user and return token pair"""
         user = await self.get_user_by_email(user_data.email)
 
@@ -111,13 +120,13 @@ class AuthService:
         await self.update_user_last_login(user.id)
 
         token_pair = create_token_pair(user.id, user.role)
-        user_token_response = UserTokenResponse(**token_pair)
+        user_token_response = AuthTokenResponse(**token_pair)
 
         await self.update_refresh_token(user.id, user_token_response.refresh_token)
 
         return user_token_response
 
-    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> UserTokenResponse:
+    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> AuthTokenResponse:
         """Refresh access token using a valid refresh token"""
         user_id = get_user_id_from_refresh_token(refresh_data.refresh_token)
 
@@ -130,7 +139,7 @@ class AuthService:
             )
 
         token_pair = create_token_pair(user.id, user.role)
-        user_token_response = UserTokenResponse(**token_pair)
+        user_token_response = AuthTokenResponse(**token_pair)
 
         await self.update_refresh_token(user.id, user_token_response.refresh_token)
 
@@ -199,6 +208,81 @@ class AuthService:
             )
 
         user.refresh_token = None
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+
+    async def recovery_password(self, user_data: AuthRecoveryPasswordRequest) -> None:
+        """Verify user email and send recovery password email"""
+        user = await self.get_user_by_email(user_data.email)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
+
+        # Expiration Timestamp for reset token
+        current_timestamp = datetime.now()
+        reset_token_expiry = current_timestamp + \
+            timedelta(minutes=15)  # 15 minutes for expiry
+
+        # Generate a secure random token
+        reset_token = secrets.token_urlsafe(32)
+
+        user.reset_token = reset_token
+        user.reset_token_expiry = reset_token_expiry
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+
+        context_base = {
+            "full_name": user.full_name,
+            "logo_url": settings.LOGO_URL
+        }
+
+        if user:
+            self.email_service.send_templated_email(
+                to_email=user.email,
+                subject="Recuperar Contraseña",
+                template_name="reset_password.html",
+                context={
+                    **context_base,
+                    "email": user.email,
+                    "reset_token": user.reset_token
+                }
+            )
+
+    async def reset_password(self, user_data: AuthResetPasswordRequest) -> None:
+        """Verify reset token and update user password"""
+        statement = select(User).where(
+            User.reset_token == user_data.reset_token)
+        result = await self.session.execute(statement)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
+
+        if user.reset_token_expiry < datetime.now():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Reset token has expired"
+            )
+
+        if user_data.new_password != user_data.confirm_new_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password and confirmation do not match"
+            )
+
+        new_password_hashed = ph.hash(user_data.new_password)
+
+        user.password_hash = new_password_hashed
+        user.reset_token = None
+        user.reset_token_expiry = None
         self.session.add(user)
         await self.session.commit()
         await self.session.refresh(user)

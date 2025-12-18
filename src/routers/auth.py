@@ -7,16 +7,18 @@ from src.auth.utils import get_user_id_from_token
 from src.dependencies import get_auth_service
 from src.schemas import (
     UserLoginRequest,
-    UserTokenResponse,
+    AuthTokenResponse,
     RefreshTokenRequest,
     AccessTokenResponse,
+    AuthRecoveryPasswordRequest,
+    AuthResetPasswordRequest,
 )
 from src.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=UserTokenResponse)
+@router.post("/login", response_model=AuthTokenResponse)
 async def login_user(
     user_data: UserLoginRequest,
     service: AuthService = Depends(get_auth_service)
@@ -26,7 +28,7 @@ async def login_user(
     return user_token
 
 
-@router.post("/refresh", response_model=UserTokenResponse)
+@router.post("/refresh", response_model=AuthTokenResponse)
 async def refresh_token(
     refresh_data: RefreshTokenRequest,
     service: AuthService = Depends(get_auth_service),
@@ -55,3 +57,21 @@ async def logout_user(
 ):
     """Logout user by clearing refresh token"""
     await service.logout_user(user_id)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+async def forgot_password(
+    user_data: AuthRecoveryPasswordRequest,
+    service: AuthService = Depends(get_auth_service)
+):
+    """Logout user by clearing refresh token"""
+    await service.recovery_password(user_data)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_password(
+    user_data: AuthResetPasswordRequest,
+    service: AuthService = Depends(get_auth_service)
+):
+    """Logout user by clearing refresh token"""
+    await service.reset_password(user_data)

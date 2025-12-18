@@ -7,6 +7,7 @@ from src.database import get_session
 from src.services.audit_log_service import AuditLogService
 from src.services.auth_service import AuthService
 from src.services.user_service import UserService
+from src.services.email_service import EmailService
 from src.services.company_service import CompanyService
 from src.services.location_service import LocationService
 from src.services.emergency_contact_service import EmergencyContactService
@@ -20,11 +21,17 @@ def get_audit_log_service(
     return AuditLogService(session)
 
 
+def get_email_service() -> EmailService:
+    """Dependency to get EmailService instance"""
+    return EmailService()
+
+
 def get_auth_service(
     session: AsyncSession = Depends(get_session),
+    email_service: EmailService = Depends(get_email_service),
 ) -> AuthService:
     """Dependency to get a AuthService instance."""
-    return AuthService(session)
+    return AuthService(email_service, session)
 
 
 def get_user_service(
