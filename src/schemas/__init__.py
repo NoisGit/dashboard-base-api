@@ -24,6 +24,7 @@ from .user_schemas import (
     UserResponse,
     UserMeResponse,
     UserLoginRequest,
+    UserChangePasswordRequest,
 )
 
 from .company_schemas import (
@@ -49,6 +50,8 @@ from .auth_schemas import (
     AuthTokenResponse,
     RefreshTokenRequest,
     AccessTokenResponse,
+)
+
 from .emergency_contact_schemas import (
     EmergencyContactCreateRequest,
     EmergencyContactUpdateRequest,
@@ -77,6 +80,7 @@ __all__ = [
     "UserResponse",
     "UserMeResponse",
     "UserLoginRequest",
+    "UserChangePasswordRequest",
     # Company schemas
     "CompanyCreateRequest",
     "CompanyUpdateRequest",
