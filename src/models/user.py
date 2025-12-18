@@ -67,6 +67,10 @@ class User(SQLModel, table=True):
 
     recovery_password_mode: Optional[bool] = None
 
+    # Recovery Password Fields
+    reset_token: Optional[str] = Field(default=None, max_length=255)
+    reset_token_expiry: Optional[datetime] = None
+
     # Who created this user (self-reference to users.id)
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.now)

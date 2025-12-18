@@ -10,6 +10,8 @@ from src.schemas import (
     UserTokenResponse,
     RefreshTokenRequest,
     AccessTokenResponse,
+    AuthRecoveryPasswordRequest,
+    AuthResetPasswordRequest,
 )
 from src.services.auth_service import AuthService
 
@@ -55,3 +57,21 @@ async def logout_user(
 ):
     """Logout user by clearing refresh token"""
     await service.logout_user(user_id)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+async def forgot_password(
+    user_data: AuthRecoveryPasswordRequest,
+    service: AuthService = Depends(get_auth_service)
+):
+    """Logout user by clearing refresh token"""
+    await service.recovery_password(user_data)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_password(
+    user_data: AuthResetPasswordRequest,
+    service: AuthService = Depends(get_auth_service)
+):
+    """Logout user by clearing refresh token"""
+    await service.reset_password(user_data)

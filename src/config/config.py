@@ -4,8 +4,6 @@ Defines the Settings class used to load and centralize environment
 configuration (database, secrets, runtime environment, etc.).
 """
 
-from functools import lru_cache
-
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -28,14 +26,24 @@ class Settings(BaseSettings):
     db_pass: str | None = Field(default=None, alias="DB_PASS")
     db_name: str | None = Field(default=None, alias="DB_NAME")
 
+    # Legacy / compatibility: full DATABASE_URL
+    database_url_env: str | None = Field(default=None, alias="DATABASE_URL")
+
+    # SMTP settings
+    SMTP_SERVER: str
+    SMTP_PORT: int
+    SMTP_USER: str
+    SMTP_PASSWORD: str
+    SMTP_FROM_EMAIL: str
+
+    # Logo URL setting
+    LOGO_URL: str
+
     # Secret key for JWT or other security purposes
     secret_key: str = Field(
         default="change_this_secret_key",
         alias="SECRET_KEY",
     )
-
-    # Legacy / compatibility: full DATABASE_URL
-    database_url_env: str | None = Field(default=None, alias="DATABASE_URL")
 
     # pydantic-settings configuration
     model_config = SettingsConfigDict(
@@ -69,11 +77,4 @@ class Settings(BaseSettings):
         )
 
 
-@lru_cache
-def get_settings() -> Settings:
-    """
-    Return a single cached Settings instance.
-
-    Avoids re-reading the .env file on every import.
-    """
-    return Settings()
+settings = Settings()

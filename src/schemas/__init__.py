@@ -41,6 +41,11 @@ from .location_schemas import (
     LocationUserAssignmentResponse,
 )
 
+from .auth_schemas import (
+    AuthRecoveryPasswordRequest,
+    AuthResetPasswordRequest,
+)
+
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -70,4 +75,7 @@ __all__ = [
     "LocationAssignCompanyRequest",
     "LocationAssignUserRequest",
     "LocationUserAssignmentResponse",
+    # Auth schemas
+    "AuthRecoveryPasswordRequest",
+    "AuthResetPasswordRequest",
 ]

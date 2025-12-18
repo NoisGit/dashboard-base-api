@@ -17,11 +17,9 @@ from sqlmodel import SQLModel, select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from src.config.config import get_settings
+from src.config.config import settings
 from src.models import __all__ as models  # noqa: F401  # force models import
 
-
-settings = get_settings()
 
 # Final database URL and debug flag come from central Settings
 DATABASE_URL = settings.database_url

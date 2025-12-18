@@ -9,10 +9,12 @@ from .auth_service import AuthService
 from .user_service import UserService
 from .company_service import CompanyService
 from .location_service import LocationService
+from .email_service import EmailService
 
 __all__ = [
     "AuthService",
     "UserService",
     "CompanyService",
     "LocationService",
+    "EmailService",
 ]

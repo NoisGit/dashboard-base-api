@@ -5,9 +5,9 @@ This package centralizes application configuration and related utilities.
 It exposes the main Settings object and helper functions used across the project.
 """
 
-from .config import Settings, get_settings
+from .config import Settings, settings
 
 __all__ = [
     "Settings",
-    "get_settings",
+    "settings",
 ]
