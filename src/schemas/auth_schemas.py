@@ -43,5 +43,5 @@ __all__ = [
     "AuthResetPasswordRequest",
     "RefreshTokenRequest",
     "AuthTokenResponse",
-    "AuthAccessTokenResponse",
+    "AccessTokenResponse",
 ]

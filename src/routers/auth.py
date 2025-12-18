@@ -7,7 +7,7 @@ from src.auth.utils import get_user_id_from_token
 from src.dependencies import get_auth_service
 from src.schemas import (
     UserLoginRequest,
-    UserTokenResponse,
+    AuthTokenResponse,
     RefreshTokenRequest,
     AccessTokenResponse,
     AuthRecoveryPasswordRequest,
@@ -18,7 +18,7 @@ from src.services.auth_service import AuthService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=UserTokenResponse)
+@router.post("/login", response_model=AuthTokenResponse)
 async def login_user(
     user_data: UserLoginRequest,
     service: AuthService = Depends(get_auth_service)
@@ -28,7 +28,7 @@ async def login_user(
     return user_token
 
 
-@router.post("/refresh", response_model=UserTokenResponse)
+@router.post("/refresh", response_model=AuthTokenResponse)
 async def refresh_token(
     refresh_data: RefreshTokenRequest,
     service: AuthService = Depends(get_auth_service),
