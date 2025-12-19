@@ -11,7 +11,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from src.core.enums import SupportTicketStatus
+from src.core.enums import SupportTicketStatus, UserRole
 from src.models import SupportTicket
 from src.models.support_response import SupportResponse
 from src.schemas import (
@@ -22,6 +22,7 @@ from src.schemas import (
     SupportTicketCommentUpdateRequest,
     SupportTicketCommentResponse,
 )
+from src.services import UserService
 
 
 class SupportTicketService:
@@ -30,8 +31,10 @@ class SupportTicketService:
     def __init__(
         self,
         session: AsyncSession,
+        user_service: UserService,
     ):
         self.session = session
+        self.user_service = user_service
 
     async def _get_support_ticket_by_id(
         self,
@@ -53,6 +56,15 @@ class SupportTicketService:
         )
         result = await self.session.execute(stmt)
         return result.scalars().first()
+
+    async def _get_user_or_404(self, user_id: int):
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        return user
 
     async def list_support_tickets(
         self,
@@ -285,12 +297,14 @@ class SupportTicketService:
 
     async def update_support_ticket_comment(
         self,
+        user_id: int,
         ticket_id: int,
         comment_id: int,
         payload: SupportTicketCommentUpdateRequest,
-        is_owner_user_id: Optional[int] = None,
     ) -> SupportTicketCommentResponse:
         """Update support ticket comment"""
+        user = await self._get_user_or_404(user_id)
+
         ticket = await self._get_support_ticket_by_id(ticket_id)
         if not ticket or ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
@@ -305,7 +319,7 @@ class SupportTicketService:
                 detail="Support ticket comment not found",
             )
 
-        if is_owner_user_id is not None and comment.created_by != is_owner_user_id:
+        if user.role != UserRole.SUPERADMIN and comment.created_by != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not allowed",
@@ -330,11 +344,13 @@ class SupportTicketService:
 
     async def delete_support_ticket_comment(
         self,
+        user_id: int,
         ticket_id: int,
         comment_id: int,
-        is_owner_user_id: Optional[int] = None,
     ):
         """Delete support ticket comment"""
+        user = await self._get_user_or_404(user_id)
+
         ticket = await self._get_support_ticket_by_id(ticket_id)
         if not ticket or ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
@@ -349,7 +365,7 @@ class SupportTicketService:
                 detail="Support ticket comment not found",
             )
 
-        if is_owner_user_id is not None and comment.created_by != is_owner_user_id:
+        if user.role != UserRole.SUPERADMIN and comment.created_by != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not allowed",
