@@ -16,7 +16,7 @@ class UserCreateRequest(BaseModel):
     email: EmailStr
     password: str
     role: UserRole
-    plan_id: int
+    plan_id: Optional[int] = None
     status: bool = True
 
 

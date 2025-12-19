@@ -56,7 +56,7 @@ class User(SQLModel, table=True):
     role: UserRole = Field(max_length=10)
 
     # DBML: plan_id int
-    plan_id: int = Field(foreign_key="plans.id")
+    plan_id: Optional[int] = Field(default=None, foreign_key="plans.id")
 
     # Optional fields (DBML: [null])
     last_session: Optional[datetime] = None
