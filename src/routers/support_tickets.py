@@ -33,18 +33,26 @@ async def list_support_tickets(
     params: Params = Depends(),
     status_filter: Optional[SupportTicketStatus] = Query(None, alias="status"),
     service: SupportTicketService = Depends(get_support_ticket_service),
-    _=Depends(
-        RoleChecker(
-            [
-                UserRole.SUPERADMIN,
-            ],
-        ),
-    ),
+    user_data=Depends(get_user_data_from_token),
 ) -> Page[SupportTicketResponse]:
     """List support tickets"""
+    user_id, role = user_data
+
+    owner_user_id = None
+    excluded_statuses = None
+
+    if role != UserRole.SUPERADMIN:
+        owner_user_id = user_id
+        excluded_statuses = [
+            SupportTicketStatus.CANCELED,
+            SupportTicketStatus.CLOSED,
+        ]
+
     tickets = await service.list_support_tickets(
         params=params,
         status_filter=status_filter,
+        owner_user_id=owner_user_id,
+        excluded_statuses=excluded_statuses,
     )
     return tickets
 
@@ -235,14 +243,6 @@ async def update_support_ticket_comment(
     user_data=Depends(get_user_data_from_token),
 ) -> SupportTicketCommentResponse:
     """Update support ticket comment"""
-    RoleChecker(
-        [
-            UserRole.SUPERADMIN,
-            UserRole.ADMIN,
-            UserRole.SUBADMIN,
-        ],
-    )(user_data)
-
     user_id, role = user_data
     owner_user_id = None if role == UserRole.SUPERADMIN else user_id
 
@@ -266,14 +266,6 @@ async def delete_support_ticket_comment(
     user_data=Depends(get_user_data_from_token),
 ):
     """Delete support ticket comment"""
-    RoleChecker(
-        [
-            UserRole.SUPERADMIN,
-            UserRole.ADMIN,
-            UserRole.SUBADMIN,
-        ],
-    )(user_data)
-
     user_id, role = user_data
     owner_user_id = None if role == UserRole.SUPERADMIN else user_id
 
