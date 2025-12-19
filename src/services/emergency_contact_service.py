@@ -2,7 +2,8 @@
 
 from typing import List, Optional, cast
 
-from fastapi_pagination import Page, paginate, Params
+from fastapi_pagination import Page, Params
+from fastapi_pagination.ext.sqlmodel import paginate
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, or_, desc
@@ -40,8 +41,8 @@ class EmergencyContactService:
 
     async def list_emergency_contacts(
         self,
-        params: Params,
         location_id: int,
+        params: Params,
     ) -> Page[EmergencyContactResponse]:
         """
         List emergency contacts for a location.
@@ -152,7 +153,7 @@ class EmergencyContactService:
         Update an existing emergency contact.
         Applies consistency rules and authorization checks.
         """
-        user = self.user_service.get_user_by_id(user_id)
+        user = await self.user_service.get_user_by_id(user_id)
 
         if not user:
             raise HTTPException(
@@ -185,7 +186,7 @@ class EmergencyContactService:
         self,
         user_id: int,
         contact_id: int,
-    ) -> None:
+    ):
         """
         Delete an emergency contact.
         Only SUPERADMIN can delete default numbers.
@@ -198,7 +199,7 @@ class EmergencyContactService:
                 detail=f"Emergency contact with id {contact_id} not found.",
             )
 
-        user = self.user_service.get_user_by_id(user_id)
+        user = await self.user_service.get_user_by_id(user_id)
 
         if not user:
             raise HTTPException(
