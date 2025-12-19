@@ -58,9 +58,21 @@ class SupportTicketService:
         self,
         params: Params,
         status_filter: Optional[SupportTicketStatus],
+        owner_user_id: Optional[int] = None,
+        excluded_statuses: Optional[List[SupportTicketStatus]] = None,
     ) -> Page[SupportTicketResponse]:
         """List support tickets with status filter"""
         stmt = select(SupportTicket)
+
+        if owner_user_id is not None:
+            stmt = stmt.where(SupportTicket.created_by == owner_user_id)
+
+        if excluded_statuses:
+            stmt = stmt.where(
+                SupportTicket.status.notin_(  # pylint: disable=no-member
+                    excluded_statuses)
+            )
+
         if status_filter is not None:
             stmt = stmt.where(SupportTicket.status == status_filter)
 
