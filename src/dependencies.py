@@ -71,7 +71,7 @@ def get_support_ticket_service(
     user_service: UserService = Depends(get_user_service),
 ) -> SupportTicketService:
     """Dependency to get a SupportTicketService instance"""
-    return SupportTicketService(session, user_service, user_service)
+    return SupportTicketService(session, user_service)
 
 
 def get_notification_service(
