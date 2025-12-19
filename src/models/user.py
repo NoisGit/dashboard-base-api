@@ -64,6 +64,7 @@ class User(SQLModel, table=True):
     date_change_status: Optional[datetime] = None
     last_update: Optional[datetime] = None
     refresh_token: Optional[str] = Field(default=None, max_length=255)
+    fcm_token: Optional[str] = Field(default=None, max_length=255)
 
     # Recovery Password Fields
     reset_token: Optional[str] = Field(default=None, max_length=255)
