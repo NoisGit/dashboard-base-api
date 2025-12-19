@@ -5,7 +5,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, status, Query
 from fastapi_pagination import Page, Params
 
-from src.auth.utils import get_user_data_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole, SupportTicketStatus
 from src.dependencies import get_support_ticket_service
@@ -50,7 +49,7 @@ async def list_all_support_tickets(
 
 
 @router.get(
-    "/",
+    "/me",
     response_model=Page[SupportTicketResponse],
 )
 async def list_my_support_tickets(
@@ -262,17 +261,22 @@ async def update_support_ticket_comment(
     comment_id: int,
     payload: SupportTicketCommentUpdateRequest,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    user_data=Depends(get_user_data_from_token),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
 ) -> SupportTicketCommentResponse:
     """Update support ticket comment"""
-    user_id, role = user_data
-    is_owner_user_id = None if role == UserRole.SUPERADMIN else user_id
-
     comment = await service.update_support_ticket_comment(
+        user_id=user_id,
         ticket_id=ticket_id,
         comment_id=comment_id,
         payload=payload,
-        is_owner_user_id=is_owner_user_id,
     )
     return comment
 
@@ -285,14 +289,19 @@ async def delete_support_ticket_comment(
     ticket_id: int,
     comment_id: int,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    user_data=Depends(get_user_data_from_token),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
 ):
     """Delete support ticket comment"""
-    user_id, role = user_data
-    is_owner_user_id = None if role == UserRole.SUPERADMIN else user_id
-
     await service.delete_support_ticket_comment(
+        user_id=user_id,
         ticket_id=ticket_id,
         comment_id=comment_id,
-        is_owner_user_id=is_owner_user_id,
     )

@@ -60,6 +60,7 @@ def get_emergency_contact_service(
 
 def get_support_ticket_service(
     session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> SupportTicketService:
     """Dependency to get a SupportTicketService instance"""
-    return SupportTicketService(session)
+    return SupportTicketService(session, user_service)
