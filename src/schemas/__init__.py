@@ -63,6 +63,9 @@ from .notification_schemas import (
     SimpleNoticationRequest,
     NotificationResponse,
     NotificationMessageResponse,
+    SupportTicketCommentCreateRequest,
+    SupportTicketCommentUpdateRequest,
+    SupportTicketCommentResponse,
 )
 
 __all__ = [
@@ -109,11 +112,4 @@ __all__ = [
     "SupportTicketCreateRequest",
     "SupportTicketUpdateRequest",
     "SupportTicketResponse",
-    "SupportTicketCommentCreateRequest",
-    "SupportTicketCommentUpdateRequest",
-    "SupportTicketCommentResponse",
-    # Notification schemas
-    "SimpleNoticationRequest",
-    "NotificationResponse",
-    "NotificationMessageResponse",
 ]
