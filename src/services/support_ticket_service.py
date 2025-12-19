@@ -58,14 +58,14 @@ class SupportTicketService:
         self,
         params: Params,
         status_filter: Optional[SupportTicketStatus],
-        owner_user_id: Optional[int] = None,
+        is_owner_user_id: Optional[int] = None,
         excluded_statuses: Optional[List[SupportTicketStatus]] = None,
     ) -> Page[SupportTicketResponse]:
         """List support tickets with status filter"""
         stmt = select(SupportTicket)
 
-        if owner_user_id is not None:
-            stmt = stmt.where(SupportTicket.created_by == owner_user_id)
+        if is_owner_user_id is not None:
+            stmt = stmt.where(SupportTicket.created_by == is_owner_user_id)
 
         if excluded_statuses:
             stmt = stmt.where(
@@ -288,7 +288,7 @@ class SupportTicketService:
         ticket_id: int,
         comment_id: int,
         payload: SupportTicketCommentUpdateRequest,
-        owner_user_id: Optional[int] = None,
+        is_owner_user_id: Optional[int] = None,
     ) -> SupportTicketCommentResponse:
         """Update support ticket comment"""
         ticket = await self._get_support_ticket_by_id(ticket_id)
@@ -305,7 +305,7 @@ class SupportTicketService:
                 detail="Support ticket comment not found",
             )
 
-        if owner_user_id is not None and comment.created_by != owner_user_id:
+        if is_owner_user_id is not None and comment.created_by != is_owner_user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not allowed",
@@ -332,7 +332,7 @@ class SupportTicketService:
         self,
         ticket_id: int,
         comment_id: int,
-        owner_user_id: Optional[int] = None,
+        is_owner_user_id: Optional[int] = None,
     ):
         """Delete support ticket comment"""
         ticket = await self._get_support_ticket_by_id(ticket_id)
@@ -349,7 +349,7 @@ class SupportTicketService:
                 detail="Support ticket comment not found",
             )
 
-        if owner_user_id is not None and comment.created_by != owner_user_id:
+        if is_owner_user_id is not None and comment.created_by != is_owner_user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not allowed",
