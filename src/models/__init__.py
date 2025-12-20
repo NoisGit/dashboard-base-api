@@ -26,6 +26,7 @@ from .document import Document
 from .support_ticket import SupportTicket
 from .support_response import SupportResponse
 from .audit_log import AuditLog
+from .service_contacts import ServiceContact
 
 
 __all__ = [
@@ -47,4 +48,5 @@ __all__ = [
     "SupportTicket",
     "SupportResponse",
     "AuditLog",
+    "ServiceContact",
 ]

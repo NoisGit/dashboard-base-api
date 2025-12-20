@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .user_location_access import UserLocationAccess
     from .custom_field import CustomField
     from .emergency_contact import EmergencyContact
+    from .service_contacts import ServiceContact
     from .access_list import AccessList
     from .access_log import AccessLog
     from .user import User
@@ -75,6 +76,9 @@ class Location(SQLModel, table=True):
         back_populates="location",
     )
     emergency_contacts: List["EmergencyContact"] = Relationship(
+        back_populates="location",
+    )
+    service_contacts: List["ServiceContact"] = Relationship(
         back_populates="location",
     )
     access_lists: List["AccessList"] = Relationship(

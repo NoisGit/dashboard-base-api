@@ -12,6 +12,7 @@ from .location_service import LocationService
 from .email_service import EmailService
 from .emergency_contact_service import EmergencyContactService
 from .support_ticket_service import SupportTicketService
+from .service_contact_service import ServiceContactService
 
 __all__ = [
     "AuthService",
@@ -21,5 +22,5 @@ __all__ = [
     "EmailService",
     "EmergencyContactService",
     "SupportTicketService",
-    "SupportTicketService",
+    "ServiceContactService",
 ]

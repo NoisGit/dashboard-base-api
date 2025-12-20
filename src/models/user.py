@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .custom_field import CustomField
     from .document import Document
     from .emergency_contact import EmergencyContact
+    from .service_contacts import ServiceContact
     from .external_people import ExternalPeople
     from .location import Location
     from .plan import Plan
@@ -154,6 +155,13 @@ class User(SQLModel, table=True):
         back_populates="creator",
         sa_relationship_kwargs={
             "foreign_keys": "[EmergencyContact.created_by]",
+        },
+    )
+
+    service_contacts_created: List["ServiceContact"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={
+            "foreign_keys": "[ServiceContact.created_by]",
         },
     )
 
