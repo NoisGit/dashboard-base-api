@@ -69,9 +69,10 @@ def get_emergency_contact_service(
 def get_service_contact_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
+    location_service: LocationService = Depends(get_location_service),
 ) -> ServiceContactService:
     """Dependency to get a ServiceContactService instance."""
-    return ServiceContactService(session, user_service)
+    return ServiceContactService(session, user_service, location_service)
 
 
 def get_support_ticket_service(

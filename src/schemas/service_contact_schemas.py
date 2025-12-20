@@ -23,7 +23,6 @@ class ServiceContactUpdateRequest(BaseModel):
     person_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
-    location_id: Optional[int] = None
 
 
 class ServiceContactResponse(BaseResponse):
