@@ -69,7 +69,7 @@ async def create_emergency_contact(
     Create a new emergency contact.
     """
 
-    await service.create_emergency_contact(payload, user_id)
+    await service.create_emergency_contact(user_id, payload)
     return EmptyResponse()
 
 
@@ -105,7 +105,7 @@ async def delete_emergency_contact(
         UserRole.ADMIN,
         UserRole.SUBADMIN,
     ])),
-) -> None:
+):
     """
     Delete an emergency contact.
     """

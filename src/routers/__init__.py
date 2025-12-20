@@ -13,6 +13,7 @@ from .companies import router as companies_router
 from .locations import router as locations_router
 from .support_tickets import router as support_tickets_router
 from .service_contacts import router as service_contacts_router
+from .notifications import router as notifications_router
 
 __all__ = [
     "audit_log_router",
@@ -23,4 +24,5 @@ __all__ = [
     "locations_router",
     "support_tickets_router",
     "service_contacts_router",
+    "notifications_router",
 ]

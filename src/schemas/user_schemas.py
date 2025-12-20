@@ -16,7 +16,7 @@ class UserCreateRequest(BaseModel):
     email: EmailStr
     password: str
     role: UserRole
-    plan_id: int
+    plan_id: Optional[int] = None
     status: bool = True
 
 
@@ -80,12 +80,3 @@ class AccessTokenResponse(BaseModel):
     """Schema for access token only response"""
     access_token: str
     token_type: str = "bearer"
-
-
-__all__ = [
-    "UserCreateRequest",
-    "UserUpdateRequest",
-    "UserResponse",
-    "UserMeResponse",
-    "UserLoginRequest",
-]

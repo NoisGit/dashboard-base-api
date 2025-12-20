@@ -57,7 +57,7 @@ class User(SQLModel, table=True):
     role: UserRole = Field(max_length=10)
 
     # DBML: plan_id int
-    plan_id: int = Field(foreign_key="plans.id")
+    plan_id: Optional[int] = Field(default=None, foreign_key="plans.id")
 
     # Optional fields (DBML: [null])
     last_session: Optional[datetime] = None
@@ -65,6 +65,7 @@ class User(SQLModel, table=True):
     date_change_status: Optional[datetime] = None
     last_update: Optional[datetime] = None
     refresh_token: Optional[str] = Field(default=None, max_length=255)
+    fcm_token: Optional[str] = Field(default=None, max_length=255)
 
     # Recovery Password Fields
     reset_token: Optional[str] = Field(default=None, max_length=255)

@@ -330,3 +330,12 @@ class UserService:
             user_id=user_id,
             refresh_token=None,
         )
+
+    async def get_all_fcm_tokens(self) -> List[str]:
+        """Get FCM tokens of all users"""
+        result = await self.session.execute(
+            select(User.fcm_token)
+            .where(User.fcm_token != None)  # pylint: disable=singleton-comparison
+        )
+        tokens = result.scalars().all()
+        return tokens
