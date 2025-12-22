@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .custom_field import CustomField
     from .document import Document
     from .emergency_contact import EmergencyContact
+    from .service_contacts import ServiceContact
     from .external_people import ExternalPeople
     from .location import Location
     from .plan import Plan
@@ -56,7 +57,7 @@ class User(SQLModel, table=True):
     role: UserRole = Field(max_length=10)
 
     # DBML: plan_id int
-    plan_id: int = Field(foreign_key="plans.id")
+    plan_id: Optional[int] = Field(default=None, foreign_key="plans.id")
 
     # Optional fields (DBML: [null])
     last_session: Optional[datetime] = None
@@ -155,6 +156,13 @@ class User(SQLModel, table=True):
         back_populates="creator",
         sa_relationship_kwargs={
             "foreign_keys": "[EmergencyContact.created_by]",
+        },
+    )
+
+    service_contacts_created: List["ServiceContact"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={
+            "foreign_keys": "[ServiceContact.created_by]",
         },
     )
 
