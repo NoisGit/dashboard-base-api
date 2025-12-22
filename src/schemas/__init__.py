@@ -46,6 +46,7 @@ from .auth_schemas import (
     RefreshTokenRequest,
     AccessTokenResponse,
 )
+
 from .emergency_contact_schemas import (
     EmergencyContactCreateRequest,
     EmergencyContactUpdateRequest,
@@ -60,6 +61,12 @@ from .notification_schemas import (
     SimpleNoticationRequest,
     NotificationResponse,
     NotificationMessageResponse,
+)
+
+from .service_contact_schemas import (
+    ServiceContactCreateRequest,
+    ServiceContactUpdateRequest,
+    ServiceContactResponse,
 )
 
 __all__ = [
@@ -106,6 +113,10 @@ __all__ = [
     "SupportTicketCreateRequest",
     "SupportTicketUpdateRequest",
     "SupportTicketResponse",
+    # Service contact schemas
+    "ServiceContactCreateRequest",
+    "ServiceContactUpdateRequest",
+    "ServiceContactResponse",
     # Notification schemas
     "SimpleNoticationRequest",
     "NotificationResponse",

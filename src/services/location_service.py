@@ -47,6 +47,10 @@ class LocationService:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
+    async def get_location_by_id(self, location_id: int) -> Optional[LocationResponse]:
+        """Public helper to retrieve a Location by ID (used by other services)."""
+        return await self._get_location_by_id(location_id)
+
     async def list_locations(
         self,
         params: Params,
