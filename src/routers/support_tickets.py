@@ -12,6 +12,9 @@ from src.schemas import (
     SupportTicketCreateRequest,
     SupportTicketUpdateRequest,
     SupportTicketResponse,
+    SupportTicketCommentCreateRequest,
+    SupportTicketCommentUpdateRequest,
+    SupportTicketCommentResponse,
 )
 from src.services.support_ticket_service import SupportTicketService
 
@@ -22,10 +25,10 @@ router = APIRouter(
 
 
 @router.get(
-    "/",
+    "/all",
     response_model=Page[SupportTicketResponse],
 )
-async def list_support_tickets(
+async def list_all_support_tickets(
     params: Params = Depends(),
     status_filter: Optional[SupportTicketStatus] = Query(None, alias="status"),
     service: SupportTicketService = Depends(get_support_ticket_service),
@@ -41,6 +44,36 @@ async def list_support_tickets(
     tickets = await service.list_support_tickets(
         params=params,
         status_filter=status_filter,
+    )
+    return tickets
+
+
+@router.get(
+    "/me",
+    response_model=Page[SupportTicketResponse],
+)
+async def list_my_support_tickets(
+    params: Params = Depends(),
+    status_filter: Optional[SupportTicketStatus] = Query(None, alias="status"),
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> Page[SupportTicketResponse]:
+    """List support tickets"""
+    tickets = await service.list_support_tickets(
+        params=params,
+        status_filter=status_filter,
+        is_owner_user_id=user_id,
+        excluded_statuses=[
+            SupportTicketStatus.CANCELED,
+            SupportTicketStatus.CLOSED,
+        ],
     )
     return tickets
 
@@ -138,4 +171,137 @@ async def delete_support_ticket(
     """Soft delete a support ticket"""
     await service.soft_delete_support_ticket(
         ticket_id=ticket_id,
+    )
+
+
+@router.get(
+    "/{ticket_id}/comments",
+    response_model=list[SupportTicketCommentResponse],
+)
+async def list_support_ticket_comments(
+    ticket_id: int,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> list[SupportTicketCommentResponse]:
+    """List support ticket comments"""
+    comments = await service.list_support_ticket_comments(
+        ticket_id=ticket_id,
+    )
+    return comments
+
+
+@router.get(
+    "/{ticket_id}/comments/{comment_id}",
+    response_model=SupportTicketCommentResponse,
+)
+async def get_support_ticket_comment_detail(
+    ticket_id: int,
+    comment_id: int,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> SupportTicketCommentResponse:
+    """Get support ticket comment by ID"""
+    comment = await service.get_support_ticket_comment_detail(
+        ticket_id=ticket_id,
+        comment_id=comment_id,
+    )
+    return comment
+
+
+@router.post(
+    "/{ticket_id}/comments",
+    response_model=SupportTicketCommentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_support_ticket_comment(
+    ticket_id: int,
+    payload: SupportTicketCommentCreateRequest,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> SupportTicketCommentResponse:
+    """Create support ticket comment"""
+    comment = await service.create_support_ticket_comment(
+        ticket_id=ticket_id,
+        user_id=user_id,
+        payload=payload,
+    )
+    return comment
+
+
+@router.put(
+    "/{ticket_id}/comments/{comment_id}",
+    response_model=SupportTicketCommentResponse,
+)
+async def update_support_ticket_comment(
+    ticket_id: int,
+    comment_id: int,
+    payload: SupportTicketCommentUpdateRequest,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> SupportTicketCommentResponse:
+    """Update support ticket comment"""
+    comment = await service.update_support_ticket_comment(
+        user_id=user_id,
+        ticket_id=ticket_id,
+        comment_id=comment_id,
+        payload=payload,
+    )
+    return comment
+
+
+@router.delete(
+    "/{ticket_id}/comments/{comment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_support_ticket_comment(
+    ticket_id: int,
+    comment_id: int,
+    service: SupportTicketService = Depends(get_support_ticket_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+):
+    """Delete support ticket comment"""
+    await service.delete_support_ticket_comment(
+        user_id=user_id,
+        ticket_id=ticket_id,
+        comment_id=comment_id,
     )
