@@ -1,11 +1,14 @@
-import asyncio
-from sqlmodel import select
-from sqlalchemy import func
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
+from sqlmodel import select
+from sqlalchemy import func, desc
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import User, Location, AccessLog
-from src.schemas import SystemCountersResponse
+from src.schemas import (
+    SystemCountersResponse,
+    SystemStatsResponse,
+    MonthlyIncomeResponse,
+)
 
 
 class SystemService:
@@ -42,4 +45,34 @@ class SystemService:
             "users_plan_demo": res_users.count_demo or 0,
             "total_entrances": res_locations or 0,
             "income_today": res_access or 0
+        }
+
+    async def get_system_detail_income_by_month(self) -> MonthlyIncomeResponse:
+        """Get System detail income by month"""
+
+        # Access Income by month
+        stmt_income_by_month = select(
+            func.count(AccessLog.id).label('quantity'),
+            func.extract('month', AccessLog.created_at).label('month'),
+            func.extract('year', AccessLog.created_at).label('year')
+        ).group_by('year', 'month').order_by(desc('year'), desc('month'))
+        result = await self.session.execute(stmt_income_by_month)
+
+        res_income_by_month = result.mappings().all()
+
+        return MonthlyIncomeResponse(detail_income_by_month=res_income_by_month)
+
+    async def get_system_stats(self) -> SystemStatsResponse:
+        """Get System Stats"""
+        counters = await self.get_system_counters()
+        list_incomes = await self.get_system_detail_income_by_month()
+
+        return {
+            "status": "success",
+            "message": "System stats retrieved successfully",
+            "data": {
+                "counters": counters,
+                "detail_income_by_month": list_incomes.detail_income_by_month,
+                "detail_admins": []           # Pendiente de implementar en el servicio
+            }
         }

@@ -13,7 +13,7 @@ class SystemCountersResponse(BaseModel):
     income_today: int
 
 
-class MonthlyIncomeResponse(BaseModel):
+class IndividualMonthSchema(BaseModel):
     year: int
     month: int
     quantity: int
@@ -30,9 +30,13 @@ class AdminDetailResponse(BaseModel):
     janitors_count: int
 
 
+class MonthlyIncomeResponse(BaseModel):  # FOR TESTING PURPOSES ONLY
+    detail_income_by_month: List[IndividualMonthSchema]
+
+
 class StatsDataResponse(BaseModel):
     counters: SystemCountersResponse
-    detail_income_by_month: List[MonthlyIncomeResponse]
+    detail_income_by_month: List[IndividualMonthSchema]
     detail_admins: List[AdminDetailResponse]
 
 
