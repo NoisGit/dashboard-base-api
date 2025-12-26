@@ -6,7 +6,7 @@ from typing import List, Optional, cast
 
 from fastapi import HTTPException, status
 from fastapi_pagination import Page, Params
-from fastapi_pagination.ext.sqlmodel import paginate
+from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import desc, or_, select
 
@@ -22,7 +22,7 @@ from src.schemas import (
     BlacklistCreateRequest,
     BlacklistResponse,
 )
-from src.services import UserService
+from src.services.user_service import UserService
 
 
 class BlacklistService:
@@ -247,7 +247,14 @@ class BlacklistService:
         blacklist_type = await self._get_blacklist_type(created_by=user_id)
 
         stmt = (
-            select(AccessList, ExternalPeople)
+            select(
+                AccessList.id,
+                AccessList.location_id,
+                AccessList.name,
+                AccessList.reason,
+                AccessList.created_at,
+                ExternalPeople.id_number,
+            )
             .join(
                 ExternalPeople,
                 ExternalPeople.id == AccessList.external_people_id,
@@ -275,14 +282,14 @@ class BlacklistService:
             params,
             transformer=lambda items: [
                 BlacklistResponse(
-                    id=access.id,
-                    location_id=access.location_id,
-                    id_number=external.id_number,
-                    full_name=access.name,
-                    reason=access.reason or "",
-                    created_at=access.created_at,
+                    id=blacklist.id,
+                    location_id=blacklist.location_id,
+                    id_number=blacklist.id_number,
+                    full_name=blacklist.name,
+                    reason=blacklist.reason or "",
+                    created_at=blacklist.created_at,
                 )
-                for (access, external) in cast(List, items)
+                for blacklist in cast(List, items)
             ],
         )
 
