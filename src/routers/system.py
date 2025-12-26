@@ -9,6 +9,7 @@ from src.schemas import (
     SystemCountersResponse,
     SystemStatsResponse,
     MonthlyIncomeResponse,
+    DetailAdminsResponse,
 )
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -45,3 +46,15 @@ async def get_income_by_month(
     """Retrieve system income by month."""
     income_by_month = await service.get_system_detail_income_by_month()
     return income_by_month
+
+# FOR TESTING PURPOSES ONLY
+
+
+@router.get("/detail-admins", response_model=DetailAdminsResponse)
+async def get_detail_admins(
+    service: SystemService = Depends(get_system_service),
+    _=Depends(RoleChecker([UserRole.SUPERADMIN]))
+) -> DetailAdminsResponse:
+    """Retrieve system admin details."""
+    detail_admins = await service.get_detail_admins()
+    return detail_admins

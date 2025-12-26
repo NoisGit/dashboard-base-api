@@ -34,6 +34,10 @@ class MonthlyIncomeResponse(BaseModel):  # FOR TESTING PURPOSES ONLY
     detail_income_by_month: List[IndividualMonthSchema]
 
 
+class DetailAdminsResponse(BaseModel):  # FOR TESTING PURPOSES ONLY
+    detail_admins: List[AdminDetailResponse]
+
+
 class StatsDataResponse(BaseModel):
     counters: SystemCountersResponse
     detail_income_by_month: List[IndividualMonthSchema]
@@ -52,4 +56,5 @@ __all__ = [
     "AdminDetailResponse",
     "StatsDataResponse",
     "SystemStatsResponse",
+    "DetailAdminsResponse",
 ]

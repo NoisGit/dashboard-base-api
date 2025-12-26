@@ -75,6 +75,7 @@ from .system_schemas import (
     MonthlyIncomeResponse,
     AdminDetailResponse,
     StatsDataResponse,
+    DetailAdminsResponse,
 )
 
 __all__ = [
@@ -135,4 +136,5 @@ __all__ = [
     "MonthlyIncomeResponse",
     "AdminDetailResponse",
     "StatsDataResponse",
+    "DetailAdminsResponse",
 ]
