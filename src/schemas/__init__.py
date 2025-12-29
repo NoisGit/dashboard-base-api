@@ -47,6 +47,10 @@ from .auth_schemas import (
     AccessTokenResponse,
 )
 
+from .whitelist_schemas import (
+    WhitelistCreateRequest,
+    WhitelistResponse,
+)
 from .emergency_contact_schemas import (
     EmergencyContactCreateRequest,
     EmergencyContactUpdateRequest,
@@ -108,6 +112,9 @@ __all__ = [
     "RefreshTokenRequest",
     "AuthTokenResponse",
     "AccessTokenResponse",
+    # Whitelist schemas
+    "WhitelistCreateRequest",
+    "WhitelistResponse",
     # Emergency contact schemas
     "EmergencyContactCreateRequest",
     "EmergencyContactUpdateRequest",
