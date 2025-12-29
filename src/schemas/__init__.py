@@ -19,6 +19,7 @@ from .audit_log_schema import (
 from .user_schemas import (
     UserCreateRequest,
     UserUpdateRequest,
+    UserSuspendRequest,
     UserResponse,
     UserMeResponse,
     UserLoginRequest,
@@ -85,6 +86,7 @@ __all__ = [
     # User schemas
     "UserCreateRequest",
     "UserUpdateRequest",
+    "UserSuspendRequest",
     "UserResponse",
     "UserMeResponse",
     "UserLoginRequest",
