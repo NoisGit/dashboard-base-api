@@ -1,6 +1,6 @@
 from datetime import date
 from sqlmodel import select
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import User, Location, AccessLog, Plan, UserLocationAccess, Company, CompanyStaff
@@ -67,7 +67,7 @@ class SystemService:
     async def get_detail_admins(self) -> DetailAdminsResponse:
         """Get System Admin Details"""
         Janitor = aliased(User)
-
+        JanitorStaff = aliased(CompanyStaff)
         # Admin Details
         stmt = (
             select(
@@ -86,7 +86,14 @@ class SystemService:
             .outerjoin(CompanyStaff, User.id == CompanyStaff.user_id)
             .outerjoin(Company, CompanyStaff.company_id == Company.id)
             .outerjoin(UserLocationAccess, User.id == UserLocationAccess.user_id)
-            .outerjoin(Janitor, (CompanyStaff.user_id == Janitor.id) & (Janitor.role == 'JANITOR'))
+            .outerjoin(JanitorStaff, Company.id == JanitorStaff.company_id)
+            .outerjoin(
+                Janitor,
+                and_(
+                    JanitorStaff.user_id == Janitor.id,
+                    Janitor.role == 'JANITOR'
+                )
+            )
             .where(User.role == 'ADMIN')
             .group_by(
                 User.id,
