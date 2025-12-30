@@ -36,6 +36,16 @@ class BlacklistService:
         self.session = session
         self.user_service = user_service
 
+    async def _get_user_or_404(self, user_id: int):
+        """Get user or raise 404."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+        return user
+
     async def _get_user_company_id(self, user_id: int) -> Optional[int]:
         """Get user's company id."""
         stmt = (
@@ -46,35 +56,14 @@ class BlacklistService:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def _ensure_manage_permission(self, user_id: int):
-        """Check manage permission."""
-        user = await self.user_service.get_user_by_id(user_id)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        if user.role not in (
-            UserRole.SUPERADMIN,
-            UserRole.ADMIN,
-            UserRole.SUBADMIN,
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not enough permissions.",
-            )
-
-        return user
-
-    async def _ensure_location_access(
+    async def _ensure_location_scope(
         self,
         user_id: int,
         location_id: int,
     ) -> Location:
         """Validate location"""
-        user = await self._ensure_manage_permission(user_id)
+        user = await self._get_user_or_404(user_id)
+        is_superadmin = user.role == UserRole.SUPERADMIN
 
         location = await self.session.get(Location, location_id)
         if not location or not location.is_active:
@@ -83,7 +72,7 @@ class BlacklistService:
                 detail="Location not found.",
             )
 
-        if user.role == UserRole.SUPERADMIN:
+        if is_superadmin:
             return location
 
         user_company_id = await self._get_user_company_id(user_id)
@@ -159,7 +148,10 @@ class BlacklistService:
         payload: BlacklistCreateRequest,
     ) -> BlacklistResponse:
         """Create or update blacklist entry."""
-        await self._ensure_location_access(user_id, location_id)
+        await self._ensure_location_scope(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
         reason = (payload.reason or "").strip()
         if not reason:
@@ -242,7 +234,10 @@ class BlacklistService:
         search: Optional[str] = None,
     ) -> Page[BlacklistResponse]:
         """List blacklist by location."""
-        await self._ensure_location_access(user_id, location_id)
+        await self._ensure_location_scope(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
         blacklist_type = await self._get_blacklist_type(created_by=user_id)
 
@@ -282,14 +277,14 @@ class BlacklistService:
             params,
             transformer=lambda items: [
                 BlacklistResponse(
-                    id=blacklist.id,
-                    location_id=blacklist.location_id,
-                    id_number=blacklist.id_number,
-                    full_name=blacklist.name,
-                    reason=blacklist.reason or "",
-                    created_at=blacklist.created_at,
+                    id=item.id,
+                    location_id=item.location_id,
+                    id_number=item.id_number,
+                    full_name=item.name,
+                    reason=item.reason or "",
+                    created_at=item.created_at,
                 )
-                for blacklist in cast(List, items)
+                for item in cast(List, items)
             ],
         )
 
@@ -300,7 +295,10 @@ class BlacklistService:
         id_number: str,
     ) -> None:
         """Remove blacklist entry."""
-        await self._ensure_location_access(user_id, location_id)
+        await self._ensure_location_scope(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
         blacklist_type = await self._get_blacklist_type(created_by=user_id)
 

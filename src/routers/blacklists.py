@@ -26,11 +26,15 @@ async def list_blacklist(
     params: Params = Depends(),
     search: Optional[str] = None,
     service: BlacklistService = Depends(get_blacklist_service),
-    user_id: int = Depends(RoleChecker([
-        UserRole.SUPERADMIN,
-        UserRole.ADMIN,
-        UserRole.SUBADMIN,
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
 ) -> Page[BlacklistResponse]:
     """List blacklist entries for a location."""
     blacklist = await service.list_blacklist(
@@ -51,11 +55,15 @@ async def block_person(
     location_id: int,
     payload: BlacklistCreateRequest,
     service: BlacklistService = Depends(get_blacklist_service),
-    user_id: int = Depends(RoleChecker([
-        UserRole.SUPERADMIN,
-        UserRole.ADMIN,
-        UserRole.SUBADMIN,
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
 ) -> BlacklistResponse:
     """Block a person for a location."""
     entry = await service.block_person(
@@ -74,11 +82,15 @@ async def unblock_person(
     id_number: str,
     location_id: int,
     service: BlacklistService = Depends(get_blacklist_service),
-    user_id: int = Depends(RoleChecker([
-        UserRole.SUPERADMIN,
-        UserRole.ADMIN,
-        UserRole.SUBADMIN,
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
 ):
     """Unblock a person for a location."""
     await service.unblock_person(
