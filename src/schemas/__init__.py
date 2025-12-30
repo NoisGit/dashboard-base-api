@@ -73,6 +73,21 @@ from .service_contact_schemas import (
     ServiceContactResponse,
 )
 
+from .access_log_schemas import (
+    AccessLogCreateRequest,
+    AccessLogExitRequest,
+    AccessLogResponse,
+    ExternalPeopleResponse,
+)
+from .azure_schemas import (
+    AzureUploadRequest,
+    AzureUpdateRequest,
+    AzureDeleteRequest,
+    AzureResponse,
+    AzureUpdateResponse,
+    AzureDeleteResponse,
+)
+
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -129,4 +144,16 @@ __all__ = [
     "SimpleNoticationRequest",
     "NotificationResponse",
     "NotificationMessageResponse",
+    # Access log schemas
+    "AccessLogCreateRequest",
+    "AccessLogExitRequest",
+    "AccessLogResponse",
+    "ExternalPeopleResponse",
+    # Azure schemas
+    "AzureUploadRequest",
+    "AzureUpdateRequest",
+    "AzureDeleteRequest",
+    "AzureResponse",
+    "AzureUpdateResponse",
+    "AzureDeleteResponse",
 ]

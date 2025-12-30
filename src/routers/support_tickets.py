@@ -20,7 +20,7 @@ from src.services.support_ticket_service import SupportTicketService
 
 router = APIRouter(
     prefix="/support-tickets",
-    tags=["support_tickets"],
+    tags=["support-tickets"],
 )
 
 
