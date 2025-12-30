@@ -86,4 +86,3 @@ class AccessLogResponse(BaseModel):
 
     # Relationships
     external_people: Optional[ExternalPeopleResponse] = None
-    location: Optional[LocationResponse] = None

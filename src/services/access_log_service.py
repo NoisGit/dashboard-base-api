@@ -11,7 +11,7 @@ from sqlmodel import select, desc
 
 from src.services.azure_service import AzureService
 
-from src.models import AccessLog, AccessLogImage
+from src.models import AccessLog, AccessLogImage, ExternalPeople
 from src.core.enums import AccessLogImageType
 from src.schemas.access_log_schemas import (
     AccessLogResponse,
@@ -186,7 +186,9 @@ class AccessLogService:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         status_filter: Optional[str] = None,
-        search: Optional[str] = None,
+        search_plate: Optional[str] = None,
+        search_name: Optional[str] = None,
+        search_dni: Optional[str] = None,
     ) -> Page[AccessLogResponse]:
         """
         Get access logs with filters and pagination for dashboard.
@@ -216,30 +218,44 @@ class AccessLogService:
                 AccessLog.exit_date != None  # pylint: disable=singleton-comparison
             )
 
-        # Search in vehicle plate
-        if search:
+        # Search filters
+        # Search by vehicle plate (no JOIN needed)
+        if search_plate:
             # pylint: disable=no-member
             query = query.where(
-                AccessLog.vehicle_plate.ilike(f"%{search}%")
+                AccessLog.vehicle_plate.ilike(f"%{search_plate}%")
             )
             # pylint: enable=no-member
+
+        # Search by person name or DNI (requires JOIN with ExternalPeople)
+        if search_name or search_dni:
+            query = query.outerjoin(
+                ExternalPeople, AccessLog.external_people_id == ExternalPeople.id
+            )
+            if search_name:
+                # pylint: disable=no-member
+                query = query.where(
+                    ExternalPeople.name.ilike(f"%{search_name}%")
+                )
+                # pylint: enable=no-member
+            if search_dni:
+                # pylint: disable=no-member
+                query = query.where(
+                    ExternalPeople.id_number.ilike(f"%{search_dni}%")
+                )
+                # pylint: enable=no-member
 
         # Order by most recent first
         query = query.order_by(desc(AccessLog.created_at))
 
         # Get paginated results and transform
-        page_result = await paginate(self.session, query, params)
-
-        # Convert items to response schemas
-        converted_items = [self._convert_to_response(
-            item) for item in page_result.items]
-
-        return Page(
-            items=converted_items,
-            total=page_result.total,
-            page=page_result.page,
-            size=page_result.size,
-            pages=page_result.pages,
+        return await paginate(
+            self.session,
+            query,
+            params,
+            transformer=lambda items: [
+                self._convert_to_response(item) for item in items
+            ]
         )
 
     def _convert_image_to_response(self, image_name: str) -> str:

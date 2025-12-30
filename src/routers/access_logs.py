@@ -17,7 +17,7 @@ from src.schemas.access_log_schemas import (
 from src.services.access_log_service import AccessLogService
 
 
-router = APIRouter(prefix="/access-logs", tags=["Access Logs"])
+router = APIRouter(prefix="/access-logs", tags=["access-logs"])
 
 
 @router.get(
@@ -123,9 +123,17 @@ async def get_logs_dashboard(  # pylint: disable=too-many-arguments, too-many-po
         description="Filter by status: 'active', 'completed', or 'all'",
         regex="^(active|completed|all)$",
     ),
-    search: Optional[str] = Query(
+    search_plate: Optional[str] = Query(
         default=None,
-        description="Search in vehicle plate",
+        description="Search by vehicle plate",
+    ),
+    search_name: Optional[str] = Query(
+        default=None,
+        description="Search by person name",
+    ),
+    search_dni: Optional[str] = Query(
+        default=None,
+        description="Search by person DNI",
     ),
     service: AccessLogService = Depends(get_access_log_service),
     _=Depends(RoleChecker([
@@ -144,5 +152,7 @@ async def get_logs_dashboard(  # pylint: disable=too-many-arguments, too-many-po
         start_date=start_date,
         end_date=end_date,
         status_filter=status_filter,
-        search=search,
+        search_plate=search_plate,
+        search_name=search_name,
+        search_dni=search_dni,
     )

@@ -24,7 +24,7 @@ from src.api.error import (
 )
 
 
-router = APIRouter(prefix="/azure", tags=["Azure"])
+router = APIRouter(prefix="/azure", tags=["azure"])
 
 
 @router.post("/generate_upload_url", response_model=AzureResponse)
