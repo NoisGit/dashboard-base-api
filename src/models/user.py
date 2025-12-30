@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from .audit_log import AuditLog
     from .company import Company
     from .company_staff import CompanyStaff
-    from .custom_field import CustomField
+    from .custom_form import CustomForm
     from .document import Document
     from .emergency_contact import EmergencyContact
     from .service_contacts import ServiceContact
@@ -75,9 +75,6 @@ class User(SQLModel, table=True):
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.now)
 
-    # -----------------------------
-    # Relationships (belongs-to)
-    # -----------------------------
     plan: Optional["Plan"] = Relationship(back_populates="users")
 
     # Access to locations via user_location_access join table
@@ -104,11 +101,6 @@ class User(SQLModel, table=True):
         back_populates="user",
         sa_relationship_kwargs={"foreign_keys": "[Document.user_id]"},
     )
-
-    # -----------------------------------
-    # Audit relationships: entities
-    # created by this user (created_by)
-    # -----------------------------------
 
     access_lists_created: List["AccessList"] = Relationship(
         back_populates="creator",
@@ -147,9 +139,9 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "[Location.created_by]"},
     )
 
-    custom_fields_created: List["CustomField"] = Relationship(
+    custom_forms_created: List["CustomForm"] = Relationship(
         back_populates="creator",
-        sa_relationship_kwargs={"foreign_keys": "[CustomField.created_by]"},
+        sa_relationship_kwargs={"foreign_keys": "[CustomForm.created_by]"},
     )
 
     emergency_contacts_created: List["EmergencyContact"] = Relationship(
