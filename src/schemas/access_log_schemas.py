@@ -68,10 +68,14 @@ class AccessLogResponse(BaseModel):
     office: Optional[str] = None
     comment: Optional[str] = None
 
+    entry_images: Optional[List[str]] = None
+
     # Exit information
     exit_date: Optional[datetime] = None
     exit_comment: Optional[str] = None
     exit_created_by: Optional[int] = None
+
+    exit_images: Optional[List[str]] = None
 
     # Audit
     created_by: int
@@ -83,19 +87,3 @@ class AccessLogResponse(BaseModel):
     # Relationships
     external_people: Optional[ExternalPeopleResponse] = None
     location: Optional[LocationResponse] = None
-    images: List[str] = []
-
-
-class AccessLogListResponse(BaseModel):
-    """Simplified response for listing access logs."""
-    id: int
-    location_id: int
-    external_people_id: int
-    vehicle_plate: Optional[str] = None
-    office: Optional[str] = None
-    exit_date: Optional[datetime] = None
-    created_at: datetime
-
-    # Only essential relationship data
-    external_people: Optional[ExternalPeopleResponse] = None
-    images: List[str] = []

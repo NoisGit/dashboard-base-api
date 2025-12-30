@@ -77,7 +77,6 @@ from .access_log_schemas import (
     AccessLogCreateRequest,
     AccessLogExitRequest,
     AccessLogResponse,
-    AccessLogListResponse,
     ExternalPeopleResponse,
 )
 from .azure_schemas import (
@@ -149,7 +148,6 @@ __all__ = [
     "AccessLogCreateRequest",
     "AccessLogExitRequest",
     "AccessLogResponse",
-    "AccessLogListResponse",
     "ExternalPeopleResponse",
     # Azure schemas
     "AzureUploadRequest",

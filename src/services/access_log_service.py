@@ -251,9 +251,17 @@ class AccessLogService:
 
     def _convert_to_response(self, access_log: AccessLog) -> AccessLogResponse:
         """Convert AccessLog model to AccessLogResponse schema."""
-        # Convert images
-        images = [self._convert_image_to_response(
-            img) for img in access_log.images] if access_log.images else []
+        # Separate images by type (entry vs exit)
+        entry_images = []
+        exit_images = []
+
+        if access_log.images:
+            for img in access_log.images:
+                image_url = self._convert_image_to_response(img.image_name)
+                if img.image_type == AccessLogImageType.ENTRY:
+                    entry_images.append(image_url)
+                elif img.image_type == AccessLogImageType.EXIT:
+                    exit_images.append(image_url)
 
         # Convert external people if loaded
         external_people = None
@@ -274,12 +282,13 @@ class AccessLogService:
             vehicle_plate=access_log.vehicle_plate,
             office=access_log.office,
             comment=access_log.comment,
+            entry_images=entry_images if entry_images else None,
             exit_date=access_log.exit_date,
             exit_comment=access_log.exit_comment,
             exit_created_by=access_log.exit_created_by,
+            exit_images=exit_images if exit_images else None,
             created_by=access_log.created_by,
             created_at=access_log.created_at,
             custom_form_responses=access_log.custom_form_responses,
             external_people=external_people,
-            images=images,
         )
