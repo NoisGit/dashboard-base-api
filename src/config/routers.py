@@ -16,6 +16,7 @@ from src.routers import (
     support_tickets_router,
     service_contacts_router,
     blacklists_router,
+    system_router,
 )
 
 
@@ -32,3 +33,4 @@ def include_routers(app):
     app.include_router(support_tickets_router, prefix="/api/v1")
     app.include_router(service_contacts_router, prefix="/api/v1")
     app.include_router(blacklists_router, prefix="/api/v1")
+    app.include_router(system_router, prefix="/api/v1")
