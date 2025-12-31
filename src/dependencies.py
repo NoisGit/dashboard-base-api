@@ -14,6 +14,7 @@ from src.services.emergency_contact_service import EmergencyContactService
 from src.services.support_ticket_service import SupportTicketService
 from src.services.service_contact_service import ServiceContactService
 from src.services.notification_service import NotificationService
+from src.services.whitelist_service import WhitelistService
 from src.services.blacklist_service import BlacklistService
 from src.services.system_service import SystemService
 from src.services.access_log_service import AccessLogService
@@ -101,6 +102,12 @@ def get_notification_service(
     return NotificationService(session, user_service)
 
 
+def get_whitelist_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+) -> WhitelistService:
+    """Dependency to get a WhitelistService instance."""
+    return WhitelistService(session, user_service)
 def get_blacklist_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),

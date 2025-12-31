@@ -48,6 +48,9 @@ from .auth_schemas import (
     AccessTokenResponse,
 )
 
+from .whitelist_schemas import (
+    WhitelistCreateRequest,
+    WhitelistResponse,
 from .blacklist_schemas import (
     BlacklistCreateRequest,
     BlacklistResponse,
@@ -139,6 +142,9 @@ __all__ = [
     "RefreshTokenRequest",
     "AuthTokenResponse",
     "AccessTokenResponse",
+    # Whitelist schemas
+    "WhitelistCreateRequest",
+    "WhitelistResponse",
     # Blacklist schemas
     "BlacklistCreateRequest",
     "BlacklistResponse",
