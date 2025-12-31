@@ -17,6 +17,7 @@ from src.models import User, CompanyStaff
 from src.schemas import (
     UserCreateRequest,
     UserUpdateRequest,
+    UserSuspendRequest,
     UserResponse,
     UserMeResponse,
     UserChangePasswordRequest,
@@ -235,6 +236,27 @@ class UserService:
         await self.session.commit()
         await self.session.refresh(user)
         return user
+
+    async def suspend_user(
+        self,
+        user_id: int,
+        payload: UserSuspendRequest,
+    ) -> None:
+        """Suspend user by setting is_active = False and saving reason/date."""
+        user = await self._get_user_by_id(user_id)
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        user.is_active = False
+        user.date_change_status = datetime.now()
+        user.reason_suspension = payload.reason_suspension
+
+        self.session.add(user)
+        await self.session.commit()
 
     async def soft_delete_user(
         self,

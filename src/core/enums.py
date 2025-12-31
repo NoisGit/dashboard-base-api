@@ -37,9 +37,26 @@ class SupportTicketStatus(str, Enum):
     CANCELED = "CANCELED"
 
 
+class AccessLogImageType(str, Enum):
+    """Access log image type enumeration"""
+    ENTRY = "ENTRY"
+    EXIT = "EXIT"
+
+
+class CustomFormFieldType(str, Enum):
+    """Custom form field type enumeration"""
+    TEXT = "TEXT"
+    NUMBER = "NUMBER"
+    DROPDOWN = "DROPDOWN"
+    CHECKBOX = "CHECKBOX"
+    RADIO = "RADIO"
+
+
 __all__ = [
     "UserRole",
     "AuditAction",
     "TableName",
     "SupportTicketStatus",
+    "AccessLogImageType",
+    "CustomFormFieldType",
 ]

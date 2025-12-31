@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # Logo URL setting
     LOGO_URL: str
 
+    # Azure Storage settings
+    AZURE_STORAGE_ACCOUNT_NAME: str
+    AZURE_STORAGE_CONNECTION_STRING: str
+
     # Secret key for JWT or other security purposes
     secret_key: str = Field(
         default="change_this_secret_key",
