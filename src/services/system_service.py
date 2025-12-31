@@ -2,6 +2,7 @@ from datetime import date
 from sqlmodel import select
 from sqlalchemy import func, desc, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.enums import UserRole
 
 from src.models import User, Location, AccessLog, Plan, UserLocationAccess, Company, CompanyStaff
 from sqlalchemy.orm import aliased
@@ -24,8 +25,8 @@ class SystemService:
 
         # User Counts by Role and Plan
         stmt_users = select(
-            func.count().filter(User.role == 'ADMIN').label('count_admin'),
-            func.count().filter(User.role == 'JANITOR').label('count_janitor'),
+            func.count().filter(User.role == UserRole.ADMIN).label('count_admin'),
+            func.count().filter(User.role == UserRole.JANITOR).label('count_janitor'),
             func.count().filter(User.plan_id == 1).label('count_demo')
         )
         res_users_raw = await self.session.execute(stmt_users)
@@ -41,13 +42,13 @@ class SystemService:
         )
         res_access = await self.session.scalar(stmt_access)
 
-        return {
-            "users_admin": res_users.count_admin or 0,
-            "users_janitors": res_users.count_janitor or 0,
-            "users_plan_demo": res_users.count_demo or 0,
-            "total_entrances": res_locations or 0,
-            "income_today": res_access or 0
-        }
+        return SystemCountersResponse(
+            users_admin=res_users.count_admin,
+            users_janitors=res_users.count_janitor,
+            users_plan_demo=res_users.count_demo,
+            total_entrances=res_locations,
+            income_today=res_access,
+        )
 
     async def get_system_detail_income_by_month(self) -> MonthlyIncomeResponse:
         """Get System detail income by month"""
@@ -91,10 +92,10 @@ class SystemService:
                 Janitor,
                 and_(
                     JanitorStaff.user_id == Janitor.id,
-                    Janitor.role == 'JANITOR'
+                    Janitor.role == UserRole.JANITOR
                 )
             )
-            .where(User.role == 'ADMIN')
+            .where(User.role == UserRole.ADMIN)
             .group_by(
                 User.id,
                 User.full_name,
@@ -119,12 +120,12 @@ class SystemService:
         list_incomes = await self.get_system_detail_income_by_month()
         list_admins = await self.get_detail_admins()
 
-        return {
-            "status": "success",
-            "message": "System stats retrieved successfully",
-            "data": {
+        return SystemStatsResponse(
+            status="success",
+            message="System stats retrieved successfully",
+            data={
                 "counters": counters,
                 "detail_income_by_month": list_incomes.detail_income_by_month,
                 "detail_admins": list_admins.detail_admins
             }
-        }
+        )
