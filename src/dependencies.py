@@ -14,6 +14,7 @@ from src.services.emergency_contact_service import EmergencyContactService
 from src.services.support_ticket_service import SupportTicketService
 from src.services.service_contact_service import ServiceContactService
 from src.services.notification_service import NotificationService
+from src.services.system_service import SystemService
 from src.services.access_log_service import AccessLogService
 from src.services.azure_service import AzureService
 
@@ -99,6 +100,12 @@ def get_notification_service(
     return NotificationService(session, user_service)
 
 
+def get_system_service(
+    session: AsyncSession = Depends(get_session)
+) -> SystemService:
+    """Dependency to get a SystemService instance."""
+    return SystemService(session)
+  
 def get_access_log_service(
     session: AsyncSession = Depends(get_session),
     azure_service: AzureService = Depends(get_azure_service),
