@@ -138,7 +138,7 @@ async def assign_user_to_company(
     company_id: int,
     payload: CompanyAssignUserRequest,
     service: CompanyService = Depends(get_company_service),
-    current_user_data=Depends(
+    user_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -148,10 +148,8 @@ async def assign_user_to_company(
     ),
 ) -> CompanyUserAssignmentResponse:
     """Assign an existing user to a company."""
-    requester_id, _ = current_user_data
-
     await service.assign_user_to_company(
-        requester_id=requester_id,
+        requester_id=user_id,
         company_id=company_id,
         user_id=payload.user_id,
     )

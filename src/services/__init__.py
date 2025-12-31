@@ -13,6 +13,7 @@ from .email_service import EmailService
 from .emergency_contact_service import EmergencyContactService
 from .support_ticket_service import SupportTicketService
 from .service_contact_service import ServiceContactService
+from .blacklist_service import BlacklistService
 from .system_service import SystemService
 
 __all__ = [
@@ -24,5 +25,6 @@ __all__ = [
     "EmergencyContactService",
     "SupportTicketService",
     "ServiceContactService",
+    "BlacklistService",
     "SystemService",
 ]

@@ -14,6 +14,7 @@ from src.services.emergency_contact_service import EmergencyContactService
 from src.services.support_ticket_service import SupportTicketService
 from src.services.service_contact_service import ServiceContactService
 from src.services.notification_service import NotificationService
+from src.services.blacklist_service import BlacklistService
 from src.services.system_service import SystemService
 from src.services.access_log_service import AccessLogService
 from src.services.azure_service import AzureService
@@ -100,6 +101,12 @@ def get_notification_service(
     return NotificationService(session, user_service)
 
 
+def get_blacklist_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+) -> BlacklistService:
+    """Dependency to get a BlacklistService instance."""
+    return BlacklistService(session, user_service)
 def get_system_service(
     session: AsyncSession = Depends(get_session)
 ) -> SystemService:
