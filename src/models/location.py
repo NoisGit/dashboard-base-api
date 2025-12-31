@@ -13,7 +13,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .user_location_access import UserLocationAccess
-    from .custom_field import CustomField
+    from .custom_form import CustomForm
     from .emergency_contact import EmergencyContact
     from .service_contacts import ServiceContact
     from .access_list import AccessList
@@ -72,7 +72,9 @@ class Location(SQLModel, table=True):
     user_locations: List["UserLocationAccess"] = Relationship(
         back_populates="location",
     )
-    custom_fields: List["CustomField"] = Relationship(
+
+    # Custom form for dynamic fields (optional, one per location)
+    custom_form: Optional["CustomForm"] = Relationship(
         back_populates="location",
     )
     emergency_contacts: List["EmergencyContact"] = Relationship(
