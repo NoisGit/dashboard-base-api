@@ -17,6 +17,7 @@ from .support_tickets import router as support_tickets_router
 from .service_contacts import router as service_contacts_router
 from .notifications import router as notifications_router
 from .whitelists import router as whitelists_router
+from .blacklists import router as blacklists_router
 from .system import router as system_router
 
 __all__ = [
@@ -32,5 +33,6 @@ __all__ = [
     "service_contacts_router",
     "notifications_router",
     "whitelists_router",
+    "blacklists_router",
     "system_router",
 ]

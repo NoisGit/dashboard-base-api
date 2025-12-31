@@ -51,6 +51,9 @@ from .auth_schemas import (
 from .whitelist_schemas import (
     WhitelistCreateRequest,
     WhitelistResponse,
+from .blacklist_schemas import (
+    BlacklistCreateRequest,
+    BlacklistResponse,
 )
 from .emergency_contact_schemas import (
     EmergencyContactCreateRequest,
@@ -142,6 +145,9 @@ __all__ = [
     # Whitelist schemas
     "WhitelistCreateRequest",
     "WhitelistResponse",
+    # Blacklist schemas
+    "BlacklistCreateRequest",
+    "BlacklistResponse",
     # Emergency contact schemas
     "EmergencyContactCreateRequest",
     "EmergencyContactUpdateRequest",
