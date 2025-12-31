@@ -12,6 +12,7 @@ from src.dependencies import get_user_service
 from src.schemas import (
     UserCreateRequest,
     UserUpdateRequest,
+    UserSuspendRequest,
     UserResponse,
     UserMeResponse,
     UserChangePasswordRequest,
@@ -123,6 +124,29 @@ async def update_user(
         payload=payload,
     )
     return user
+
+
+@router.patch(
+    "/{user_id}/suspend",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def suspend_user(
+    user_id: int,
+    payload: UserSuspendRequest,
+    service: UserService = Depends(get_user_service),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+            ],
+        ),
+    ),
+):
+    """Suspend user."""
+    await service.suspend_user(
+        user_id=user_id,
+        payload=payload,
+    )
 
 
 @router.delete(

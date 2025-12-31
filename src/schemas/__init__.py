@@ -19,6 +19,7 @@ from .audit_log_schema import (
 from .user_schemas import (
     UserCreateRequest,
     UserUpdateRequest,
+    UserSuspendRequest,
     UserResponse,
     UserMeResponse,
     UserLoginRequest,
@@ -56,6 +57,9 @@ from .support_ticket_schemas import (
     SupportTicketCreateRequest,
     SupportTicketUpdateRequest,
     SupportTicketResponse,
+    SupportTicketCommentCreateRequest,
+    SupportTicketCommentUpdateRequest,
+    SupportTicketCommentResponse,
 )
 from .notification_schemas import (
     SimpleNoticationRequest,
@@ -78,6 +82,22 @@ from .system_schemas import (
     DetailAdminsResponse,
 )
 
+from .access_log_schemas import (
+    AccessLogCreateRequest,
+    AccessLogExitRequest,
+    AccessLogResponse,
+    ExternalPeopleResponse,
+)
+
+from .azure_schemas import (
+    AzureUploadRequest,
+    AzureUpdateRequest,
+    AzureDeleteRequest,
+    AzureResponse,
+    AzureUpdateResponse,
+    AzureDeleteResponse,
+)
+
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -91,6 +111,7 @@ __all__ = [
     # User schemas
     "UserCreateRequest",
     "UserUpdateRequest",
+    "UserSuspendRequest",
     "UserResponse",
     "UserMeResponse",
     "UserLoginRequest",
@@ -122,6 +143,9 @@ __all__ = [
     "SupportTicketCreateRequest",
     "SupportTicketUpdateRequest",
     "SupportTicketResponse",
+    "SupportTicketCommentCreateRequest",
+    "SupportTicketCommentUpdateRequest",
+    "SupportTicketCommentResponse",
     # Service contact schemas
     "ServiceContactCreateRequest",
     "ServiceContactUpdateRequest",
@@ -137,4 +161,16 @@ __all__ = [
     "AdminDetailResponse",
     "StatsDataResponse",
     "DetailAdminsResponse",
+    # Access log schemas
+    "AccessLogCreateRequest",
+    "AccessLogExitRequest",
+    "AccessLogResponse",
+    "ExternalPeopleResponse",
+    # Azure schemas
+    "AzureUploadRequest",
+    "AzureUpdateRequest",
+    "AzureDeleteRequest",
+    "AzureResponse",
+    "AzureUpdateResponse",
+    "AzureDeleteResponse",
 ]

@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 
 class SupportResponse(SQLModel, table=True):
+    """Support response table"""
+
     __tablename__ = "support_response"
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -37,6 +39,9 @@ class SupportResponse(SQLModel, table=True):
         foreign_key="users.id",
     )
     created_at: datetime = Field(default_factory=datetime.now)
+
+    # DBML: edited_at timestamp [null]
+    edited_at: Optional[datetime] = Field(default=None)
 
     # Relationships
     ticket: "SupportTicket" = Relationship(back_populates="responses")

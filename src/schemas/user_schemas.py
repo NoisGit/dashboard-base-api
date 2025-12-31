@@ -28,6 +28,11 @@ class UserUpdateRequest(BaseModel):
     status: Optional[bool] = None
 
 
+class UserSuspendRequest(BaseModel):
+    """Schema for suspending a user"""
+    reason_suspension: Optional[str] = None
+
+
 class UserLoginRequest(BaseModel):
     """Schema for user login"""
     email: EmailStr

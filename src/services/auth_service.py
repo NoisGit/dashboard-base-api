@@ -112,6 +112,13 @@ class AuthService:
                 detail="Invalid credentials"
             )
 
+        # Block suspended users
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is suspended",
+            )
+
         # Rehash password if needed
         if ph.check_needs_rehash(user.password_hash):
             user.password_hash = ph.hash(user_data.password)
