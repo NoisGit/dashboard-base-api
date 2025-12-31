@@ -37,6 +37,16 @@ class WhitelistService:
         self.session = session
         self.user_service = user_service
 
+    async def _get_user_or_404(self, user_id: int):
+        """Get user or raise 404."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+        return user
+
     async def _get_user_company_id(self, user_id: int) -> Optional[int]:
         """Get user's company id."""
         stmt = (
@@ -47,34 +57,14 @@ class WhitelistService:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def _ensure_manage_permission(self, user_id: int):
-        """Check manage permission."""
-        user = await self.user_service.get_user_by_id(user_id)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        if user.role not in (
-            UserRole.SUPERADMIN,
-            UserRole.ADMIN,
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not enough permissions.",
-            )
-
-        return user
-
-    async def _ensure_location_access(
+    async def _ensure_location_scope(
         self,
         user_id: int,
         location_id: int,
     ) -> Location:
         """Validate location."""
-        user = await self._ensure_manage_permission(user_id)
+        user = await self._get_user_or_404(user_id)
+        is_superadmin = user.role == UserRole.SUPERADMIN
 
         location = await self.session.get(Location, location_id)
         if not location or not location.is_active:
@@ -83,7 +73,7 @@ class WhitelistService:
                 detail="Location not found.",
             )
 
-        if user.role == UserRole.SUPERADMIN:
+        if is_superadmin:
             return location
 
         user_company_id = await self._get_user_company_id(user_id)
@@ -165,11 +155,11 @@ class WhitelistService:
         payload: WhitelistCreateRequest,
     ) -> WhitelistResponse:
         """Create whitelist entry."""
-        await self._ensure_location_access(user_id, location_id)
+        await self._ensure_location_scope(user_id, location_id)
 
         id_number = (payload.id_number or "").strip()
         full_name = (payload.full_name or "").strip()
-        role = (payload.role or "").strip() or None
+        reason = (getattr(payload, "reason", None) or "").strip() or None
 
         if not id_number:
             raise HTTPException(
@@ -223,7 +213,7 @@ class WhitelistService:
         if existing and not self._is_active(existing.expiration_date):
             existing.external_people_id = external.id
             existing.name = full_name
-            existing.reason = role
+            existing.reason = reason
             existing.expiration_date = payload.expiration_date
             existing.created_by = user_id
 
@@ -236,7 +226,7 @@ class WhitelistService:
                 location_id=existing.location_id,
                 id_number=external.id_number,
                 full_name=existing.name,
-                role=existing.reason,
+                reason=existing.reason,
                 expiration_date=existing.expiration_date,
                 created_at=existing.created_at,
             )
@@ -246,7 +236,7 @@ class WhitelistService:
             external_people_id=external.id,
             type_access_list_id=whitelist_type.id,
             name=full_name,
-            reason=role,
+            reason=reason,
             vehicle_plate=None,
             expiration_date=payload.expiration_date,
             file_name=None,
@@ -262,7 +252,7 @@ class WhitelistService:
             location_id=entry.location_id,
             id_number=external.id_number,
             full_name=entry.name,
-            role=entry.reason,
+            reason=entry.reason,
             expiration_date=entry.expiration_date,
             created_at=entry.created_at,
         )
@@ -273,10 +263,10 @@ class WhitelistService:
         location_id: int,
         params: Params,
         search: Optional[str] = None,
-        only_valid: bool = True,
+        include_expired: bool = False,
     ) -> Page[WhitelistResponse]:
         """List whitelist by location."""
-        await self._ensure_location_access(user_id, location_id)
+        await self._ensure_location_scope(user_id, location_id)
 
         whitelist_type = await self._get_whitelist_type(created_by=user_id)
 
@@ -301,7 +291,7 @@ class WhitelistService:
             .order_by(desc(AccessList.created_at))
         )
 
-        if only_valid:
+        if not include_expired:
             today = date.today()
             stmt = stmt.where(
                 or_(
@@ -326,15 +316,15 @@ class WhitelistService:
             params,
             transformer=lambda items: [
                 WhitelistResponse(
-                    id=row.id,
-                    location_id=row.location_id,
-                    id_number=row.id_number,
-                    full_name=row.name,
-                    role=row.reason,
-                    expiration_date=row.expiration_date,
-                    created_at=row.created_at,
+                    id=item.id,
+                    location_id=item.location_id,
+                    id_number=item.id_number,
+                    full_name=item.name,
+                    reason=item.reason,
+                    expiration_date=item.expiration_date,
+                    created_at=item.created_at,
                 )
-                for row in cast(List, items)
+                for item in cast(List, items)
             ],
         )
 
@@ -345,7 +335,7 @@ class WhitelistService:
         id_number: str,
     ) -> None:
         """Revoke whitelist entry."""
-        await self._ensure_location_access(user_id, location_id)
+        await self._ensure_location_scope(user_id, location_id)
 
         whitelist_type = await self._get_whitelist_type(created_by=user_id)
 

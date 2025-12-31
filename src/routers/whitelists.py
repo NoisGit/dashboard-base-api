@@ -27,11 +27,15 @@ async def list_whitelist(
     search: Optional[str] = None,
     include_expired: bool = False,
     service: WhitelistService = Depends(get_whitelist_service),
-    user_id: int = Depends(RoleChecker([
-        UserRole.SUPERADMIN,
-        UserRole.ADMIN,
-        UserRole.SUBADMIN,
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        )
+    ),
 ) -> Page[WhitelistResponse]:
     """List whitelist entries for a location."""
     whitelist = await service.list_whitelist(
@@ -53,11 +57,15 @@ async def allow_person(
     location_id: int,
     payload: WhitelistCreateRequest,
     service: WhitelistService = Depends(get_whitelist_service),
-    user_id: int = Depends(RoleChecker([
-        UserRole.SUPERADMIN,
-        UserRole.ADMIN,
-        UserRole.SUBADMIN,
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        )
+    ),
 ) -> WhitelistResponse:
     """Allow a person for a location."""
     entry = await service.allow_person(
@@ -76,11 +84,15 @@ async def revoke_person(
     id_number: str,
     location_id: int,
     service: WhitelistService = Depends(get_whitelist_service),
-    user_id: int = Depends(RoleChecker([
-        UserRole.SUPERADMIN,
-        UserRole.ADMIN,
-        UserRole.SUBADMIN,
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        )
+    ),
 ):
     """Revoke a person whitelist access for a location."""
     await service.revoke_person(
