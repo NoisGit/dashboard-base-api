@@ -51,6 +51,7 @@ from .auth_schemas import (
 from .whitelist_schemas import (
     WhitelistCreateRequest,
     WhitelistResponse,
+)
 from .blacklist_schemas import (
     BlacklistCreateRequest,
     BlacklistResponse,
