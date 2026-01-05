@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from .company_staff import CompanyStaff
     from .user import User
     from .location import Location
+    from .document import Document
 
 
 class Company(SQLModel, table=True):
@@ -51,6 +52,11 @@ class Company(SQLModel, table=True):
 
     # Locations owned by this company
     locations: List["Location"] = Relationship(
+        back_populates="company",
+    )
+
+    # Documents owned by this company
+    documents: List["Document"] = Relationship(
         back_populates="company",
     )
 
