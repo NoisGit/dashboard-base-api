@@ -106,6 +106,13 @@ from .azure_schemas import (
     AzureDeleteResponse,
 )
 
+from .document_schemas import (
+    DocumentCreateRequest,
+    DocumentUpdateRequest,
+    DocumentResponse,
+    DocumentDownloadResponse,
+)
+
 __all__ = [
     # Base schemas
     "EmptyResponse",
@@ -187,4 +194,9 @@ __all__ = [
     "AzureResponse",
     "AzureUpdateResponse",
     "AzureDeleteResponse",
+    # Document schemas
+    "DocumentCreateRequest",
+    "DocumentUpdateRequest",
+    "DocumentResponse",
+    "DocumentDownloadResponse",
 ]
