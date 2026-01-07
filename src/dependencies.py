@@ -19,6 +19,7 @@ from src.services.blacklist_service import BlacklistService
 from src.services.system_service import SystemService
 from src.services.access_log_service import AccessLogService
 from src.services.azure_service import AzureService
+from src.services.document_service import DocumentService
 
 
 def get_azure_service() -> AzureService:
@@ -131,3 +132,12 @@ def get_access_log_service(
 ) -> AccessLogService:
     """Dependency to get an AccessLogService instance."""
     return AccessLogService(session, azure_service)
+
+
+def get_document_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+    azure_service: AzureService = Depends(get_azure_service),
+) -> DocumentService:
+    """Dependency to get a DocumentService instance."""
+    return DocumentService(session, user_service, azure_service)
