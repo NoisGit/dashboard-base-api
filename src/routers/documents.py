@@ -131,7 +131,7 @@ async def download_document(
 )
 async def create_document(
     company_id: int = Form(...),
-    name: str = Form(""),
+    name: str = Form(...),
     comment: str = Form(""),
     user_id: str = Form(""),
     file: UploadFile = File(...),
@@ -170,11 +170,11 @@ async def create_document(
 )
 async def update_document(
     document_id: int,
-    name: str = Form(""),
+    name: str = Form(...),
     comment: str = Form(""),
     file: Optional[UploadFile] = File(None),
     service: DocumentService = Depends(get_document_service),
-    user_id: int = Depends(
+    _=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -183,7 +183,7 @@ async def update_document(
     ),
 ) -> DocumentResponse:
     """Update an existing document"""
-    normalized_name = name.strip() or None
+    normalized_name = name.strip()
     normalized_comment = comment.strip() or None
 
     payload = DocumentUpdateRequest(
@@ -192,7 +192,6 @@ async def update_document(
     )
 
     document = await service.update_document(
-        user_id=user_id,
         document_id=document_id,
         payload=payload,
         file=file,
@@ -217,6 +216,5 @@ async def delete_document(
 ):
     """Hard delete a document"""
     await service.delete_document(
-        user_id=0,
         document_id=document_id,
     )
