@@ -89,6 +89,7 @@ from .system_schemas import (
 from .access_log_schemas import (
     AccessLogCreateRequest,
     AccessLogExitRequest,
+    AccessLogBulkExitRequest,
     AccessLogResponse,
     ExternalPeopleResponse,
 )
@@ -183,6 +184,7 @@ __all__ = [
     # Access log schemas
     "AccessLogCreateRequest",
     "AccessLogExitRequest",
+    "AccessLogBulkExitRequest",
     "AccessLogResponse",
     "ExternalPeopleResponse",
     # Azure schemas
