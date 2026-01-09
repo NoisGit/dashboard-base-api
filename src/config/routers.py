@@ -18,6 +18,7 @@ from src.routers import (
     whitelists_router,
     blacklists_router,
     system_router,
+    dashboard_router,
 )
 
 
@@ -36,3 +37,4 @@ def include_routers(app):
     app.include_router(whitelists_router, prefix="/api/v1")
     app.include_router(blacklists_router, prefix="/api/v1")
     app.include_router(system_router, prefix="/api/v1")
+    app.include_router(dashboard_router, prefix="/api/v1")

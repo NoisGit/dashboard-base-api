@@ -19,6 +19,7 @@ from src.services.blacklist_service import BlacklistService
 from src.services.system_service import SystemService
 from src.services.access_log_service import AccessLogService
 from src.services.azure_service import AzureService
+from src.services.dashboard_service import DashboardService
 
 
 def get_azure_service() -> AzureService:
@@ -108,21 +109,34 @@ def get_whitelist_service(
 ) -> WhitelistService:
     """Dependency to get a WhitelistService instance."""
     return WhitelistService(session, user_service)
+
+
 def get_blacklist_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
 ) -> BlacklistService:
     """Dependency to get a BlacklistService instance."""
     return BlacklistService(session, user_service)
+
+
 def get_system_service(
     session: AsyncSession = Depends(get_session)
 ) -> SystemService:
     """Dependency to get a SystemService instance."""
     return SystemService(session)
-  
+
+
 def get_access_log_service(
     session: AsyncSession = Depends(get_session),
     azure_service: AzureService = Depends(get_azure_service),
 ) -> AccessLogService:
     """Dependency to get an AccessLogService instance."""
     return AccessLogService(session, azure_service)
+
+
+def get_dashboard_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+) -> DashboardService:
+    """Dependency to get a DashboardService instance."""
+    return DashboardService(session, user_service)

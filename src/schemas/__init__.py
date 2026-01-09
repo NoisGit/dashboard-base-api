@@ -47,10 +47,10 @@ from .auth_schemas import (
     RefreshTokenRequest,
     AccessTokenResponse,
 )
-
 from .whitelist_schemas import (
     WhitelistCreateRequest,
     WhitelistResponse,
+)
 from .blacklist_schemas import (
     BlacklistCreateRequest,
     BlacklistResponse,
@@ -73,13 +73,11 @@ from .notification_schemas import (
     NotificationResponse,
     NotificationMessageResponse,
 )
-
 from .service_contact_schemas import (
     ServiceContactCreateRequest,
     ServiceContactUpdateRequest,
     ServiceContactResponse,
 )
-
 from .system_schemas import (
     SystemStatsResponse,
     SystemCountersResponse,
@@ -88,14 +86,12 @@ from .system_schemas import (
     StatsDataResponse,
     DetailAdminsResponse,
 )
-
 from .access_log_schemas import (
     AccessLogCreateRequest,
     AccessLogExitRequest,
     AccessLogResponse,
     ExternalPeopleResponse,
 )
-
 from .azure_schemas import (
     AzureUploadRequest,
     AzureUpdateRequest,
@@ -103,6 +99,11 @@ from .azure_schemas import (
     AzureResponse,
     AzureUpdateResponse,
     AzureDeleteResponse,
+)
+from .dashboard_schemas import (
+    KpisResponse,
+    KpisBlacklistResponse,
+    KpisWhitelistResponse,
 )
 
 __all__ = [
@@ -186,4 +187,8 @@ __all__ = [
     "AzureResponse",
     "AzureUpdateResponse",
     "AzureDeleteResponse",
+    # Dashboard schemas
+    "KpisResponse",
+    "KpisWhitelistResponse",
+    "KpisBlacklistResponse",
 ]
