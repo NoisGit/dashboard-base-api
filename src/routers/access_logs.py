@@ -12,6 +12,7 @@ from src.dependencies import get_access_log_service
 from src.schemas.access_log_schemas import (
     AccessLogCreateRequest,
     AccessLogExitRequest,
+    AccessLogBulkExitRequest,
     AccessLogResponse,
 )
 from src.services.access_log_service import AccessLogService
@@ -99,6 +100,51 @@ async def register_exit(
         access_log_id=access_log_id,
         payload=payload,
         exit_created_by=user_id,
+    )
+
+
+@router.patch(
+    "/dashboard/{access_log_id}/exit",
+    response_model=AccessLogResponse,
+)
+async def register_exit_dashboard(
+    access_log_id: int,
+    service: AccessLogService = Depends(get_access_log_service),
+    user_id=Depends(RoleChecker([
+        UserRole.SUBADMIN,
+        UserRole.ADMIN,
+        UserRole.SUPERADMIN
+    ])),
+) -> AccessLogResponse:
+    """
+    Register exit for an existing access log from dashboard.
+    Only Admin roles can register exits.
+    """
+    return await service.register_exit_dashboard(
+        access_log_id=access_log_id,
+        user_id=user_id,
+    )
+
+
+@router.patch(
+    "/dashboard/exit/bulk",
+)
+async def register_exit_bulk_dashboard(
+    payload: AccessLogBulkExitRequest,
+    service: AccessLogService = Depends(get_access_log_service),
+    user_id=Depends(RoleChecker([
+        UserRole.SUBADMIN,
+        UserRole.ADMIN,
+        UserRole.SUPERADMIN
+    ])),
+):
+    """
+    Register exits in bulk from dashboard.
+    Only Admin roles can register exits.
+    """
+    return await service.register_exit_bulk_dashboard(
+        payload=payload,
+        user_id=user_id,
     )
 
 
