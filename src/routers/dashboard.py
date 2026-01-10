@@ -6,14 +6,14 @@ from src.core.enums import UserRole
 from src.dependencies import get_dashboard_service
 from src.services.dashboard_service import DashboardService
 from src.schemas import (
-    KpisResponse,
+    DashboardStatsResponse,
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
-@router.get("/{location_id}/kpis", response_model=KpisResponse)
-async def get_dashboard_stats(
+@router.get("/location/{location_id}", response_model=DashboardStatsResponse)
+async def dashboard_stats(
     location_id: int,
     service: DashboardService = Depends(get_dashboard_service),
     user_id=Depends(RoleChecker([
@@ -22,7 +22,7 @@ async def get_dashboard_stats(
         UserRole.ADMIN,
         UserRole.SUPERADMIN
     ])),
-) -> KpisResponse:
+) -> DashboardStatsResponse:
     """Retrieve system statistics."""
-    system_stats = await service.get_kpis(user_id, location_id)
+    system_stats = await service.get_dashboard_stats(user_id, location_id)
     return system_stats

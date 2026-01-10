@@ -104,6 +104,11 @@ from .dashboard_schemas import (
     KpisResponse,
     KpisBlacklistResponse,
     KpisWhitelistResponse,
+    EntriesByMonthResponse,
+    DashboardStatsResponse,
+    GenderDistributionResponse,
+    ChartStatsResponse,
+    RecentEntriesResponse,
 )
 
 __all__ = [
@@ -191,4 +196,9 @@ __all__ = [
     "KpisResponse",
     "KpisWhitelistResponse",
     "KpisBlacklistResponse",
+    "EntriesByMonthResponse",
+    "DashboardStatsResponse",
+    "GenderDistributionResponse",
+    "ChartStatsResponse",
+    "RecentEntriesResponse",
 ]

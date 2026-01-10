@@ -15,7 +15,7 @@ class KpisBlacklistResponse(BaseModel):
 
 
 class IndividualMonthSchema(BaseModel):
-    month: int
+    month: str
     count: int
 
 
@@ -27,9 +27,9 @@ class KpisResponse(BaseModel):
     blacklist: KpisBlacklistResponse
 
 
-class GenderSchema(BaseModel):
-    male: int
-    female: int
+class GenderDistributionResponse(BaseModel):
+    male: float
+    female: float
 
 
 class RecentEntriesSchema(BaseModel):
@@ -39,7 +39,7 @@ class RecentEntriesSchema(BaseModel):
     timestamp: datetime
 
 
-class MonthlyIncomeResponse(BaseModel):  # FOR TESTING PURPOSES ONLY
+class EntriesByMonthResponse(BaseModel):  # FOR TESTING PURPOSES ONLY
     entries_by_month: List[IndividualMonthSchema]
 
 
@@ -47,8 +47,24 @@ class RecentEntriesResponse(BaseModel):  # FOR TESTING PURPOSES ONLY
     recent_entries: List[RecentEntriesSchema]
 
 
+class ChartStatsResponse(BaseModel):
+    gender_distribution: GenderDistributionResponse
+    entries_by_month: EntriesByMonthResponse
+
+
+class DashboardStatsResponse(BaseModel):
+    kpis: KpisResponse
+    charts: ChartStatsResponse
+    recent_entries: List[RecentEntriesSchema]
+
+
 __all__ = [
     "KpisResponse",
     "KpisWhitelistResponse",
     "KpisBlacklistResponse",
+    "EntriesByMonthResponse",
+    "DashboardStatsResponse",
+    "GenderDistributionResponse",
+    "ChartStatsResponse",
+    "RecentEntriesResponse",
 ]
