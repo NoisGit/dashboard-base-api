@@ -14,12 +14,19 @@ from src.services.azure_service import AzureService
 from src.services.user_service import UserService
 from src.services.location_service import LocationService
 
-from src.models import AccessLog, AccessLogImage, ExternalPeople
+from src.models import (
+    AccessLog,
+    AccessLogImage,
+    ExternalPeople,
+    UserLocationAccess,
+)
+
 from src.core.enums import AccessLogImageType, UserRole
 from src.schemas.access_log_schemas import (
     AccessLogResponse,
     AccessLogCreateRequest,
     AccessLogExitRequest,
+    AccessLogBulkExitRequest,
     ExternalPeopleResponse,
 )
 
@@ -193,6 +200,165 @@ class AccessLogService:
         access_log = result.scalar_one()
 
         return self._convert_to_response(access_log)
+
+    # =========================================================================
+    # DASHBOARD - Admin Exit Methods
+    # =========================================================================
+
+    async def _validate_user_location_access(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> None:
+        stmt = select(UserLocationAccess).where(
+            UserLocationAccess.user_id == user_id,
+            UserLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        access = result.scalars().first()
+
+        if not access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this resource.",
+            )
+
+    async def register_exit_admin(
+        self,
+        access_log_id: int,
+        payload: AccessLogExitRequest,
+        exit_created_by: int,
+        enforce_location_access: bool,
+    ) -> AccessLogResponse:
+        """
+        Register exit for an existing access log from dashboard.
+        If enforce_location_access is True, validates the user has access to the log location.
+        """
+        result = await self.session.execute(
+            select(AccessLog)
+            .options(selectinload(AccessLog.images))
+            .options(selectinload(AccessLog.external_people))
+            .where(AccessLog.id == access_log_id)
+        )
+        access_log = result.scalar_one_or_none()
+
+        if not access_log:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Access log not found",
+            )
+
+        if access_log.exit_date is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Exit already registered for this access log",
+            )
+
+        if enforce_location_access:
+            await self._validate_user_location_access(
+                user_id=exit_created_by,
+                location_id=access_log.location_id,
+            )
+
+        access_log.exit_date = datetime.now()
+        access_log.exit_comment = payload.exit_comment
+        access_log.exit_created_by = exit_created_by
+
+        if payload.exit_images:
+            for image_name in payload.exit_images:
+                image = AccessLogImage(
+                    access_log_id=access_log.id,
+                    image_name=image_name,
+                    image_type=AccessLogImageType.EXIT,
+                )
+                self.session.add(image)
+
+        await self.session.commit()
+
+        result = await self.session.execute(
+            select(AccessLog)
+            .options(selectinload(AccessLog.images))
+            .options(selectinload(AccessLog.external_people))
+            .where(AccessLog.id == access_log_id)
+        )
+        access_log = result.scalar_one()
+
+        return self._convert_to_response(access_log)
+
+    async def register_exit_bulk_admin(
+        self,
+        payload: AccessLogBulkExitRequest,
+        exit_created_by: int,
+        enforce_location_access: bool,
+    ) -> List[AccessLogResponse]:
+        """
+        Register exits in bulk from dashboard.
+        If enforce_location_access is True, validates user access to all involved locations.
+        """
+        unique_ids = list(dict.fromkeys(payload.access_log_ids))
+
+        result = await self.session.execute(
+            select(AccessLog)
+            .where(AccessLog.id.in_(unique_ids))  # pylint: disable=no-member
+        )
+        logs = list(result.scalars().all())
+
+        found_ids = {log.id for log in logs if log.id is not None}
+        missing_ids = [
+            log_id for log_id in unique_ids if log_id not in found_ids]
+        if missing_ids:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Access log not found",
+            )
+
+        already_exited_ids = [
+            log.id for log in logs if log.exit_date is not None]
+        if already_exited_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Exit already registered for this access log",
+            )
+
+        if enforce_location_access:
+            location_ids = list({log.location_id for log in logs})
+            stmt = select(UserLocationAccess.location_id).where(
+                UserLocationAccess.user_id == exit_created_by,
+                UserLocationAccess.location_id.in_(  # pylint: disable=no-member
+                    location_ids),
+            )
+            access_result = await self.session.execute(stmt)
+            allowed_locations = {row[0] for row in access_result.all()}
+
+            for location_id in location_ids:
+                if location_id not in allowed_locations:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You do not have permission to access this resource.",
+                    )
+
+        exit_date = datetime.now()
+        for log in logs:
+            log.exit_date = exit_date
+            log.exit_created_by = exit_created_by
+
+        await self.session.commit()
+
+        result = await self.session.execute(
+            select(AccessLog)
+            .options(selectinload(AccessLog.images))
+            .options(selectinload(AccessLog.external_people))
+            .where(AccessLog.id.in_(unique_ids))  # pylint: disable=no-member
+        )
+        updated_logs = list(result.scalars().all())
+        logs_by_id = {
+            log.id: log for log in updated_logs if log.id is not None}
+
+        return [
+            self._convert_to_response(logs_by_id[log_id])
+            for log_id in unique_ids
+            if log_id in logs_by_id
+        ]
 
     # =========================================================================
     # DASHBOARD - Admin Methods (Paginated)
