@@ -6,6 +6,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, status
 from fastapi_pagination import Page, Params
 
+from src.auth.utils import get_current_user
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_access_log_service
@@ -109,20 +110,27 @@ async def register_exit(
 )
 async def register_exit_dashboard(
     access_log_id: int,
+    payload: AccessLogExitRequest,
     service: AccessLogService = Depends(get_access_log_service),
     user_id=Depends(RoleChecker([
         UserRole.SUBADMIN,
         UserRole.ADMIN,
         UserRole.SUPERADMIN
     ])),
+    current_user=Depends(get_current_user),
 ) -> AccessLogResponse:
     """
     Register exit for an existing access log from dashboard.
     Only Admin roles can register exits.
     """
-    return await service.register_exit_dashboard(
+    role_str = current_user.get("role")
+    enforce_location_access = role_str != UserRole.SUPERADMIN.value
+
+    return await service.register_exit_admin(
         access_log_id=access_log_id,
-        user_id=user_id,
+        payload=payload,
+        exit_created_by=user_id,
+        enforce_location_access=enforce_location_access,
     )
 
 
@@ -137,14 +145,19 @@ async def register_exit_bulk_dashboard(
         UserRole.ADMIN,
         UserRole.SUPERADMIN
     ])),
+    current_user=Depends(get_current_user),
 ):
     """
     Register exits in bulk from dashboard.
     Only Admin roles can register exits.
     """
-    return await service.register_exit_bulk_dashboard(
+    role_str = current_user.get("role")
+    enforce_location_access = role_str != UserRole.SUPERADMIN.value
+
+    return await service.register_exit_bulk_admin(
         payload=payload,
-        user_id=user_id,
+        exit_created_by=user_id,
+        enforce_location_access=enforce_location_access,
     )
 
 
