@@ -2,8 +2,8 @@
 Location logbook database models for the Sentinel Enterprise API.
 
 This module contains SQLModel classes that represent logbook entries for a
-Location and an authority access permit used to generate a QR link
-for viewing logbook entries.
+Location, feature settings (enable/disable) and an authority access permit
+used to generate a QR link for viewing logbook entries.
 """
 
 from datetime import datetime
@@ -40,10 +40,7 @@ class LocationLogbook(SQLModel, table=True):
 
     description: str = Field(min_length=1, max_length=1000)
 
-    # Stored blob name (uploaded to Azure separately). Can be null.
     media_name: Optional[str] = Field(default=None, max_length=255)
-
-    # Example values: "PHOTO" | "VIDEO" (kept as plain string for now)
     media_type: Optional[str] = Field(default=None, max_length=20)
 
     created_at: datetime = Field(default_factory=datetime.now)
@@ -51,7 +48,38 @@ class LocationLogbook(SQLModel, table=True):
     location: Optional["Location"] = Relationship()
     creator: Optional["User"] = Relationship(
         sa_relationship_kwargs={
-            "foreign_keys": "[LocationLogbook.created_by]"},
+            "foreign_keys": "[LocationLogbook.created_by]",
+        },
+    )
+
+
+class LocationLogbookSettings(SQLModel, table=True):
+    """
+    Represents logbook feature settings per location.
+
+    Admin can enable or disable the feature for a given location.
+    """
+
+    __tablename__ = "location_logbook_settings"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    location_id: int = Field(
+        foreign_key="location.id",
+        index=True,
+        unique=True,
+    )
+
+    is_enabled: bool = Field(default=False)
+
+    updated_by: Optional[int] = Field(default=None, foreign_key="users.id")
+    updated_at: Optional[datetime] = None
+
+    location: Optional["Location"] = Relationship()
+    updater: Optional["User"] = Relationship(
+        sa_relationship_kwargs={
+            "foreign_keys": "[LocationLogbookSettings.updated_by]",
+        },
     )
 
 
@@ -75,5 +103,6 @@ class AuthorityAccessPermit(SQLModel, table=True):
     location: Optional["Location"] = Relationship()
     creator: Optional["User"] = Relationship(
         sa_relationship_kwargs={
-            "foreign_keys": "[AuthorityAccessPermit.created_by]"},
+            "foreign_keys": "[AuthorityAccessPermit.created_by]",
+        },
     )
