@@ -1,9 +1,16 @@
 """Location logbook schemas for Sentinel Enterprise API."""
 
 from datetime import datetime
+from enum import Enum
 from typing import Optional, List
 
 from pydantic import BaseModel, Field
+
+
+class LocationLogbookMediaType(str, Enum):
+    """Allowed media types for logbook entries."""
+    PHOTO = "PHOTO"
+    VIDEO = "VIDEO"
 
 
 class LocationLogbookCreateRequest(BaseModel):
@@ -11,9 +18,8 @@ class LocationLogbookCreateRequest(BaseModel):
     location_id: int
     description: str = Field(min_length=1, max_length=1000)
 
-    # Media uploaded to Azure (store blob name)
     media_name: Optional[str] = Field(default=None, max_length=255)
-    media_type: Optional[str] = Field(default=None, max_length=20)
+    media_type: Optional[LocationLogbookMediaType] = None
 
 
 class LocationLogbookResponse(BaseModel):
@@ -24,7 +30,7 @@ class LocationLogbookResponse(BaseModel):
     description: str
 
     media_url: Optional[str] = None
-    media_type: Optional[str] = None
+    media_type: Optional[LocationLogbookMediaType] = None
 
     created_at: datetime
 
@@ -33,9 +39,28 @@ class LocationLogbookResponse(BaseModel):
     user_full_name: Optional[str] = None
 
 
+class LocationLogbookSettingsUpdateRequest(BaseModel):
+    """Request schema for enabling/disabling location logbook feature."""
+    enabled: bool
+
+
+class LocationLogbookSettingsResponse(BaseModel):
+    """Response schema for location logbook settings."""
+    location_id: int
+    is_enabled: bool
+    updated_by: Optional[int] = None
+    updated_at: Optional[datetime] = None
+
+
+class AuthorityAccessCreateRequest(BaseModel):
+    """Request schema for creating an authority access link (QR target)."""
+    location_id: int
+
+
 class AuthorityLinkResponse(BaseModel):
     """Response schema for authority access link (QR target)."""
     relative_path: str
+    expires_at: datetime
 
 
 class AuthorityViewResponse(BaseModel):
