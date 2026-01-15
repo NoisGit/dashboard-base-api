@@ -20,6 +20,7 @@ from src.routers import (
     blacklists_router,
     system_router,
     dashboard_router,
+    location_logbook_router,
 )
 
 
@@ -40,3 +41,4 @@ def include_routers(app):
     app.include_router(blacklists_router, prefix="/api/v1")
     app.include_router(system_router, prefix="/api/v1")
     app.include_router(dashboard_router, prefix="/api/v1")
+    app.include_router(location_logbook_router, prefix="/api/v1")
