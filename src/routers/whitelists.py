@@ -63,6 +63,7 @@ async def allow_person(
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
                 UserRole.SUBADMIN,
+                UserRole.CLIENT,
             ],
         )
     ),
