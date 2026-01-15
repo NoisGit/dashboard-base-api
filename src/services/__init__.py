@@ -16,6 +16,7 @@ from .service_contact_service import ServiceContactService
 from .whitelist_service import WhitelistService
 from .blacklist_service import BlacklistService
 from .system_service import SystemService
+from .location_logbook_service import LocationLogbookService
 
 __all__ = [
     "AuthService",
@@ -29,4 +30,5 @@ __all__ = [
     "WhitelistService",
     "BlacklistService",
     "SystemService",
+    "LocationLogbookService",
 ]

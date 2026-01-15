@@ -20,6 +20,7 @@ from src.services.system_service import SystemService
 from src.services.access_log_service import AccessLogService
 from src.services.azure_service import AzureService
 from src.services.dashboard_service import DashboardService
+from src.services.location_logbook_service import LocationLogbookService
 
 
 def get_azure_service() -> AzureService:
@@ -68,6 +69,15 @@ def get_location_service(
 ) -> LocationService:
     """Dependency to get a LocationService instance."""
     return LocationService(session, user_service)
+
+
+def get_location_logbook_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+    azure_service: AzureService = Depends(get_azure_service),
+) -> LocationLogbookService:
+    """Dependency to get a LocationLogbookService instance."""
+    return LocationLogbookService(session, user_service, azure_service)
 
 
 def get_emergency_contact_service(
