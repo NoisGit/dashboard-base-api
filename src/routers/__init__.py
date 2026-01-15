@@ -20,6 +20,7 @@ from .whitelists import router as whitelists_router
 from .blacklists import router as blacklists_router
 from .system import router as system_router
 from .dashboard import router as dashboard_router
+from .location_logbook import router as location_logbook_router
 
 __all__ = [
     "access_logs_router",
@@ -37,4 +38,5 @@ __all__ = [
     "blacklists_router",
     "system_router",
     "dashboard_router",
+    "location_logbook_router",
 ]
