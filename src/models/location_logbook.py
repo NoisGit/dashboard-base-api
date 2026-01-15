@@ -83,13 +83,13 @@ class LocationLogbookSettings(SQLModel, table=True):
     )
 
 
-class AuthorityAccessPermit(SQLModel, table=True):
+class PoliceAccessPermit(SQLModel, table=True):
     """
     Represents an authority access permit for a location, allowing temporary
     access via a unique token (used for QR link).
     """
 
-    __tablename__ = "authority_access_permits"
+    __tablename__ = "police_access_permits"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
@@ -103,6 +103,6 @@ class AuthorityAccessPermit(SQLModel, table=True):
     location: Optional["Location"] = Relationship()
     creator: Optional["User"] = Relationship(
         sa_relationship_kwargs={
-            "foreign_keys": "[AuthorityAccessPermit.created_by]",
+            "foreign_keys": "[PoliceAccessPermit.created_by]",
         },
     )

@@ -28,7 +28,7 @@ from .support_response import SupportResponse
 from .audit_log import AuditLog
 from .service_contacts import ServiceContact
 from .notification import Notification
-from .location_logbook import LocationLogbook
+from .location_logbook import LocationLogbook, LocationLogbookSettings, PoliceAccessPermit
 
 
 __all__ = [
@@ -54,4 +54,6 @@ __all__ = [
     "ServiceContact",
     "Notification",
     "LocationLogbook",
+    "LocationLogbookSettings",
+    "PoliceAccessPermit",
 ]
