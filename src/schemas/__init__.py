@@ -123,9 +123,9 @@ from .location_logbook_schemas import (
     LocationLogbookResponse,
     LocationLogbookSettingsUpdateRequest,
     LocationLogbookSettingsResponse,
-    AuthorityAccessCreateRequest,
-    AuthorityLinkResponse,
-    AuthorityViewResponse,
+    PoliceAccessCreateRequest,
+    PoliceLinkResponse,
+    PoliceViewResponse,
 )
 
 __all__ = [
@@ -230,7 +230,7 @@ __all__ = [
     "LocationLogbookResponse",
     "LocationLogbookSettingsUpdateRequest",
     "LocationLogbookSettingsResponse",
-    "AuthorityAccessCreateRequest",
-    "AuthorityLinkResponse",
-    "AuthorityViewResponse",
+    "PoliceAccessCreateRequest",
+    "PoliceLinkResponse",
+    "PoliceViewResponse",
 ]

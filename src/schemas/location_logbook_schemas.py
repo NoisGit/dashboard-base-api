@@ -52,18 +52,18 @@ class LocationLogbookSettingsResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
 
-class AuthorityAccessCreateRequest(BaseModel):
-    """Request schema for creating an authority access link (QR target)."""
+class PoliceAccessCreateRequest(BaseModel):
+    """Request schema for creating a police access link (QR target)."""
     location_id: int
 
 
-class AuthorityLinkResponse(BaseModel):
-    """Response schema for authority access link (QR target)."""
+class PoliceLinkResponse(BaseModel):
+    """Response schema for police access link (QR target)."""
     relative_path: str
     expires_at: datetime
 
 
-class AuthorityViewResponse(BaseModel):
-    """Response schema for authority view."""
+class PoliceViewResponse(BaseModel):
+    """Response schema for police view."""
     location_name: str
     entries: List[LocationLogbookResponse]
