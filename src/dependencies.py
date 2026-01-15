@@ -14,6 +14,7 @@ from src.services.dashboard_service import DashboardService
 from src.services.document_service import DocumentService
 from src.services.email_service import EmailService
 from src.services.emergency_contact_service import EmergencyContactService
+from src.services.location_logbook_service import LocationLogbookService
 from src.services.location_service import LocationService
 from src.services.notification_service import NotificationService
 from src.services.service_contact_service import ServiceContactService
@@ -70,6 +71,15 @@ def get_location_service(
 ) -> LocationService:
     """Dependency to get a LocationService instance."""
     return LocationService(session, user_service, company_service)
+
+
+def get_location_logbook_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+    azure_service: AzureService = Depends(get_azure_service),
+) -> LocationLogbookService:
+    """Dependency to get a LocationLogbookService instance."""
+    return LocationLogbookService(session, user_service, azure_service)
 
 
 def get_emergency_contact_service(
