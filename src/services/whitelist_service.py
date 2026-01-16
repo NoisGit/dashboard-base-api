@@ -2,7 +2,7 @@
 
 # pylint: disable=no-member, singleton-comparison
 
-from datetime import date
+from datetime import datetime
 from typing import List, Optional, cast
 
 from fastapi import HTTPException, status
@@ -142,11 +142,11 @@ class WhitelistService:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    def _is_active(self, expiration_date: Optional[date]) -> bool:
+    def _is_active(self, expiration_date: Optional[datetime]) -> bool:
         """Check active state by expiration date."""
         if expiration_date is None:
             return True
-        return expiration_date >= date.today()
+        return expiration_date >= datetime.now()
 
     async def allow_person(
         self,
@@ -173,7 +173,7 @@ class WhitelistService:
                 detail="full_name is required.",
             )
 
-        if payload.expiration_date is not None and payload.expiration_date < date.today():
+        if payload.expiration_date is not None and payload.expiration_date.replace(tzinfo=None) < datetime.now():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="expiration_date must be today or a future date.",
@@ -187,7 +187,7 @@ class WhitelistService:
             id_number=id_number,
         )
 
-        if existing and self._is_active(existing.expiration_date):
+        if existing and self._is_active(existing.expiration_date.replace(tzinfo=None)):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Whitelist entry already exists for this location.",
@@ -210,7 +210,7 @@ class WhitelistService:
                 await self.session.commit()
                 await self.session.refresh(external)
 
-        if existing and not self._is_active(existing.expiration_date):
+        if existing and not self._is_active(existing.expiration_date.replace(tzinfo=None)):
             existing.external_people_id = external.id
             existing.name = full_name
             existing.reason = reason
