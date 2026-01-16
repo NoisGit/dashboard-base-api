@@ -145,7 +145,7 @@
                 <div class="log-header">
                     <span class="log-time">{{ log.created_at.strftime('%d %b, %H:%M') }}</span>
 
-                    {% if log.media_url %}
+                    {% if log.media_url and mt %}
                     <span class="log-badge">
                         {% if "VIDEO" in mt %}🎥 Video{% else %}📷 Foto{% endif %}
                     </span>
@@ -156,15 +156,16 @@
                     {{ log.description }}
                 </div>
 
-                {% if log.media_url %}
+                {% if log.media_url and mt %}
                 <div class="media">
                     {% if "VIDEO" in mt %}
-                    <video controls>
+                    <video controls controlsList="nodownload" onerror="this.style.display='none'">
                         <source src="{{ log.media_url }}" />
-                        Tu navegador no soporta video.
+                        No se pudo reproducir el video.
                     </video>
                     {% else %}
-                    <img src="{{ log.media_url }}" alt="Media del libro de novedades" />
+                    <img src="{{ log.media_url }}" alt="Media del libro de novedades"
+                        onerror="this.style.display='none'" />
                     {% endif %}
                 </div>
                 {% endif %}
