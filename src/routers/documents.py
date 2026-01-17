@@ -1,6 +1,6 @@
 """Documents router module for Sentinel Enterprise API."""
 
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi_pagination import Page, Params
@@ -133,7 +133,6 @@ async def create_document(
     company_id: int = Form(...),
     name: str = Form(...),
     comment: str = Form(""),
-    user_id: str = Form(""),
     file: UploadFile = File(...),
     service: DocumentService = Depends(get_document_service),
     requester_id: int = Depends(
@@ -145,15 +144,10 @@ async def create_document(
     ),
 ) -> DocumentResponse:
     """Create a new document"""
-    normalized_name = name.strip()
-    normalized_comment = comment.strip() or None
-    normalized_user_id = user_id.strip() or None
-
     payload = DocumentCreateRequest(
         company_id=company_id,
-        name=normalized_name,
-        comment=normalized_comment,
-        user_id=normalized_user_id,
+        name=name.strip(),
+        comment=comment.strip() or None,
     )
 
     document = await service.create_document(
@@ -170,9 +164,9 @@ async def create_document(
 )
 async def update_document(
     document_id: int,
-    name: str = Form(...),
-    comment: str = Form(""),
-    file: Optional[UploadFile] = File(None),
+    name: Optional[str] = Form(None),
+    comment: Optional[str] = Form(None),
+    file: Optional[Union[UploadFile, str]] = File(None),
     service: DocumentService = Depends(get_document_service),
     _=Depends(
         RoleChecker(
@@ -183,8 +177,12 @@ async def update_document(
     ),
 ) -> DocumentResponse:
     """Update an existing document"""
-    normalized_name = name.strip()
-    normalized_comment = comment.strip() or None
+    normalized_name = name.strip() if name is not None else None
+    normalized_comment = comment.strip() if comment is not None else None
+
+    upload_file: Optional[UploadFile] = None
+    if isinstance(file, UploadFile) and file.filename:
+        upload_file = file
 
     payload = DocumentUpdateRequest(
         name=normalized_name,
@@ -194,7 +192,7 @@ async def update_document(
     document = await service.update_document(
         document_id=document_id,
         payload=payload,
-        file=file,
+        file=upload_file,
     )
     return document
 

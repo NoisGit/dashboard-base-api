@@ -146,8 +146,12 @@ class DocumentService:
         timestamp = int(datetime.now().timestamp())
         return f"company_{company_id}/{unique}_{timestamp}{ext}"
 
-    @staticmethod
-    def _to_document_response(doc: Document) -> DocumentResponse:
+    def _to_document_response(self, doc: Document) -> DocumentResponse:
+        url = self.azure_service.generate_read_sas_url(
+            container_name=DOCUMENTS_CONTAINER_NAME,
+            blob_name=doc.blob_name,
+        )
+
         return DocumentResponse(
             id=doc.id,
             company_id=doc.company_id,
@@ -155,6 +159,7 @@ class DocumentService:
             name=doc.name,
             file_name=doc.file_name,
             blob_name=doc.blob_name,
+            url=url,
             comment=doc.comment,
             content_type=doc.content_type,
             size_bytes=doc.size_bytes,
@@ -276,7 +281,7 @@ class DocumentService:
         user_id: int,
         payload: DocumentCreateRequest,
         file: UploadFile,
-    ) -> Document:
+    ) -> DocumentResponse:
         """Create a new document and upload its blob to Azure."""
         company = await self.session.get(Company, payload.company_id)
         if not company or not company.is_active:
@@ -284,6 +289,16 @@ class DocumentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Company not found.",
             )
+
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Document name is required.",
+            )
+
+        comment = payload.comment.strip() if payload.comment else None
+        comment = comment or None
 
         content = await file.read()
         ext = self._validate_file(file=file, content=content)
@@ -306,13 +321,11 @@ class DocumentService:
                 detail="Failed to upload document to Azure.",
             ) from e
 
-        owner_user_id = payload.user_id if payload.user_id is not None else user_id
-
         document = Document(
             company_id=payload.company_id,
-            user_id=owner_user_id,
-            name=payload.name,
-            comment=payload.comment,
+            user_id=user_id,
+            name=name,
+            comment=comment,
             file_name=file.filename,
             blob_name=blob_name,
             content_type=file.content_type,
@@ -324,14 +337,15 @@ class DocumentService:
         self.session.add(document)
         await self.session.commit()
         await self.session.refresh(document)
-        return document
+
+        return self._to_document_response(document)
 
     async def update_document(
         self,
         document_id: int,
         payload: DocumentUpdateRequest,
         file: Optional[UploadFile],
-    ) -> Document:
+    ) -> DocumentResponse:
         """Update document metadata and optionally replace the file."""
         document = await self._get_document_by_id(document_id)
         if not document:
@@ -340,9 +354,18 @@ class DocumentService:
                 detail="Document not found.",
             )
 
-        update_data = payload.model_dump(exclude_none=True)
-        for key, value in update_data.items():
-            setattr(document, key, value)
+        if payload.name is not None:
+            name = payload.name.strip()
+            if not name:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Document name is required.",
+                )
+            document.name = name
+
+        if payload.comment is not None:
+            comment = payload.comment.strip() or None
+            document.comment = comment
 
         old_blob_name = document.blob_name
 
@@ -385,7 +408,7 @@ class DocumentService:
             except AzureServiceError:
                 pass
 
-        return document
+        return self._to_document_response(document)
 
     async def delete_document(
         self,

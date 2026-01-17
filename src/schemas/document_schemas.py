@@ -10,26 +10,31 @@ from .base_schemas import BaseResponse
 
 class DocumentCreateRequest(BaseModel):
     """Schema for creating a document record (metadata only)."""
+
     company_id: int
     name: str
     comment: Optional[str] = None
-    user_id: Optional[int] = None
 
 
 class DocumentUpdateRequest(BaseModel):
     """Schema for updating a document metadata."""
+
     name: Optional[str] = None
     comment: Optional[str] = None
 
 
 class DocumentResponse(BaseResponse):
     """Schema for document response."""
+
     id: int
     company_id: int
     user_id: int
     name: str
     file_name: str
     blob_name: str
+
+    url: Optional[str] = None
+
     comment: Optional[str] = None
     content_type: Optional[str] = None
     size_bytes: Optional[int] = None
@@ -39,4 +44,5 @@ class DocumentResponse(BaseResponse):
 
 class DocumentDownloadResponse(BaseResponse):
     """Schema for document download response."""
+
     url: str
