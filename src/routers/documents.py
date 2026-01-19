@@ -164,8 +164,8 @@ async def create_document(
 )
 async def update_document(
     document_id: int,
-    name: Optional[str] = Form(None),
-    comment: Optional[str] = Form(None),
+    name: Optional[str] = Form(""),
+    comment: Optional[str] = Form(""),
     file: Optional[Union[UploadFile, str]] = File(None),
     service: DocumentService = Depends(get_document_service),
     _=Depends(
@@ -177,8 +177,8 @@ async def update_document(
     ),
 ) -> DocumentResponse:
     """Update an existing document"""
-    normalized_name = name.strip() if name is not None else None
-    normalized_comment = comment.strip() if comment is not None else None
+    normalized_name = name.strip() or None
+    normalized_comment = comment.strip() or None
 
     upload_file: Optional[UploadFile] = None
     if isinstance(file, UploadFile) and file.filename:
