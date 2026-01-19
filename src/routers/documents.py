@@ -1,8 +1,8 @@
 """Documents router module for Sentinel Enterprise API."""
 
-from typing import Optional, Union
+from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
 
 from src.auth.permissions import RoleChecker
@@ -130,10 +130,7 @@ async def download_document(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_document(
-    company_id: int = Form(...),
-    name: str = Form(...),
-    comment: str = Form(""),
-    file: UploadFile = File(...),
+    payload: DocumentCreateRequest,
     service: DocumentService = Depends(get_document_service),
     requester_id: int = Depends(
         RoleChecker(
@@ -144,16 +141,9 @@ async def create_document(
     ),
 ) -> DocumentResponse:
     """Create a new document"""
-    payload = DocumentCreateRequest(
-        company_id=company_id,
-        name=name.strip(),
-        comment=comment.strip() or None,
-    )
-
     document = await service.create_document(
         user_id=requester_id,
         payload=payload,
-        file=file,
     )
     return document
 
@@ -164,9 +154,7 @@ async def create_document(
 )
 async def update_document(
     document_id: int,
-    name: Optional[str] = Form(""),
-    comment: Optional[str] = Form(""),
-    file: Optional[Union[UploadFile, str]] = File(None),
+    payload: DocumentUpdateRequest,
     service: DocumentService = Depends(get_document_service),
     _=Depends(
         RoleChecker(
@@ -177,22 +165,9 @@ async def update_document(
     ),
 ) -> DocumentResponse:
     """Update an existing document"""
-    normalized_name = name.strip() or None
-    normalized_comment = comment.strip() or None
-
-    upload_file: Optional[UploadFile] = None
-    if isinstance(file, UploadFile) and file.filename:
-        upload_file = file
-
-    payload = DocumentUpdateRequest(
-        name=normalized_name,
-        comment=normalized_comment,
-    )
-
     document = await service.update_document(
         document_id=document_id,
         payload=payload,
-        file=upload_file,
     )
     return document
 

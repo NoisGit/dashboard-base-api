@@ -15,9 +15,9 @@ class DocumentCreateRequest(BaseModel):
     name: str
     file_name: str
     blob_name: str
-    comment: Optional[str] = None
     content_type: Optional[str] = None
     size_bytes: Optional[int] = None
+    comment: Optional[str] = None
 
 
 class DocumentUpdateRequest(BaseModel):
@@ -25,8 +25,6 @@ class DocumentUpdateRequest(BaseModel):
 
     name: Optional[str] = None
     comment: Optional[str] = None
-
-    # If the file was replaced by the client (SAS flow), these can be updated too.
     file_name: Optional[str] = None
     blob_name: Optional[str] = None
     content_type: Optional[str] = None

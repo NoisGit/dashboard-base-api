@@ -2,18 +2,16 @@
 
 # pylint: disable=no-member, singleton-comparison
 
-import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, cast
 
-from fastapi import HTTPException, UploadFile, status
+from fastapi import HTTPException, status
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from src.api.error import AzureServiceError
 from src.config.config import settings
 from src.core.enums import UserRole
 from src.models import Company, CompanyStaff, Document
@@ -29,7 +27,6 @@ from src.services.user_service import UserService
 
 DEFAULT_ALLOWED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg"]
 DEFAULT_MAX_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
-DOCUMENTS_CONTAINER_NAME = "documents"
 
 
 class DocumentService:
@@ -107,48 +104,46 @@ class DocumentService:
         )
         return int(max_size)
 
-    def _validate_file(
+    def _normalize_optional_str(self, value: Optional[str]) -> Optional[str]:
+        """Treat empty or 'string' values as None (Swagger defaults)."""
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or normalized.lower() == "string":
+            return None
+        return normalized
+
+    def _validate_metadata(
         self,
-        file: UploadFile,
-        content: bytes,
-    ) -> str:
-        if not file.filename:
+        file_name: str,
+        size_bytes: Optional[int],
+    ) -> None:
+        if not file_name.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="File name is required.",
+                detail="file_name is required.",
             )
 
-        ext = Path(file.filename).suffix.lower()
+        ext = Path(file_name).suffix.lower()
         allowed_extensions = {e.lower()
                               for e in self._get_allowed_extensions()}
-
         if ext not in allowed_extensions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="File extension is not allowed.",
             )
 
-        max_size = self._get_max_size_bytes()
-        if len(content) > max_size:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="File size exceeds the maximum allowed limit.",
-            )
-
-        return ext
-
-    def _build_blob_name(
-        self,
-        company_id: int,
-        ext: str,
-    ) -> str:
-        unique = uuid.uuid4().hex
-        timestamp = int(datetime.now().timestamp())
-        return f"company_{company_id}/{unique}_{timestamp}{ext}"
+        if size_bytes is not None:
+            max_size = self._get_max_size_bytes()
+            if size_bytes > max_size:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="File size exceeds the maximum allowed limit.",
+                )
 
     def _to_document_response(self, doc: Document) -> DocumentResponse:
         url = self.azure_service.generate_read_sas_url(
-            container_name=DOCUMENTS_CONTAINER_NAME,
+            container_name="documents",
             blob_name=doc.blob_name,
         )
 
@@ -270,7 +265,7 @@ class DocumentService:
         )
 
         url = self.azure_service.generate_read_sas_url(
-            container_name=DOCUMENTS_CONTAINER_NAME,
+            container_name="documents",
             blob_name=document.blob_name,
         )
 
@@ -280,9 +275,8 @@ class DocumentService:
         self,
         user_id: int,
         payload: DocumentCreateRequest,
-        file: UploadFile,
     ) -> DocumentResponse:
-        """Create a new document and upload its blob to Azure."""
+        """Create a new document record (metadata only)."""
         company = await self.session.get(Company, payload.company_id)
         if not company or not company.is_active:
             raise HTTPException(
@@ -291,45 +285,44 @@ class DocumentService:
             )
 
         name = payload.name.strip()
-        if not name:
+        if not name or name.lower() == "string":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Document name is required.",
             )
 
-        comment = payload.comment.strip() if payload.comment else None
-        comment = comment or None
+        file_name = payload.file_name.strip()
+        blob_name = payload.blob_name.strip()
 
-        content = await file.read()
-        ext = self._validate_file(file=file, content=content)
-
-        blob_name = self._build_blob_name(
-            company_id=payload.company_id,
-            ext=ext,
-        )
-
-        try:
-            self.azure_service.upload_blob(
-                container_name=DOCUMENTS_CONTAINER_NAME,
-                blob_name=blob_name,
-                content=content,
-                content_type=file.content_type or "application/octet-stream",
-            )
-        except AzureServiceError as e:
+        if not file_name:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to upload document to Azure.",
-            ) from e
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="file_name is required.",
+            )
+        if not blob_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="blob_name is required.",
+            )
+
+        comment = payload.comment.strip() if payload.comment else None
+        if comment and comment.lower() == "string":
+            comment = None
+
+        self._validate_metadata(
+            file_name=file_name,
+            size_bytes=payload.size_bytes,
+        )
 
         document = Document(
             company_id=payload.company_id,
             user_id=user_id,
             name=name,
-            comment=comment,
-            file_name=file.filename,
+            comment=comment or None,
+            file_name=file_name,
             blob_name=blob_name,
-            content_type=file.content_type,
-            size_bytes=len(content),
+            content_type=payload.content_type,
+            size_bytes=payload.size_bytes,
             created_by=user_id,
             created_at=datetime.now(),
         )
@@ -344,9 +337,8 @@ class DocumentService:
         self,
         document_id: int,
         payload: DocumentUpdateRequest,
-        file: Optional[UploadFile],
     ) -> DocumentResponse:
-        """Update document metadata and optionally replace the file."""
+        """Update document metadata (optionally replace blob metadata)."""
         document = await self._get_document_by_id(document_id)
         if not document:
             raise HTTPException(
@@ -354,59 +346,39 @@ class DocumentService:
                 detail="Document not found.",
             )
 
-        if payload.name is not None:
-            name = payload.name.strip()
-            if not name:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Document name is required.",
-                )
-            document.name = name
+        normalized_name = self._normalize_optional_str(payload.name)
+        if normalized_name is not None:
+            document.name = normalized_name
 
+        normalized_comment = self._normalize_optional_str(payload.comment)
         if payload.comment is not None:
-            comment = payload.comment.strip() or None
-            document.comment = comment
+            # if FE sent ""/"string" => normalized_comment becomes None (clears comment)
+            document.comment = normalized_comment
 
-        old_blob_name = document.blob_name
+        normalized_blob_name = self._normalize_optional_str(payload.blob_name)
+        if normalized_blob_name is not None:
+            document.blob_name = normalized_blob_name
 
-        if file is not None:
-            content = await file.read()
-            ext = self._validate_file(file=file, content=content)
-
-            new_blob_name = self._build_blob_name(
-                company_id=document.company_id,
-                ext=ext,
+        normalized_file_name = self._normalize_optional_str(payload.file_name)
+        if normalized_file_name is not None:
+            self._validate_metadata(
+                file_name=normalized_file_name,
+                size_bytes=payload.size_bytes
+                if payload.size_bytes is not None
+                else document.size_bytes,
             )
+            document.file_name = normalized_file_name
 
-            try:
-                self.azure_service.upload_blob(
-                    container_name=DOCUMENTS_CONTAINER_NAME,
-                    blob_name=new_blob_name,
-                    content=content,
-                    content_type=file.content_type or "application/octet-stream",
-                )
-            except AzureServiceError as e:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to upload document to Azure.",
-                ) from e
+        normalized_content_type = self._normalize_optional_str(
+            payload.content_type)
+        if payload.content_type is not None:
+            document.content_type = normalized_content_type
 
-            document.file_name = file.filename
-            document.blob_name = new_blob_name
-            document.content_type = file.content_type
-            document.size_bytes = len(content)
+        if payload.size_bytes is not None:
+            document.size_bytes = payload.size_bytes
 
         await self.session.commit()
         await self.session.refresh(document)
-
-        if file is not None:
-            try:
-                self.azure_service.delete_blob(
-                    container_name=DOCUMENTS_CONTAINER_NAME,
-                    blob_name=old_blob_name,
-                )
-            except AzureServiceError:
-                pass
 
         return self._to_document_response(document)
 
@@ -414,24 +386,13 @@ class DocumentService:
         self,
         document_id: int,
     ) -> None:
-        """Hard delete a document and remove its blob from Azure."""
+        """Hard delete a document record (does not delete blob)."""
         document = await self._get_document_by_id(document_id)
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Document not found.",
             )
-
-        try:
-            self.azure_service.delete_blob(
-                container_name=DOCUMENTS_CONTAINER_NAME,
-                blob_name=document.blob_name,
-            )
-        except AzureServiceError as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to delete document from Azure.",
-            ) from e
 
         await self.session.delete(document)
         await self.session.commit()
