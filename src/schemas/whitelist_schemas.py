@@ -1,6 +1,6 @@
 """Whitelist-related Pydantic schemas for the Sentinel Enterprise API."""
 
-from datetime import datetime, date
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -13,7 +13,7 @@ class WhitelistCreateRequest(BaseModel):
     id_number: str
     full_name: str
     reason: Optional[str] = None
-    expiration_date: Optional[date] = None
+    expiration_date: Optional[datetime] = None
 
 
 class WhitelistResponse(BaseResponse):
@@ -23,7 +23,7 @@ class WhitelistResponse(BaseResponse):
     id_number: str
     full_name: str
     reason: Optional[str] = None
-    expiration_date: Optional[date] = None
+    expiration_date: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
 

@@ -46,7 +46,7 @@ class AccessList(SQLModel, table=True):
     name: str = Field(max_length=100)
     reason: Optional[str] = Field(default=None, max_length=255)
     vehicle_plate: Optional[str] = Field(default=None, max_length=20)
-    expiration_date: Optional[date] = None
+    expiration_date: Optional[datetime] = None
     file_name: Optional[str] = Field(default=None, max_length=255)
 
     # Audit
