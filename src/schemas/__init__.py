@@ -112,6 +112,10 @@ from .user_schemas import (
     UserSuspendRequest,
     UserUpdateRequest,
 )
+from .whitelist_schemas import (
+    WhitelistCreateRequest,
+    WhitelistResponse,
+)
 
 __all__ = [
     # Base schemas
