@@ -26,6 +26,7 @@ from src.schemas import (
     LocationResponse,
 )
 from src.services.user_service import UserService
+from src.services.company_service import CompanyService
 
 
 class LocationService:
@@ -35,9 +36,11 @@ class LocationService:
         self,
         session: AsyncSession,
         user_service: Optional[UserService] = None,
+        company_service: Optional[CompanyService] = None,
     ):
         self.session = session
         self.user_service = user_service or UserService(session)
+        self.company_service = company_service or CompanyService(session)
 
     async def _get_location_by_id(
         self,
@@ -255,3 +258,43 @@ class LocationService:
 
         self.session.add(assignment)
         await self.session.commit()
+
+    async def check_user_permission_on_location(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> Location:
+        """Validate location"""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        is_superadmin = user.role == UserRole.SUPERADMIN
+
+        location = await self.session.get(Location, location_id)
+        if not location or not location.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Location not found.",
+            )
+
+        if is_superadmin:
+            return location
+
+        user_company_id = await self.company_service.get_company_id_by_user_id(user_id)
+        if not user_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no company assigned.",
+            )
+
+        if not location.company_id or location.company_id != user_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed for this location.",
+            )
+
+        return location
