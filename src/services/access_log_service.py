@@ -9,10 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select, desc
 
+
 from src.services.azure_service import AzureService
+from src.services.user_service import UserService
+from src.services.location_service import LocationService
 
 from src.models import AccessLog, AccessLogImage, ExternalPeople
-from src.core.enums import AccessLogImageType
+from src.core.enums import AccessLogImageType, UserRole
 from src.schemas.access_log_schemas import (
     AccessLogResponse,
     AccessLogCreateRequest,
@@ -27,16 +30,26 @@ class AccessLogService:
     def __init__(
         self,
         session: AsyncSession,
-        azure_service: AzureService
+        azure_service: AzureService,
+        user_service: UserService,
+        location_service: LocationService,
     ):
         self.session = session
         self.azure_service = azure_service
+        self.user_service = user_service
+        self.location_service = location_service
 
-    async def get_active_entries(self, location_id: int) -> List[AccessLogResponse]:
+    async def get_active_entries(self, location_id: int, user_id: int) -> List[AccessLogResponse]:
         """
         Get active access logs for a specific location.
         Active = entry exists but no exit_date (person is still inside).
         """
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
         result = await self.session.execute(
             select(AccessLog)
             .options(selectinload(AccessLog.images))
@@ -48,11 +61,17 @@ class AccessLogService:
         logs = list(result.scalars().all())
         return [self._convert_to_response(log) for log in logs]
 
-    async def get_today_exits(self, location_id: int) -> List[AccessLogResponse]:
+    async def get_today_exits(self, location_id: int, user_id: int) -> List[AccessLogResponse]:
         """
         Get exits from today for a specific location.
         Returns logs with exit_date set to today.
         """
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
         today_start = datetime.combine(date.today(), datetime.min.time())
         today_end = datetime.combine(date.today(), datetime.max.time())
 
@@ -182,6 +201,7 @@ class AccessLogService:
     async def get_logs_paginated(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         location_id: int,
+        user_id: int,
         params: Params,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
@@ -194,6 +214,12 @@ class AccessLogService:
         Get access logs with filters and pagination for dashboard.
         Always filters by a specific location.
         """
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
         query = (
             select(AccessLog)
             .options(selectinload(AccessLog.images))

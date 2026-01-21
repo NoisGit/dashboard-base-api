@@ -27,7 +27,7 @@ router = APIRouter(prefix="/access-logs", tags=["access-logs"])
 async def get_active_entries(
     location_id: int,
     service: AccessLogService = Depends(get_access_log_service),
-    _=Depends(RoleChecker([
+    user_id: int = Depends(RoleChecker([
         UserRole.JANITOR,
         UserRole.SUBADMIN,
         UserRole.ADMIN,
@@ -38,7 +38,7 @@ async def get_active_entries(
     Get active access logs for a specific location.
     Active = persons who have entered but not yet exited.
     """
-    return await service.get_active_entries(location_id)
+    return await service.get_active_entries(location_id, user_id)
 
 
 @router.get(
@@ -48,7 +48,7 @@ async def get_active_entries(
 async def get_today_exits(
     location_id: int,
     service: AccessLogService = Depends(get_access_log_service),
-    _=Depends(RoleChecker([
+    user_id: int = Depends(RoleChecker([
         UserRole.JANITOR,
         UserRole.SUBADMIN,
         UserRole.ADMIN,
@@ -58,7 +58,7 @@ async def get_today_exits(
     """
     Get access logs with exits from today for a specific location.
     """
-    return await service.get_today_exits(location_id)
+    return await service.get_today_exits(location_id, user_id)
 
 
 @router.post(
@@ -136,7 +136,8 @@ async def get_logs_dashboard(  # pylint: disable=too-many-arguments, too-many-po
         description="Search by person DNI",
     ),
     service: AccessLogService = Depends(get_access_log_service),
-    _=Depends(RoleChecker([
+    user_id: int = Depends(RoleChecker([
+        UserRole.CLIENT,
         UserRole.SUBADMIN,
         UserRole.ADMIN,
         UserRole.SUPERADMIN
@@ -148,6 +149,7 @@ async def get_logs_dashboard(  # pylint: disable=too-many-arguments, too-many-po
     """
     return await service.get_logs_paginated(
         location_id=location_id,
+        user_id=user_id,
         params=params,
         start_date=start_date,
         end_date=end_date,

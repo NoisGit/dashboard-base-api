@@ -56,11 +56,27 @@ class LocationService:
 
     async def list_locations(
         self,
+        user_id: int,
         params: Params,
         company_id: Optional[int],
         search: Optional[str],
     ) -> Page[LocationResponse]:
         """List locations with optional filters."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role != UserRole.SUPERADMIN:
+            company_id = await self.company_service.get_company_id_by_user_id(user_id)
+            if not company_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User has no company assigned.",
+                )
+
         stmt = select(Location).where(Location.is_active == True)  # noqa: E712
 
         if company_id is not None:
@@ -264,7 +280,7 @@ class LocationService:
         user_id: int,
         location_id: int,
     ) -> Location:
-        """Validate location"""
+        """Validate User-Company permission on location"""
         user = await self.user_service.get_user_by_id(user_id)
         if not user or not getattr(user, "is_active", True):
             raise HTTPException(

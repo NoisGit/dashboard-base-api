@@ -132,9 +132,11 @@ def get_system_service(
 def get_access_log_service(
     session: AsyncSession = Depends(get_session),
     azure_service: AzureService = Depends(get_azure_service),
+    user_service: UserService = Depends(get_user_service),
+    location_service: LocationService = Depends(get_location_service),
 ) -> AccessLogService:
     """Dependency to get an AccessLogService instance."""
-    return AccessLogService(session, azure_service)
+    return AccessLogService(session, azure_service, user_service, location_service)
 
 
 def get_dashboard_service(

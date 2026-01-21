@@ -33,10 +33,20 @@ async def list_locations(
     company_id: Optional[int] = None,
     search: Optional[str] = None,
     service: LocationService = Depends(get_location_service),
-    _=Depends(get_user_data_from_token),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+                UserRole.CLIENT,
+            ],
+        ),
+    ),
 ) -> Page[LocationResponse]:
     """List active locations (porterías) visible for the current user."""
     locations = await service.list_locations(
+        user_id=user_id,
         params=params,
         company_id=company_id,
         search=search,
