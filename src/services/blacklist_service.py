@@ -13,7 +13,6 @@ from sqlmodel import desc, or_, select
 from src.core.enums import UserRole
 from src.models import (
     AccessList,
-    CompanyStaff,
     ExternalPeople,
     Location,
     TypeAccessList,
@@ -23,6 +22,7 @@ from src.schemas import (
     BlacklistResponse,
 )
 from src.services.user_service import UserService
+from src.services.location_service import LocationService
 
 
 class BlacklistService:
@@ -32,63 +32,11 @@ class BlacklistService:
         self,
         session: AsyncSession,
         user_service: UserService,
+        location_service: LocationService,
     ) -> None:
         self.session = session
         self.user_service = user_service
-
-    async def _get_user_or_404(self, user_id: int):
-        """Get user or raise 404."""
-        user = await self.user_service.get_user_by_id(user_id)
-        if not user or not getattr(user, "is_active", True):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-        return user
-
-    async def _get_user_company_id(self, user_id: int) -> Optional[int]:
-        """Get user's company id."""
-        stmt = (
-            select(CompanyStaff.company_id)
-            .where(CompanyStaff.user_id == user_id)
-            .order_by(desc(CompanyStaff.created_at))
-        )
-        result = await self.session.execute(stmt)
-        return result.scalars().first()
-
-    async def _ensure_location_scope(
-        self,
-        user_id: int,
-        location_id: int,
-    ) -> Location:
-        """Validate location"""
-        user = await self._get_user_or_404(user_id)
-        is_superadmin = user.role == UserRole.SUPERADMIN
-
-        location = await self.session.get(Location, location_id)
-        if not location or not location.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
-
-        if is_superadmin:
-            return location
-
-        user_company_id = await self._get_user_company_id(user_id)
-        if not user_company_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User has no company assigned.",
-            )
-
-        if not location.company_id or location.company_id != user_company_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not allowed for this location.",
-            )
-
-        return location
+        self.location_service = location_service
 
     async def _get_blacklist_type(self, created_by: int) -> TypeAccessList:
         """Get or create blacklist type"""
@@ -148,7 +96,7 @@ class BlacklistService:
         payload: BlacklistCreateRequest,
     ) -> BlacklistResponse:
         """Create or update blacklist entry."""
-        await self._ensure_location_scope(
+        await self.location_service.check_user_permission_on_location(
             user_id=user_id,
             location_id=location_id,
         )
@@ -234,7 +182,7 @@ class BlacklistService:
         search: Optional[str] = None,
     ) -> Page[BlacklistResponse]:
         """List blacklist by location."""
-        await self._ensure_location_scope(
+        await self.location_service.check_user_permission_on_location(
             user_id=user_id,
             location_id=location_id,
         )
@@ -295,7 +243,7 @@ class BlacklistService:
         id_number: str,
     ) -> None:
         """Remove blacklist entry."""
-        await self._ensure_location_scope(
+        await self.location_service.check_user_permission_on_location(
             user_id=user_id,
             location_id=location_id,
         )

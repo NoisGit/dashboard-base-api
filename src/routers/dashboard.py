@@ -17,10 +17,10 @@ async def dashboard_stats(
     location_id: int,
     service: DashboardService = Depends(get_dashboard_service),
     user_id=Depends(RoleChecker([
-        UserRole.CLIENT,
-        UserRole.SUBADMIN,
+        UserRole.SUPERADMIN,
         UserRole.ADMIN,
-        UserRole.SUPERADMIN
+        UserRole.SUBADMIN,
+        UserRole.CLIENT,
     ])),
 ) -> DashboardStatsResponse:
     """Retrieve system statistics."""

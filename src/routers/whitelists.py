@@ -33,6 +33,7 @@ async def list_whitelist(
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
                 UserRole.SUBADMIN,
+                UserRole.CLIENT,
             ],
         )
     ),
@@ -91,6 +92,7 @@ async def revoke_person(
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
                 UserRole.SUBADMIN,
+                UserRole.CLIENT,
             ],
         )
     ),

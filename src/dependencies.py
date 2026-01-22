@@ -65,9 +65,10 @@ def get_company_service(
 def get_location_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
+    company_service: CompanyService = Depends(get_company_service),
 ) -> LocationService:
     """Dependency to get a LocationService instance."""
-    return LocationService(session, user_service)
+    return LocationService(session, user_service, company_service)
 
 
 def get_emergency_contact_service(
@@ -106,17 +107,19 @@ def get_notification_service(
 def get_whitelist_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
+    location_service: LocationService = Depends(get_location_service),
 ) -> WhitelistService:
     """Dependency to get a WhitelistService instance."""
-    return WhitelistService(session, user_service)
+    return WhitelistService(session, user_service, location_service)
 
 
 def get_blacklist_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
+    location_service: LocationService = Depends(get_location_service),
 ) -> BlacklistService:
     """Dependency to get a BlacklistService instance."""
-    return BlacklistService(session, user_service)
+    return BlacklistService(session, user_service, location_service)
 
 
 def get_system_service(
@@ -129,9 +132,11 @@ def get_system_service(
 def get_access_log_service(
     session: AsyncSession = Depends(get_session),
     azure_service: AzureService = Depends(get_azure_service),
+    user_service: UserService = Depends(get_user_service),
+    location_service: LocationService = Depends(get_location_service),
 ) -> AccessLogService:
     """Dependency to get an AccessLogService instance."""
-    return AccessLogService(session, azure_service)
+    return AccessLogService(session, azure_service, user_service, location_service)
 
 
 def get_dashboard_service(
