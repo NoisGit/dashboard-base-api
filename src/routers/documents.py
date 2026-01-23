@@ -13,6 +13,7 @@ from src.schemas import (
     DocumentUpdateRequest,
     DocumentResponse,
     DocumentDownloadResponse,
+    EmptyResponse,
 )
 from src.services.document_service import DocumentService
 
@@ -126,7 +127,7 @@ async def download_document(
 
 @router.post(
     "/",
-    response_model=DocumentResponse,
+    response_model=EmptyResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_document(
@@ -139,18 +140,18 @@ async def create_document(
             ],
         ),
     ),
-) -> DocumentResponse:
+) -> EmptyResponse:
     """Create a new document"""
-    document = await service.create_document(
+    result = await service.create_document(
         user_id=requester_id,
         payload=payload,
     )
-    return document
+    return result
 
 
 @router.put(
     "/{document_id}",
-    response_model=DocumentResponse,
+    response_model=EmptyResponse,
 )
 async def update_document(
     document_id: int,
@@ -163,13 +164,13 @@ async def update_document(
             ],
         ),
     ),
-) -> DocumentResponse:
+) -> EmptyResponse:
     """Update an existing document"""
-    document = await service.update_document(
+    result = await service.update_document(
         document_id=document_id,
         payload=payload,
     )
-    return document
+    return result
 
 
 @router.delete(

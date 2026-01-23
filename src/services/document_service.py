@@ -338,7 +338,7 @@ class DocumentService:
         self,
         document_id: int,
         payload: DocumentUpdateRequest,
-    ) -> DocumentResponse:
+    ) -> EmptyResponse:
         """Update document metadata (optionally replace blob metadata)."""
         document = await self._get_document_by_id(document_id)
         if not document:
@@ -379,9 +379,8 @@ class DocumentService:
             document.size_bytes = payload.size_bytes
 
         await self.session.commit()
-        await self.session.refresh(document)
 
-        return self._to_document_response(document)
+        return EmptyResponse()
 
     async def delete_document(
         self,

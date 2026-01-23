@@ -2,13 +2,14 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
-from azure.core.exceptions import ResourceNotFoundError
+
 from azure.storage.blob import (
     BlobServiceClient,
     generate_blob_sas,
     BlobSasPermissions,
     ContentSettings
 )
+
 from src.api.error import (
     InvalidContainerError,
     AzureServiceError
@@ -19,7 +20,6 @@ ALLOWED_CONTAINERS = [
     "access-logs",
     "documents"
 ]
-
 
 BLOB_SERVICE_CLIENT = BlobServiceClient.from_connection_string(
     settings.AZURE_STORAGE_CONNECTION_STRING
@@ -217,48 +217,3 @@ class AzureService:
         except Exception as e:
             raise AzureServiceError(
                 "Failed to extract blob info from URL.") from e
-
-    def upload_blob(
-        self,
-        container_name: str,
-        blob_name: str,
-        content: bytes,
-        content_type: str
-    ) -> None:
-        """Upload a blob to the specified container."""
-        if container_name not in ALLOWED_CONTAINERS:
-            raise InvalidContainerError("Invalid container name.")
-
-        try:
-            blob_client = BLOB_SERVICE_CLIENT.get_blob_client(
-                container=container_name,
-                blob=blob_name,
-            )
-
-            blob_client.upload_blob(
-                content,
-                overwrite=True,
-                content_settings=ContentSettings(content_type=content_type),
-            )
-        except Exception as e:
-            raise AzureServiceError("Failed to upload blob.") from e
-
-    def delete_blob(
-        self,
-        container_name: str,
-        blob_name: str
-    ) -> None:
-        """Delete a blob from the specified container."""
-        if container_name not in ALLOWED_CONTAINERS:
-            raise InvalidContainerError("Invalid container name.")
-
-        try:
-            blob_client = BLOB_SERVICE_CLIENT.get_blob_client(
-                container=container_name,
-                blob=blob_name,
-            )
-            blob_client.delete_blob()
-        except ResourceNotFoundError:
-            return
-        except Exception as e:
-            raise AzureServiceError("Failed to delete blob.") from e
