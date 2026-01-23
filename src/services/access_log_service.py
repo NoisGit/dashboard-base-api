@@ -29,6 +29,7 @@ from src.schemas.access_log_schemas import (
     AccessLogBulkExitRequest,
     ExternalPeopleResponse,
 )
+from src.schemas import EmptyResponse
 
 
 class AccessLogService:
@@ -229,7 +230,7 @@ class AccessLogService:
         payload: AccessLogExitRequest,
         exit_created_by: int,
         enforce_location_access: bool,
-    ) -> AccessLogResponse:
+    ) -> EmptyResponse:
         """
         Register exit for an existing access log from dashboard.
         If enforce_location_access is True, validates the user has access to the log location.
@@ -275,22 +276,14 @@ class AccessLogService:
 
         await self.session.commit()
 
-        result = await self.session.execute(
-            select(AccessLog)
-            .options(selectinload(AccessLog.images))
-            .options(selectinload(AccessLog.external_people))
-            .where(AccessLog.id == access_log_id)
-        )
-        access_log = result.scalar_one()
-
-        return self._convert_to_response(access_log)
+        return EmptyResponse()
 
     async def register_exit_bulk_admin(
         self,
         payload: AccessLogBulkExitRequest,
         exit_created_by: int,
         enforce_location_access: bool,
-    ) -> List[AccessLogResponse]:
+    ) -> EmptyResponse:
         """
         Register exits in bulk from dashboard.
         If enforce_location_access is True, validates user access to all involved locations.
@@ -344,21 +337,7 @@ class AccessLogService:
 
         await self.session.commit()
 
-        result = await self.session.execute(
-            select(AccessLog)
-            .options(selectinload(AccessLog.images))
-            .options(selectinload(AccessLog.external_people))
-            .where(AccessLog.id.in_(unique_ids))  # pylint: disable=no-member
-        )
-        updated_logs = list(result.scalars().all())
-        logs_by_id = {
-            log.id: log for log in updated_logs if log.id is not None}
-
-        return [
-            self._convert_to_response(logs_by_id[log_id])
-            for log_id in unique_ids
-            if log_id in logs_by_id
-        ]
+        return EmptyResponse()
 
     # =========================================================================
     # DASHBOARD - Admin Methods (Paginated)
