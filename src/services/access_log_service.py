@@ -18,10 +18,9 @@ from src.models import (
     AccessLog,
     AccessLogImage,
     ExternalPeople,
-    UserLocationAccess,
 )
 
-from src.core.enums import AccessLogImageType, UserRole
+from src.core.enums import AccessLogImageType
 from src.schemas.access_log_schemas import (
     AccessLogResponse,
     AccessLogCreateRequest,
@@ -196,7 +195,7 @@ class AccessLogService:
             select(AccessLog)
             .options(selectinload(AccessLog.images))
             .options(selectinload(AccessLog.external_people))
-            .where(AccessLog.id == access_log.id)
+            .where(AccessLog.id == access_log_id)
         )
         access_log = result.scalar_one()
 
@@ -211,18 +210,10 @@ class AccessLogService:
         user_id: int,
         location_id: int,
     ) -> None:
-        stmt = select(UserLocationAccess).where(
-            UserLocationAccess.user_id == user_id,
-            UserLocationAccess.location_id == location_id,
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
         )
-        result = await self.session.execute(stmt)
-        access = result.scalars().first()
-
-        if not access:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to access this resource.",
-            )
 
     async def register_exit_admin(
         self,
@@ -315,20 +306,11 @@ class AccessLogService:
 
         if enforce_location_access:
             location_ids = list({log.location_id for log in logs})
-            stmt = select(UserLocationAccess.location_id).where(
-                UserLocationAccess.user_id == exit_created_by,
-                UserLocationAccess.location_id.in_(  # pylint: disable=no-member
-                    location_ids),
-            )
-            access_result = await self.session.execute(stmt)
-            allowed_locations = {row[0] for row in access_result.all()}
-
             for location_id in location_ids:
-                if location_id not in allowed_locations:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="You do not have permission to access this resource.",
-                    )
+                await self._validate_user_location_access(
+                    user_id=exit_created_by,
+                    location_id=location_id,
+                )
 
         exit_date = datetime.now()
         for log in logs:
