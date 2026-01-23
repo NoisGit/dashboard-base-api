@@ -20,6 +20,7 @@ from src.schemas import (
     DocumentDownloadResponse,
     DocumentResponse,
     DocumentUpdateRequest,
+    EmptyResponse,
 )
 from src.services.azure_service import AzureService
 from src.services.user_service import UserService
@@ -275,7 +276,7 @@ class DocumentService:
         self,
         user_id: int,
         payload: DocumentCreateRequest,
-    ) -> DocumentResponse:
+    ) -> EmptyResponse:
         """Create a new document record (metadata only)."""
         company = await self.session.get(Company, payload.company_id)
         if not company or not company.is_active:
@@ -331,7 +332,7 @@ class DocumentService:
         await self.session.commit()
         await self.session.refresh(document)
 
-        return self._to_document_response(document)
+        return EmptyResponse()
 
     async def update_document(
         self,
