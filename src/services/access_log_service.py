@@ -205,16 +205,6 @@ class AccessLogService:
     # DASHBOARD - Admin Exit Methods
     # =========================================================================
 
-    async def _validate_user_location_access(
-        self,
-        user_id: int,
-        location_id: int,
-    ) -> None:
-        await self.location_service.check_user_permission_on_location(
-            user_id=user_id,
-            location_id=location_id,
-        )
-
     async def register_exit_admin(
         self,
         access_log_id: int,
@@ -247,7 +237,7 @@ class AccessLogService:
             )
 
         if enforce_location_access:
-            await self._validate_user_location_access(
+            await self.location_service.check_user_permission_on_location(
                 user_id=exit_created_by,
                 location_id=access_log.location_id,
             )
@@ -307,7 +297,7 @@ class AccessLogService:
         if enforce_location_access:
             location_ids = list({log.location_id for log in logs})
             for location_id in location_ids:
-                await self._validate_user_location_access(
+                await self.location_service.check_user_permission_on_location(
                     user_id=exit_created_by,
                     location_id=location_id,
                 )

@@ -16,6 +16,7 @@ from src.schemas.access_log_schemas import (
     AccessLogBulkExitRequest,
     AccessLogResponse,
 )
+from src.schemas import EmptyResponse
 from src.services.access_log_service import AccessLogService
 
 
@@ -106,7 +107,7 @@ async def register_exit(
 
 @router.patch(
     "/dashboard/{access_log_id}/exit",
-    response_model=AccessLogResponse,
+    response_model=EmptyResponse,
 )
 async def register_exit_dashboard(
     access_log_id: int,
@@ -118,7 +119,7 @@ async def register_exit_dashboard(
         UserRole.SUPERADMIN
     ])),
     current_user=Depends(get_current_user),
-) -> AccessLogResponse:
+) -> EmptyResponse:
     """
     Register exit for an existing access log from dashboard.
     Only Admin roles can register exits.
@@ -136,6 +137,7 @@ async def register_exit_dashboard(
 
 @router.patch(
     "/dashboard/exit/bulk",
+    response_model=EmptyResponse,
 )
 async def register_exit_bulk_dashboard(
     payload: AccessLogBulkExitRequest,
@@ -146,7 +148,7 @@ async def register_exit_bulk_dashboard(
         UserRole.SUPERADMIN
     ])),
     current_user=Depends(get_current_user),
-):
+) -> EmptyResponse:
     """
     Register exits in bulk from dashboard.
     Only Admin roles can register exits.
