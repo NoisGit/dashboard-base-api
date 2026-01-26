@@ -4,26 +4,27 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_session
+from src.services.access_log_service import AccessLogService
 from src.services.audit_log_service import AuditLogService
 from src.services.auth_service import AuthService
-from src.services.user_service import UserService
-from src.services.email_service import EmailService
-from src.services.company_service import CompanyService
-from src.services.location_service import LocationService
-from src.services.emergency_contact_service import EmergencyContactService
-from src.services.support_ticket_service import SupportTicketService
-from src.services.service_contact_service import ServiceContactService
-from src.services.notification_service import NotificationService
-from src.services.whitelist_service import WhitelistService
-from src.services.blacklist_service import BlacklistService
-from src.services.system_service import SystemService
-from src.services.access_log_service import AccessLogService
 from src.services.azure_service import AzureService
+from src.services.blacklist_service import BlacklistService
+from src.services.company_service import CompanyService
 from src.services.dashboard_service import DashboardService
+from src.services.document_service import DocumentService
+from src.services.email_service import EmailService
+from src.services.emergency_contact_service import EmergencyContactService
+from src.services.location_service import LocationService
+from src.services.notification_service import NotificationService
+from src.services.service_contact_service import ServiceContactService
+from src.services.support_ticket_service import SupportTicketService
+from src.services.system_service import SystemService
+from src.services.user_service import UserService
+from src.services.whitelist_service import WhitelistService
 
 
 def get_azure_service() -> AzureService:
-    """Dependency to get AzureService instance"""
+    """Dependency to get an AzureService instance."""
     return AzureService()
 
 
@@ -35,7 +36,7 @@ def get_audit_log_service(
 
 
 def get_email_service() -> EmailService:
-    """Dependency to get EmailService instance"""
+    """Dependency to get an EmailService instance."""
     return EmailService()
 
 
@@ -43,7 +44,7 @@ def get_auth_service(
     session: AsyncSession = Depends(get_session),
     email_service: EmailService = Depends(get_email_service),
 ) -> AuthService:
-    """Dependency to get a AuthService instance."""
+    """Dependency to get an AuthService instance."""
     return AuthService(email_service, session)
 
 
@@ -92,7 +93,7 @@ def get_support_ticket_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
 ) -> SupportTicketService:
-    """Dependency to get a SupportTicketService instance"""
+    """Dependency to get a SupportTicketService instance."""
     return SupportTicketService(session, user_service)
 
 
@@ -123,7 +124,7 @@ def get_blacklist_service(
 
 
 def get_system_service(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ) -> SystemService:
     """Dependency to get a SystemService instance."""
     return SystemService(session)
@@ -137,6 +138,15 @@ def get_access_log_service(
 ) -> AccessLogService:
     """Dependency to get an AccessLogService instance."""
     return AccessLogService(session, azure_service, user_service, location_service)
+
+
+def get_document_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+    azure_service: AzureService = Depends(get_azure_service),
+) -> DocumentService:
+    """Dependency to get a DocumentService instance."""
+    return DocumentService(session, user_service, azure_service)
 
 
 def get_dashboard_service(

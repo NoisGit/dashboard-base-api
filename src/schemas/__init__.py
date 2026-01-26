@@ -5,110 +5,116 @@ Exports all Pydantic schema classes used for validating and serializing
 API requests and responses across the application.
 """
 
-from .base_schemas import (
-    EmptyResponse,
-    BaseResponse,
-    PaginatedResponse,
-    SuccessResponse,
-    ErrorResponse,
-)
-from .audit_log_schema import (
-    AuditLogRequest,
-    AuditLogResponse,
-)
-from .user_schemas import (
-    UserCreateRequest,
-    UserUpdateRequest,
-    UserSuspendRequest,
-    UserResponse,
-    UserMeResponse,
-    UserLoginRequest,
-    UserChangePasswordRequest,
-)
-from .company_schemas import (
-    CompanyCreateRequest,
-    CompanyUpdateRequest,
-    CompanyResponse,
-    CompanyAssignUserRequest,
-    CompanyUserAssignmentResponse,
-)
-from .location_schemas import (
-    LocationCreateRequest,
-    LocationUpdateRequest,
-    LocationResponse,
-    LocationAssignCompanyRequest,
-    LocationAssignUserRequest,
-    LocationUserAssignmentResponse,
-)
-from .auth_schemas import (
-    AuthRecoveryPasswordRequest,
-    AuthResetPasswordRequest,
-    AuthTokenResponse,
-    RefreshTokenRequest,
-    AccessTokenResponse,
-)
-from .whitelist_schemas import (
-    WhitelistCreateRequest,
-    WhitelistResponse,
-)
-from .blacklist_schemas import (
-    BlacklistCreateRequest,
-    BlacklistResponse,
-)
-from .emergency_contact_schemas import (
-    EmergencyContactCreateRequest,
-    EmergencyContactUpdateRequest,
-    EmergencyContactResponse,
-)
-from .support_ticket_schemas import (
-    SupportTicketCreateRequest,
-    SupportTicketUpdateRequest,
-    SupportTicketResponse,
-    SupportTicketCommentCreateRequest,
-    SupportTicketCommentUpdateRequest,
-    SupportTicketCommentResponse,
-)
-from .notification_schemas import (
-    SimpleNoticationRequest,
-    NotificationResponse,
-    NotificationMessageResponse,
-)
-from .service_contact_schemas import (
-    ServiceContactCreateRequest,
-    ServiceContactUpdateRequest,
-    ServiceContactResponse,
-)
-from .system_schemas import (
-    SystemStatsResponse,
-    SystemCountersResponse,
-    MonthlyIncomeResponse,
-    AdminDetailResponse,
-    StatsDataResponse,
-    DetailAdminsResponse,
-)
 from .access_log_schemas import (
     AccessLogCreateRequest,
     AccessLogExitRequest,
     AccessLogResponse,
     ExternalPeopleResponse,
 )
+from .audit_log_schema import (
+    AuditLogRequest,
+    AuditLogResponse,
+)
+from .auth_schemas import (
+    AccessTokenResponse,
+    AuthRecoveryPasswordRequest,
+    AuthResetPasswordRequest,
+    AuthTokenResponse,
+    RefreshTokenRequest,
+)
 from .azure_schemas import (
-    AzureUploadRequest,
-    AzureUpdateRequest,
     AzureDeleteRequest,
-    AzureResponse,
-    AzureUpdateResponse,
     AzureDeleteResponse,
+    AzureResponse,
+    AzureUpdateRequest,
+    AzureUpdateResponse,
+    AzureUploadRequest,
+)
+from .base_schemas import (
+    BaseResponse,
+    EmptyResponse,
+    ErrorResponse,
+    PaginatedResponse,
+    SuccessResponse,
+)
+from .blacklist_schemas import (
+    BlacklistCreateRequest,
+    BlacklistResponse,
+)
+from .company_schemas import (
+    CompanyAssignUserRequest,
+    CompanyCreateRequest,
+    CompanyResponse,
+    CompanyUpdateRequest,
+    CompanyUserAssignmentResponse,
 )
 from .dashboard_schemas import (
-    KpisResponse,
-    KpisBlacklistResponse,
-    KpisWhitelistResponse,
-    EntriesByMonthResponse,
-    DashboardStatsResponse,
-    GenderDistributionResponse,
     ChartStatsResponse,
+    DashboardStatsResponse,
+    EntriesByMonthResponse,
+    GenderDistributionResponse,
+    KpisBlacklistResponse,
+    KpisResponse,
+    KpisWhitelistResponse,
     RecentEntriesResponse,
+)
+from .document_schemas import (
+    DocumentCreateRequest,
+    DocumentDownloadResponse,
+    DocumentResponse,
+    DocumentUpdateRequest,
+)
+from .emergency_contact_schemas import (
+    EmergencyContactCreateRequest,
+    EmergencyContactResponse,
+    EmergencyContactUpdateRequest,
+)
+from .location_schemas import (
+    LocationAssignCompanyRequest,
+    LocationAssignUserRequest,
+    LocationCreateRequest,
+    LocationResponse,
+    LocationUpdateRequest,
+    LocationUserAssignmentResponse,
+)
+from .notification_schemas import (
+    NotificationMessageResponse,
+    NotificationResponse,
+    SimpleNoticationRequest,
+)
+from .service_contact_schemas import (
+    ServiceContactCreateRequest,
+    ServiceContactResponse,
+    ServiceContactUpdateRequest,
+)
+from .support_ticket_schemas import (
+    SupportTicketCommentCreateRequest,
+    SupportTicketCommentResponse,
+    SupportTicketCommentUpdateRequest,
+    SupportTicketCreateRequest,
+    SupportTicketResponse,
+    SupportTicketUpdateRequest,
+)
+from .system_schemas import (
+    AdminDetailResponse,
+    DetailAdminsResponse,
+    MonthlyIncomeResponse,
+    StatsDataResponse,
+    SystemCountersResponse,
+    SystemStatsResponse,
+)
+from .user_schemas import (
+    UserChangePasswordRequest,
+    UserCreateRequest,
+    UserLoginRequest,
+    UserMeResponse,
+    UserResponse,
+    UserSuspendRequest,
+    UserUpdateRequest,
+)
+from .whitelist_schemas import (
+    WhitelistCreateRequest,
+    WhitelistResponse,
 )
 
 __all__ = [
@@ -192,6 +198,11 @@ __all__ = [
     "AzureResponse",
     "AzureUpdateResponse",
     "AzureDeleteResponse",
+    # Document schemas
+    "DocumentCreateRequest",
+    "DocumentUpdateRequest",
+    "DocumentResponse",
+    "DocumentDownloadResponse",
     # Dashboard schemas
     "KpisResponse",
     "KpisWhitelistResponse",
