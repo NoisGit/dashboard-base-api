@@ -37,6 +37,11 @@ class Company(SQLModel, table=True):
     # Soft delete flag: use is_active = False instead of physical delete
     is_active: bool = Field(default=True)
 
+    parent_company_id: Optional[int] = Field(
+        default=None,
+        foreign_key="company.id"
+    )
+
     # Audit fields
     created_by: int = Field(
         foreign_key="users.id",
@@ -58,4 +63,15 @@ class Company(SQLModel, table=True):
     creator: "User" = Relationship(
         back_populates="companies_created",
         sa_relationship_kwargs={"foreign_keys": "[Company.created_by]"},
+    )
+
+    # Parent Company relationship
+    parent_company: Optional["Company"] = Relationship(
+        back_populates="sub_companies",
+        sa_relationship_kwargs={"remote_side": "[Company.id]"}
+    )
+
+    # List of sub-companies belonging to this parent
+    sub_companies: List["Company"] = Relationship(
+        back_populates="parent_company"
     )
