@@ -2,7 +2,7 @@
 
 # pylint: disable=no-member, singleton-comparison
 
-from datetime import date
+from datetime import datetime
 from typing import List, Optional, cast
 
 from fastapi import HTTPException, status
@@ -24,6 +24,7 @@ from src.schemas import (
     WhitelistResponse,
 )
 from src.services.user_service import UserService
+from src.services.location_service import LocationService
 
 
 class WhitelistService:
@@ -33,63 +34,11 @@ class WhitelistService:
         self,
         session: AsyncSession,
         user_service: UserService,
+        location_service: LocationService,
     ) -> None:
         self.session = session
         self.user_service = user_service
-
-    async def _get_user_or_404(self, user_id: int):
-        """Get user or raise 404."""
-        user = await self.user_service.get_user_by_id(user_id)
-        if not user or not getattr(user, "is_active", True):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-        return user
-
-    async def _get_user_company_id(self, user_id: int) -> Optional[int]:
-        """Get user's company id."""
-        stmt = (
-            select(CompanyStaff.company_id)
-            .where(CompanyStaff.user_id == user_id)
-            .order_by(desc(CompanyStaff.created_at))
-        )
-        result = await self.session.execute(stmt)
-        return result.scalars().first()
-
-    async def _ensure_location_scope(
-        self,
-        user_id: int,
-        location_id: int,
-    ) -> Location:
-        """Validate location."""
-        user = await self._get_user_or_404(user_id)
-        is_superadmin = user.role == UserRole.SUPERADMIN
-
-        location = await self.session.get(Location, location_id)
-        if not location or not location.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
-
-        if is_superadmin:
-            return location
-
-        user_company_id = await self._get_user_company_id(user_id)
-        if not user_company_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User has no company assigned.",
-            )
-
-        if not location.company_id or location.company_id != user_company_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not allowed for this location.",
-            )
-
-        return location
+        self.location_service = location_service
 
     async def _get_whitelist_type(self, created_by: int) -> TypeAccessList:
         """Get or create whitelist type."""
@@ -142,11 +91,11 @@ class WhitelistService:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    def _is_active(self, expiration_date: Optional[date]) -> bool:
+    def _is_active(self, expiration_date: Optional[datetime]) -> bool:
         """Check active state by expiration date."""
         if expiration_date is None:
             return True
-        return expiration_date >= date.today()
+        return expiration_date >= datetime.now()
 
     async def allow_person(
         self,
@@ -155,7 +104,7 @@ class WhitelistService:
         payload: WhitelistCreateRequest,
     ) -> WhitelistResponse:
         """Create whitelist entry."""
-        await self._ensure_location_scope(user_id, location_id)
+        await self.location_service.check_user_permission_on_location(user_id, location_id)
 
         id_number = (payload.id_number or "").strip()
         full_name = (payload.full_name or "").strip()
@@ -173,7 +122,7 @@ class WhitelistService:
                 detail="full_name is required.",
             )
 
-        if payload.expiration_date is not None and payload.expiration_date < date.today():
+        if payload.expiration_date is not None and payload.expiration_date.replace(tzinfo=None) < datetime.now():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="expiration_date must be today or a future date.",
@@ -187,7 +136,7 @@ class WhitelistService:
             id_number=id_number,
         )
 
-        if existing and self._is_active(existing.expiration_date):
+        if existing and self._is_active(existing.expiration_date.replace(tzinfo=None)):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Whitelist entry already exists for this location.",
@@ -210,7 +159,7 @@ class WhitelistService:
                 await self.session.commit()
                 await self.session.refresh(external)
 
-        if existing and not self._is_active(existing.expiration_date):
+        if existing and not self._is_active(existing.expiration_date.replace(tzinfo=None)):
             existing.external_people_id = external.id
             existing.name = full_name
             existing.reason = reason
@@ -266,7 +215,7 @@ class WhitelistService:
         include_expired: bool = False,
     ) -> Page[WhitelistResponse]:
         """List whitelist by location."""
-        await self._ensure_location_scope(user_id, location_id)
+        await self.location_service.check_user_permission_on_location(user_id, location_id)
 
         whitelist_type = await self._get_whitelist_type(created_by=user_id)
 
@@ -335,7 +284,7 @@ class WhitelistService:
         id_number: str,
     ) -> None:
         """Revoke whitelist entry."""
-        await self._ensure_location_scope(user_id, location_id)
+        await self.location_service.check_user_permission_on_location(user_id, location_id)
 
         whitelist_type = await self._get_whitelist_type(created_by=user_id)
 

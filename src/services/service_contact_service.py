@@ -11,7 +11,7 @@ from sqlmodel import select, or_, desc
 from src.core.enums import UserRole
 from src.services import UserService
 from src.services import LocationService
-from src.models import ServiceContact
+from src.models import ServiceContact, CompanyStaff
 from src.schemas import (
     ServiceContactResponse,
     ServiceContactCreateRequest,
@@ -45,12 +45,24 @@ class ServiceContactService:
     async def list_service_contacts(
         self,
         location_id: int,
+        user_id: int,
         params: Params,
     ) -> Page[ServiceContactResponse]:
         """
         List service contacts for a location.
         and location-specific numbers.
         """
+        user_has_permission = await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        if not user_has_permission:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to view contacts for this location.",
+            )
+
         stmt = select(ServiceContact).where(
             ServiceContact.location_id == location_id,
         ).order_by(

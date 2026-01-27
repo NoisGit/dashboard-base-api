@@ -26,12 +26,21 @@ async def list_service_contacts(
     location_id: int,
     params: Params = Depends(),
     service: ServiceContactService = Depends(get_service_contact_service),
-    _=Depends(get_current_user),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+                UserRole.CLIENT,
+            ],
+        )
+    ),
 ):
     """
     List service contacts for a location.
     """
-    service_contacts = await service.list_service_contacts(location_id, params)
+    service_contacts = await service.list_service_contacts(location_id, user_id, params)
     return service_contacts
 
 
@@ -43,11 +52,16 @@ async def list_service_contacts(
 async def create_service_contact(
     payload: ServiceContactCreateRequest,
     service: ServiceContactService = Depends(get_service_contact_service),
-    user_id=Depends(RoleChecker([
-        UserRole.SUPERADMIN,
-        UserRole.ADMIN,
-        UserRole.SUBADMIN,
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+                UserRole.CLIENT,
+            ],
+        )
+    ),
 ):
     """
     Create a new service contact.
@@ -65,11 +79,16 @@ async def update_service_contact(
     contact_id: int,
     payload: ServiceContactUpdateRequest,
     service: ServiceContactService = Depends(get_service_contact_service),
-    user_id=Depends(RoleChecker([
-        UserRole.SUPERADMIN,
-        UserRole.ADMIN,
-        UserRole.SUBADMIN,
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+                UserRole.CLIENT,
+            ],
+        )
+    ),
 ):
     """
     Update an existing service contact.
@@ -84,11 +103,16 @@ async def update_service_contact(
 async def delete_service_contact(
     service_contact_id: int,
     service: ServiceContactService = Depends(get_service_contact_service),
-    user_id=Depends(RoleChecker([
-        UserRole.SUPERADMIN,
-        UserRole.ADMIN,
-        UserRole.SUBADMIN,
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+                UserRole.CLIENT,
+            ],
+        )
+    ),
 ) -> None:
     """
     Delete an service contact.

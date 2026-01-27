@@ -6,10 +6,14 @@ from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, desc
 
 from src.models import Company, CompanyStaff
-from src.schemas import CompanyCreateRequest, CompanyUpdateRequest, CompanyResponse
+from src.schemas import (
+    CompanyCreateRequest,
+    CompanyUpdateRequest,
+    CompanyResponse
+)
 from src.services.user_service import UserService
 
 
@@ -164,3 +168,13 @@ class CompanyService:
 
         self.session.add(assignment)
         await self.session.commit()
+
+    async def get_company_id_by_user_id(self, user_id: int) -> Optional[int]:
+        """Get user's company id."""
+        stmt = (
+            select(CompanyStaff.company_id)
+            .where(CompanyStaff.user_id == user_id)
+            .order_by(desc(CompanyStaff.created_at))
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
