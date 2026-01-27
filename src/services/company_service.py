@@ -7,12 +7,15 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, desc
+from src.core.enums import UserRole
+
 
 from src.models import Company, CompanyStaff
 from src.schemas import (
     CompanyCreateRequest,
     CompanyUpdateRequest,
-    CompanyResponse
+    CompanyResponse,
+    SubCompanyCreateRequest,
 )
 from src.services.user_service import UserService
 
@@ -87,6 +90,39 @@ class CompanyService:
         await self.session.commit()
         await self.session.refresh(company)
         return company
+
+    async def create_subcompany(
+        self,
+        user_id: int,
+        payload: SubCompanyCreateRequest,
+    ) -> Company:
+        """Create a new sub company."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role != UserRole.SUPERADMIN:
+            parent_company_id = await self.get_company_id_by_user_id(user_id)
+        else:
+            parent_company_id = payload.parent_company_id
+
+        subcompany = Company(
+            name=payload.name,
+            activity=payload.activity,
+            id_number=payload.id_number,
+            parent_company_id=parent_company_id,
+            logo=payload.logo,
+            type_document=payload.type_document,
+            created_by=user_id,
+        )
+
+        self.session.add(subcompany)
+        await self.session.commit()
+        await self.session.refresh(subcompany)
+        return subcompany
 
     async def update_company(
         self,

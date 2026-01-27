@@ -12,6 +12,7 @@ from src.schemas import (
     CompanyResponse,
     CompanyAssignUserRequest,
     CompanyUserAssignmentResponse,
+    SubCompanyCreateRequest,
 )
 from src.services.company_service import CompanyService
 
@@ -81,6 +82,32 @@ async def create_company(
     """Create a new company."""
 
     company = await service.create_company(
+        user_id,
+        payload,
+    )
+    return company
+
+
+@router.post(
+    "/subcompany",
+    response_model=CompanyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_subcompany(
+    payload: SubCompanyCreateRequest,
+    service: CompanyService = Depends(get_company_service),
+    user_id=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+) -> CompanyResponse:
+    """Create a new sub company."""
+
+    company = await service.create_subcompany(
         user_id,
         payload,
     )

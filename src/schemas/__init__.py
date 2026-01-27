@@ -31,6 +31,7 @@ from .company_schemas import (
     CompanyResponse,
     CompanyAssignUserRequest,
     CompanyUserAssignmentResponse,
+    SubCompanyCreateRequest,
 )
 from .location_schemas import (
     LocationCreateRequest,
@@ -135,6 +136,7 @@ __all__ = [
     "CompanyResponse",
     "CompanyAssignUserRequest",
     "CompanyUserAssignmentResponse",
+    "SubCompanyCreateRequest",
     # Location schemas
     "LocationCreateRequest",
     "LocationUpdateRequest",
