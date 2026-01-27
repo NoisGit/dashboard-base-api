@@ -179,19 +179,6 @@ class LocationLogbookService:
         location = await self._assert_location_exists(location_id)
         await self._assert_user_can_access_location(user_id, location)
 
-        user = await self.user_service.get_user_by_id(user_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        if user.role not in (UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.SUBADMIN):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User cannot update logbook settings.",
-            )
-
         settings = await self._get_settings_by_location_id(location_id)
         if not settings:
             settings = LocationLogbookSettings(

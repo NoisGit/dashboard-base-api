@@ -70,7 +70,6 @@ async def update_location_logbook_settings(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -95,10 +94,7 @@ async def create_logbook_entry(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
                 UserRole.JANITOR,
-                UserRole.CLIENT,
             ],
         ),
     ),
@@ -149,11 +145,7 @@ async def create_police_access_path(
     user_id=Depends(
         RoleChecker(
             [
-                UserRole.SUPERADMIN,
-                UserRole.ADMIN,
-                UserRole.SUBADMIN,
                 UserRole.JANITOR,
-                UserRole.CLIENT,
             ],
         ),
     ),
