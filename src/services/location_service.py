@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
 from src.core.enums import UserRole
@@ -81,7 +82,7 @@ class LocationService:
             # Forced company_id if user is not superadmin and provided company_id
             company_id = my_company_id
 
-        stmt = select(Location).where(Location.is_active == True)  # noqa: E712
+        stmt = select(Location).where(Location.is_active == True).options(selectinload(Location.company_locations_accesses))  # noqa: E712
 
         if company_id is not None:
             stmt = stmt.join(
@@ -107,7 +108,9 @@ class LocationService:
                     address=location.address,
                     country=location.country,
                     logo=location.logo,
-                    company_id=location.company_id,
+                    company_ids=[
+                        access.company_id for access in location.company_locations_accesses
+                    ],
                     is_active=location.is_active,
                     created_by=location.created_by,
                     created_at=location.created_at,

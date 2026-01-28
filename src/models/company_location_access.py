@@ -48,7 +48,8 @@ class CompanyLocationAccess(SQLModel, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "[CompanyLocationAccess.company_id]"},
     )
-    location: "Location" = Relationship(back_populates="company_locations")
+    location: "Location" = Relationship(
+        back_populates="company_locations_accesses")
     creator: "User" = Relationship(
         sa_relationship_kwargs={
             "foreign_keys": "[CompanyLocationAccess.created_by]"},

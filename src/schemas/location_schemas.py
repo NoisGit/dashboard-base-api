@@ -31,7 +31,7 @@ class LocationResponse(BaseResponse):
     address: str
     country: Optional[str] = None
     logo: Optional[str] = None
-    company_id: Optional[int] = None
+    company_ids: Optional[list[int]] = []
     is_active: bool
     created_by: int
     created_at: Optional[datetime] = None

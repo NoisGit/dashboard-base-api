@@ -74,7 +74,7 @@ class Location(SQLModel, table=True):
         back_populates="location",
     )
 
-    company_locations: List["CompanyLocationAccess"] = Relationship(
+    company_locations_accesses: List["CompanyLocationAccess"] = Relationship(
         back_populates="location",
     )
 
