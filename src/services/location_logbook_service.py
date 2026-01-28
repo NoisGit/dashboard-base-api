@@ -13,11 +13,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select, desc
 
 from src.auth import create_secret_token_urlsafe
-from src.core.enums import UserRole
 from src.models import (
-    Location,
-    CompanyStaff,
-    UserLocationAccess,
     LocationLogbook,
     LocationLogbookSettings,
     PoliceAccessPermit,
@@ -25,13 +21,13 @@ from src.models import (
 from src.schemas import (
     LocationLogbookCreateRequest,
     LocationLogbookResponse,
-    LocationLogbookSettingsUpdateRequest,
     LocationLogbookSettingsResponse,
+    LocationLogbookSettingsUpdateRequest,
     PoliceLinkResponse,
     PoliceViewResponse,
 )
 from src.services.azure_service import AzureService
-from src.services.user_service import UserService
+from src.services.location_service import LocationService
 
 
 class LocationLogbookService:
@@ -40,20 +36,12 @@ class LocationLogbookService:
     def __init__(
         self,
         session: AsyncSession,
-        user_service: UserService,
         azure_service: AzureService,
+        location_service: LocationService,
     ):
         self.session = session
-        self.user_service = user_service
         self.azure_service = azure_service
-
-    async def _get_location_by_id(
-        self,
-        location_id: int,
-    ) -> Optional[Location]:
-        stmt = select(Location).where(Location.id == location_id)
-        result = await self.session.execute(stmt)
-        return result.scalars().first()
+        self.location_service = location_service
 
     async def _get_settings_by_location_id(
         self,
@@ -64,74 +52,6 @@ class LocationLogbookService:
         )
         result = await self.session.execute(stmt)
         return result.scalars().first()
-
-    async def _assert_location_exists(
-        self,
-        location_id: int,
-    ) -> Location:
-        location = await self._get_location_by_id(location_id)
-        if not location or not location.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
-        return location
-
-    async def _assert_user_can_access_location(
-        self,
-        user_id: int,
-        location: Location,
-    ):
-        user = await self.user_service.get_user_by_id(user_id)
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        if user.role == UserRole.SUPERADMIN:
-            return
-
-        if location.company_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Location is not assigned to a company.",
-            )
-
-        if user.role in (UserRole.ADMIN, UserRole.SUBADMIN, UserRole.CLIENT):
-            stmt = select(CompanyStaff).where(
-                CompanyStaff.user_id == user_id,
-                CompanyStaff.company_id == location.company_id,
-            )
-            result = await self.session.execute(stmt)
-            staff_link = result.scalars().first()
-
-            if not staff_link:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="User has no access to this location.",
-                )
-            return
-
-        if user.role is UserRole.JANITOR:
-            stmt = select(UserLocationAccess).where(
-                UserLocationAccess.user_id == user_id,
-                UserLocationAccess.location_id == location.id,
-            )
-            result = await self.session.execute(stmt)
-            assignment = result.scalars().first()
-
-            if not assignment:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="User has no access to this location.",
-                )
-            return
-
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User has no access to this location.",
-        )
 
     async def _assert_logbook_enabled(
         self,
@@ -150,8 +70,10 @@ class LocationLogbookService:
         location_id: int,
     ) -> LocationLogbookSettingsResponse:
         """Get logbook settings for a location."""
-        location = await self._assert_location_exists(location_id)
-        await self._assert_user_can_access_location(user_id, location)
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
         settings = await self._get_settings_by_location_id(location_id)
         if not settings:
@@ -176,16 +98,20 @@ class LocationLogbookService:
         payload: LocationLogbookSettingsUpdateRequest,
     ) -> LocationLogbookSettingsResponse:
         """Enable or disable logbook for a location."""
-        location = await self._assert_location_exists(location_id)
-        await self._assert_user_can_access_location(user_id, location)
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
         settings = await self._get_settings_by_location_id(location_id)
+        now = datetime.now()
+
         if not settings:
             settings = LocationLogbookSettings(
                 location_id=location_id,
                 is_enabled=payload.enabled,
                 updated_by=user_id,
-                updated_at=datetime.now(),
+                updated_at=now,
             )
             self.session.add(settings)
             await self.session.commit()
@@ -193,7 +119,7 @@ class LocationLogbookService:
         else:
             settings.is_enabled = payload.enabled
             settings.updated_by = user_id
-            settings.updated_at = datetime.now()
+            settings.updated_at = now
             self.session.add(settings)
             await self.session.commit()
             await self.session.refresh(settings)
@@ -211,8 +137,10 @@ class LocationLogbookService:
         payload: LocationLogbookCreateRequest,
     ):
         """Create a logbook entry."""
-        location = await self._assert_location_exists(payload.location_id)
-        await self._assert_user_can_access_location(user_id, location)
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=payload.location_id,
+        )
         await self._assert_logbook_enabled(payload.location_id)
 
         data_model = payload.model_dump(exclude_none=True)
@@ -233,8 +161,10 @@ class LocationLogbookService:
         params: Params,
     ) -> Page[LocationLogbookResponse]:
         """List logbook entries for a location."""
-        location = await self._assert_location_exists(location_id)
-        await self._assert_user_can_access_location(user_id, location)
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
         await self._assert_logbook_enabled(location_id)
 
         stmt = (
@@ -279,8 +209,10 @@ class LocationLogbookService:
         location_id: int,
     ) -> PoliceLinkResponse:
         """Create a police access link for a location logbook."""
-        location = await self._assert_location_exists(location_id)
-        await self._assert_user_can_access_location(user_id, location)
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
         await self._assert_logbook_enabled(location_id)
 
         police_access = await self.session.execute(
@@ -351,9 +283,11 @@ class LocationLogbookService:
         entries_result = await self.session.execute(stmt)
         entries = entries_result.scalars().all()
 
-        location_name = None
-        if police_access.location:
-            location_name = police_access.location.name
+        location_name = (
+            police_access.location.name
+            if police_access.location
+            else "Location"
+        )
 
         response_entries = [
             LocationLogbookResponse(
@@ -377,6 +311,6 @@ class LocationLogbookService:
         ]
 
         return PoliceViewResponse(
-            location_name=location_name or "Location",
+            location_name=location_name,
             entries=response_entries,
         )

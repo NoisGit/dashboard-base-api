@@ -75,11 +75,11 @@ def get_location_service(
 
 def get_location_logbook_service(
     session: AsyncSession = Depends(get_session),
-    user_service: UserService = Depends(get_user_service),
     azure_service: AzureService = Depends(get_azure_service),
+    location_service: LocationService = Depends(get_location_service),
 ) -> LocationLogbookService:
     """Dependency to get a LocationLogbookService instance."""
-    return LocationLogbookService(session, user_service, azure_service)
+    return LocationLogbookService(session, azure_service, location_service)
 
 
 def get_emergency_contact_service(
