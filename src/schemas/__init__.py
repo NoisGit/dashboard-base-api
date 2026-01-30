@@ -117,6 +117,16 @@ from .whitelist_schemas import (
     WhitelistCreateRequest,
     WhitelistResponse,
 )
+from .location_logbook_schemas import (
+    LocationLogbookMediaType,
+    LocationLogbookCreateRequest,
+    LocationLogbookResponse,
+    LocationLogbookSettingsUpdateRequest,
+    LocationLogbookSettingsResponse,
+    PoliceAccessCreateRequest,
+    PoliceLinkResponse,
+    PoliceViewResponse,
+)
 
 __all__ = [
     # Base schemas
@@ -214,4 +224,13 @@ __all__ = [
     "GenderDistributionResponse",
     "ChartStatsResponse",
     "RecentEntriesResponse",
+    # Location logbook schemas
+    "LocationLogbookMediaType",
+    "LocationLogbookCreateRequest",
+    "LocationLogbookResponse",
+    "LocationLogbookSettingsUpdateRequest",
+    "LocationLogbookSettingsResponse",
+    "PoliceAccessCreateRequest",
+    "PoliceLinkResponse",
+    "PoliceViewResponse",
 ]

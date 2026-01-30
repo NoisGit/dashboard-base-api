@@ -18,7 +18,8 @@ from src.config.config import settings
 
 ALLOWED_CONTAINERS = [
     "access-logs",
-    "documents"
+    "documents",
+    "location-logbook",
 ]
 
 BLOB_SERVICE_CLIENT = BlobServiceClient.from_connection_string(
