@@ -2,12 +2,14 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
+
 from azure.storage.blob import (
     BlobServiceClient,
     generate_blob_sas,
     BlobSasPermissions,
     ContentSettings
 )
+
 from src.api.error import (
     InvalidContainerError,
     AzureServiceError
@@ -16,9 +18,9 @@ from src.config.config import settings
 
 ALLOWED_CONTAINERS = [
     "access-logs",
-    "documents"
+    "documents",
+    "location-logbook",
 ]
-
 
 BLOB_SERVICE_CLIENT = BlobServiceClient.from_connection_string(
     settings.AZURE_STORAGE_CONNECTION_STRING

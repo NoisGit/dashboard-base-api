@@ -60,7 +60,7 @@ class UserResponse(BaseResponse):
     role: UserRole
     status: bool
     is_active: bool
-    plan_id: int
+    plan_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
 

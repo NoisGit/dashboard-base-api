@@ -6,14 +6,17 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, status
 from fastapi_pagination import Page, Params
 
+from src.auth.utils import get_current_user
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_access_log_service
 from src.schemas.access_log_schemas import (
     AccessLogCreateRequest,
     AccessLogExitRequest,
+    AccessLogBulkExitRequest,
     AccessLogResponse,
 )
+from src.schemas import EmptyResponse
 from src.services.access_log_service import AccessLogService
 
 
@@ -99,6 +102,64 @@ async def register_exit(
         access_log_id=access_log_id,
         payload=payload,
         exit_created_by=user_id,
+    )
+
+
+@router.patch(
+    "/dashboard/{access_log_id}/exit",
+    response_model=EmptyResponse,
+)
+async def register_exit_dashboard(
+    access_log_id: int,
+    payload: AccessLogExitRequest,
+    service: AccessLogService = Depends(get_access_log_service),
+    user_id=Depends(RoleChecker([
+        UserRole.SUBADMIN,
+        UserRole.ADMIN,
+        UserRole.SUPERADMIN
+    ])),
+    current_user=Depends(get_current_user),
+) -> EmptyResponse:
+    """
+    Register exit for an existing access log from dashboard.
+    Only Admin roles can register exits.
+    """
+    role_str = current_user.get("role")
+    enforce_location_access = role_str != UserRole.SUPERADMIN.value
+
+    return await service.register_exit_admin(
+        access_log_id=access_log_id,
+        payload=payload,
+        exit_created_by=user_id,
+        enforce_location_access=enforce_location_access,
+    )
+
+
+@router.patch(
+    "/dashboard/exit/bulk",
+    response_model=EmptyResponse,
+)
+async def register_exit_bulk_dashboard(
+    payload: AccessLogBulkExitRequest,
+    service: AccessLogService = Depends(get_access_log_service),
+    user_id=Depends(RoleChecker([
+        UserRole.SUBADMIN,
+        UserRole.ADMIN,
+        UserRole.SUPERADMIN
+    ])),
+    current_user=Depends(get_current_user),
+) -> EmptyResponse:
+    """
+    Register exits in bulk from dashboard.
+    Only Admin roles can register exits.
+    """
+    role_str = current_user.get("role")
+    enforce_location_access = role_str != UserRole.SUPERADMIN.value
+
+    return await service.register_exit_bulk_admin(
+        payload=payload,
+        exit_created_by=user_id,
+        enforce_location_access=enforce_location_access,
     )
 
 

@@ -35,6 +35,11 @@ class AccessLogExitRequest(BaseModel):
     exit_images: Optional[List[str]] = None
 
 
+class AccessLogBulkExitRequest(BaseModel):
+    """Request schema for registering exits in bulk."""
+    access_log_ids: List[int] = Field(..., min_length=1)
+
+
 # =============================================================================
 # Response Schemas
 # =============================================================================

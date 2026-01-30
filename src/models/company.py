@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .user import User
     from .location import Location
     from .company_location_access import CompanyLocationAccess
+    from .document import Document
 
 
 class Company(SQLModel, table=True):
@@ -65,6 +66,11 @@ class Company(SQLModel, table=True):
         back_populates="company",
         sa_relationship_kwargs={
             "foreign_keys": "[CompanyLocationAccess.company_id]"},
+    )
+      
+    # Documents owned by this company
+    documents: List["Document"] = Relationship(
+        back_populates="company",
     )
 
     # User who created this company

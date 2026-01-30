@@ -9,6 +9,7 @@ from .access_logs import router as access_logs_router
 from .audit_log import router as audit_log_router
 from .auth import router as auth_router
 from .azure import router as azure_router
+from .documents import router as documents_router
 from .emergency_contacts import router as emergency_contacts_router
 from .users import router as users_router
 from .companies import router as companies_router
@@ -20,12 +21,14 @@ from .whitelists import router as whitelists_router
 from .blacklists import router as blacklists_router
 from .system import router as system_router
 from .dashboard import router as dashboard_router
+from .location_logbook import router as location_logbook_router
 
 __all__ = [
     "access_logs_router",
     "audit_log_router",
     "auth_router",
     "azure_router",
+    "documents_router",
     "emergency_contacts_router",
     "users_router",
     "companies_router",
@@ -37,4 +40,5 @@ __all__ = [
     "blacklists_router",
     "system_router",
     "dashboard_router",
+    "location_logbook_router",
 ]
