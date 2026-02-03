@@ -105,6 +105,12 @@ class AccessLogService:
         Create a new access log entry (person entering).
         Only JANITOR role should call this.
         """
+
+        if payload.created_at and payload.created_at.tzinfo:
+            created_at = payload.created_at.replace(tzinfo=None)
+        else:
+            created_at = datetime.now()
+
         access_log = AccessLog(
             location_id=payload.location_id,
             external_people_id=payload.external_people_id,
@@ -114,7 +120,7 @@ class AccessLogService:
             office=payload.office,
             comment=payload.comment,
             custom_form_responses=payload.custom_form_responses,
-            created_at=datetime.now(),
+            created_at=created_at,
         )
 
         self.session.add(access_log)
@@ -173,8 +179,13 @@ class AccessLogService:
                 detail="Exit already registered for this access log",
             )
 
+        if payload.exit_date and payload.exit_date.tzinfo:
+            exit_date = payload.exit_date.replace(tzinfo=None)
+        else:
+            exit_date = datetime.now()
+
         # Update exit info
-        access_log.exit_date = datetime.now()
+        access_log.exit_date = exit_date
         access_log.exit_comment = payload.exit_comment
         access_log.exit_created_by = exit_created_by
 
