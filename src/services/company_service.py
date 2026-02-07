@@ -1,6 +1,7 @@
 """Company service module for the Sentinel Enterprise API."""
 
 from typing import List, Optional, cast
+from datetime import datetime
 
 from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -8,11 +9,12 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, desc
 
-from src.models import Company, CompanyStaff
+from src.models import Company, CompanyStaff, User
 from src.schemas import (
     CompanyCreateRequest,
     CompanyUpdateRequest,
-    CompanyResponse
+    CompanyResponse,
+    UserCreateRequest,
 )
 from src.services.user_service import UserService
 
@@ -178,3 +180,45 @@ class CompanyService:
         )
         result = await self.session.execute(stmt)
         return result.scalars().first()
+
+    async def create_user_and_assign_company(
+        self,
+        requester_id: int,
+        company_id: int,
+        payload: UserCreateRequest,
+    ) -> None:
+        """Create a new user."""
+        check_user = await UserService.get_user_by_email(self, payload.email)
+        if check_user:
+            await self.assign_user_to_company(
+                requester_id=requester_id,
+                company_id=company_id,
+                user_id=check_user.id,
+            )
+            return None
+
+        password_hash = UserService._hash_password(self, payload.password)
+
+        user = User(
+            username=payload.username,
+            full_name=payload.full_name,
+            email=payload.email,
+            password_hash=password_hash,
+            role=payload.role,
+            plan_id=payload.plan_id,
+            status=payload.status,
+            is_active=True,
+            created_at=datetime.now(),
+        )
+
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+
+        await self.assign_user_to_company(
+            requester_id=requester_id,
+            company_id=company_id,
+            user_id=user.id,
+        )
+
+        return None
