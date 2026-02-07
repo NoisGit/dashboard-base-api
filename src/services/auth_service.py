@@ -245,7 +245,8 @@ class AuthService:
 
         context_base = {
             "full_name": user.full_name,
-            "logo_url": settings.LOGO_URL
+            "logo_url": settings.LOGO_URL,
+            "front_url_base": settings.FRONT_URL_BASE,
         }
 
         if user:
