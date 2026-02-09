@@ -58,7 +58,7 @@ class AccessLog(SQLModel, table=True):
     # }
     custom_form_responses: Optional[Any] = Field(
         default=None,
-        sa_column=Column(ARRAY(JSONB)),
+        sa_column=Column(JSONB),
     )
 
     # Relationships
