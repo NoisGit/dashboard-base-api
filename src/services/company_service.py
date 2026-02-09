@@ -16,6 +16,7 @@ from src.schemas import (
     CompanyUpdateRequest,
     CompanyResponse,
     SubCompanyCreateRequest,
+    EmptyResponse,
 )
 from src.services.user_service import UserService
 
@@ -75,7 +76,7 @@ class CompanyService:
         self,
         user_id: int,
         payload: CompanyCreateRequest,
-    ) -> Company:
+    ) -> EmptyResponse:
         """Create a new company."""
         company = Company(
             name=payload.name,
@@ -89,13 +90,13 @@ class CompanyService:
         self.session.add(company)
         await self.session.commit()
         await self.session.refresh(company)
-        return company
+        return EmptyResponse()
 
     async def create_subcompany(
         self,
         user_id: int,
         payload: SubCompanyCreateRequest,
-    ) -> Company:
+    ) -> EmptyResponse:
         """Create a new sub company."""
         user = await self.user_service.get_user_by_id(user_id)
         if not user or not getattr(user, "is_active", True):
@@ -122,13 +123,13 @@ class CompanyService:
         self.session.add(subcompany)
         await self.session.commit()
         await self.session.refresh(subcompany)
-        return subcompany
+        return EmptyResponse()
 
     async def update_company(
         self,
         company_id: int,
         payload: CompanyUpdateRequest,
-    ) -> Company:
+    ) -> EmptyResponse:
         """Update an existing company."""
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
@@ -143,7 +144,7 @@ class CompanyService:
 
         await self.session.commit()
         await self.session.refresh(company)
-        return company
+        return EmptyResponse()
 
     async def soft_delete_company(
         self,
