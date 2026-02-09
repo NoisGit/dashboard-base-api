@@ -17,6 +17,16 @@ class CompanyCreateRequest(BaseModel):
     type_document: Optional[str] = None
 
 
+class SubCompanyCreateRequest(BaseModel):
+    """Payload for creating a sub company."""
+    name: str
+    activity: Optional[str] = None
+    id_number: Optional[str] = None
+    parent_company_id: Optional[int] = None
+    logo: Optional[str] = None
+    type_document: Optional[str] = None
+
+
 class CompanyUpdateRequest(BaseModel):
     """Payload for updating a company."""
     name: Optional[str] = None
@@ -35,6 +45,7 @@ class CompanyResponse(BaseResponse):
     logo: Optional[str] = None
     type_document: Optional[str] = None
     is_active: bool
+    parent_company_id: Optional[int] = None
     created_by: int
     created_at: Optional[datetime] = None
 

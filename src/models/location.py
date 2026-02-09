@@ -13,6 +13,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .user_location_access import UserLocationAccess
+    from .company_location_access import CompanyLocationAccess
     from .custom_form import CustomForm
     from .emergency_contact import EmergencyContact
     from .service_contacts import ServiceContact
@@ -70,6 +71,10 @@ class Location(SQLModel, table=True):
     )
 
     user_locations: List["UserLocationAccess"] = Relationship(
+        back_populates="location",
+    )
+
+    company_locations_accesses: List["CompanyLocationAccess"] = Relationship(
         back_populates="location",
     )
 

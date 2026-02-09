@@ -12,7 +12,10 @@ from src.schemas import (
     CompanyResponse,
     CompanyAssignUserRequest,
     CompanyUserAssignmentResponse,
+    SubCompanyCreateRequest,
 )
+
+from src.schemas import EmptyResponse
 from src.services.company_service import CompanyService
 
 router = APIRouter(
@@ -68,7 +71,7 @@ async def get_company_detail(
 
 @router.post(
     "/",
-    response_model=CompanyResponse,
+    response_model=EmptyResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_company(
@@ -77,19 +80,43 @@ async def create_company(
     user_id=Depends(
         RoleChecker([UserRole.SUPERADMIN]),
     ),
-) -> CompanyResponse:
+) -> EmptyResponse:
     """Create a new company."""
 
-    company = await service.create_company(
+    return await service.create_company(
         user_id,
         payload,
     )
-    return company
+
+
+@router.post(
+    "/subcompany",
+    response_model=EmptyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_subcompany(
+    payload: SubCompanyCreateRequest,
+    service: CompanyService = Depends(get_company_service),
+    user_id=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+) -> EmptyResponse:
+    """Create a new sub company."""
+
+    return await service.create_subcompany(
+        user_id,
+        payload,
+    )
 
 
 @router.put(
     "/{company_id}",
-    response_model=CompanyResponse,
+    response_model=EmptyResponse,
 )
 async def update_company(
     company_id: int,
@@ -103,13 +130,12 @@ async def update_company(
             ],
         ),
     ),
-) -> CompanyResponse:
+) -> EmptyResponse:
     """Update an existing company."""
-    company = await service.update_company(
+    return await service.update_company(
         company_id=company_id,
         payload=payload,
     )
-    return company
 
 
 @router.delete(

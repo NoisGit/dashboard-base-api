@@ -162,6 +162,7 @@ def get_document_service(
 def get_dashboard_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
+    location_service: LocationService = Depends(get_location_service),
 ) -> DashboardService:
     """Dependency to get a DashboardService instance."""
-    return DashboardService(session, user_service)
+    return DashboardService(session, user_service, location_service)

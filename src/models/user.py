@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from .support_ticket import SupportTicket
     from .type_access_list import TypeAccessList
     from .user_location_access import UserLocationAccess
+    from .company_location_access import CompanyLocationAccess
 
 
 class User(SQLModel, table=True):
@@ -82,6 +83,13 @@ class User(SQLModel, table=True):
         back_populates="user",
         sa_relationship_kwargs={
             "foreign_keys": "[UserLocationAccess.user_id]"},
+    )
+
+    # Company–Location accesses created by this user (CompanyLocationAccess.created_by)
+    company_location_accesses_created: List["CompanyLocationAccess"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={
+            "foreign_keys": "[CompanyLocationAccess.created_by]"},
     )
 
     # Company memberships via company_staff join table
