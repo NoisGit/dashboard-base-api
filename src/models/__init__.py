@@ -14,6 +14,7 @@ from .company import Company
 from .location import Location
 from .user import User
 from .user_location_access import UserLocationAccess
+from .company_location_access import CompanyLocationAccess
 from .company_staff import CompanyStaff
 from .custom_form import CustomForm
 from .custom_form_field import CustomFormField
@@ -38,6 +39,7 @@ __all__ = [
     "User",
     "UserRole",
     "UserLocationAccess",
+    "CompanyLocationAccess",
     "CompanyStaff",
     "CustomForm",
     "CustomFormField",

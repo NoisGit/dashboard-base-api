@@ -4,7 +4,7 @@ from sqlalchemy import func, desc, and_, cast, Date, case, distinct
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.enums import UserRole
-from src.services import UserService
+from src.services import UserService, LocationService
 
 from src.models import AccessLog, AccessList, TypeAccessList, Location, ExternalPeople
 
@@ -27,9 +27,11 @@ class DashboardService:
         self,
         session: AsyncSession,
         user_service: UserService,
+        location_service: LocationService,
     ):
         self.session = session
         self.user_service = user_service
+        self.location_service = location_service
 
     async def get_type_list(self, name_list: str) -> TypeAccessList:
         """Get data from type list"""
@@ -221,20 +223,10 @@ class DashboardService:
         """Get Dashboard KPIs Counters"""
 
         # Check company user access to location
-        user = await self.user_service.get_user_profile(user_id)
-        if user.role != UserRole.SUPERADMIN:
-            # Check if company user has access to the location
-            location = await self.session.get(Location, location_id)
-            if not location or not location.is_active:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Location not found.",
-                )
-            if not location.company_id or location.company_id != user.company_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not allowed for this location.",
-                )
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id
+        )
 
         #  Access to Stats Functions
         kpis_result = await self.get_kpis(location_id)

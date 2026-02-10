@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
 from src.core.enums import UserRole
@@ -17,6 +18,7 @@ from src.models import (
     Company,
     CompanyStaff,
     UserLocationAccess,
+    CompanyLocationAccess,
 )
 from src.schemas import (
     LocationCreateRequest,
@@ -70,17 +72,23 @@ class LocationService:
             )
 
         if user.role != UserRole.SUPERADMIN:
-            company_id = await self.company_service.get_company_id_by_user_id(user_id)
-            if not company_id:
+            my_company_id = await self.company_service.get_company_id_by_user_id(user_id)
+            if not my_company_id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="User has no company assigned.",
                 )
 
-        stmt = select(Location).where(Location.is_active == True)  # noqa: E712
+            # Forced company_id if user is not superadmin and provided company_id
+            company_id = my_company_id
+
+        stmt = select(Location).where(Location.is_active == True).options(selectinload(Location.company_locations_accesses))  # noqa: E712
 
         if company_id is not None:
-            stmt = stmt.where(Location.company_id == company_id)
+            stmt = stmt.join(
+                CompanyLocationAccess,
+                CompanyLocationAccess.location_id == Location.id,
+            ).where(CompanyLocationAccess.company_id == company_id)
 
         if search:
             like_pattern = f"%{search}%"
@@ -100,7 +108,9 @@ class LocationService:
                     address=location.address,
                     country=location.country,
                     logo=location.logo,
-                    company_id=location.company_id,
+                    company_ids=[
+                        access.company_id for access in location.company_locations_accesses
+                    ],
                     is_active=location.is_active,
                     created_by=location.created_by,
                     created_at=location.created_at,
@@ -111,15 +121,12 @@ class LocationService:
 
     async def get_location_detail(
         self,
+        user_id: int,
         location_id: int,
     ) -> Location:
         """Get a single location by ID."""
-        location = await self._get_location_by_id(location_id)
-        if not location or not location.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
+
+        location = await self.check_user_permission_on_location(user_id=user_id, location_id=location_id)
 
         return location
 
@@ -185,6 +192,7 @@ class LocationService:
 
     async def assign_company_to_location(
         self,
+        requester_id: int,
         location_id: int,
         payload: LocationAssignCompanyRequest,
     ) -> Location:
@@ -203,10 +211,15 @@ class LocationService:
                 detail="Company not found.",
             )
 
-        location.company_id = payload.company_id
-        self.session.add(location)
+        assignment = CompanyLocationAccess(
+            company_id=payload.company_id,
+            location_id=location_id,
+            created_by=requester_id,
+            created_at=datetime.now(),
+        )
+
+        self.session.add(assignment)
         await self.session.commit()
-        await self.session.refresh(location)
         return location
 
     async def assign_user_to_location(
@@ -307,7 +320,14 @@ class LocationService:
                 detail="User has no company assigned.",
             )
 
-        if not location.company_id or location.company_id != user_company_id:
+        company_location_stmt = select(CompanyLocationAccess).where(
+            CompanyLocationAccess.location_id == location_id,
+            CompanyLocationAccess.company_id == user_company_id,
+        )
+        company_location_result = await self.session.execute(company_location_stmt)
+        company_location = company_location_result.scalars().first()
+
+        if company_location is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not allowed for this location.",

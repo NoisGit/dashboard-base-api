@@ -26,6 +26,8 @@ class AccessLogCreateRequest(BaseModel):
     # Entry images (list of image names uploaded to Azure)
     entry_images: Optional[List[str]] = None
 
+    created_at: Optional[datetime] = None
+
 
 class AccessLogExitRequest(BaseModel):
     """Request schema for registering an exit."""
@@ -33,6 +35,8 @@ class AccessLogExitRequest(BaseModel):
 
     # Exit images (list of image names uploaded to Azure)
     exit_images: Optional[List[str]] = None
+
+    exit_date: Optional[datetime] = None
 
 
 class AccessLogBulkExitRequest(BaseModel):

@@ -8,6 +8,8 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, desc
+from src.core.enums import UserRole
+
 
 from src.models import Company, CompanyStaff, User
 from src.schemas import (
@@ -15,6 +17,8 @@ from src.schemas import (
     CompanyUpdateRequest,
     CompanyResponse,
     UserCreateRequest,
+    SubCompanyCreateRequest,
+    EmptyResponse,
 )
 from src.services.user_service import UserService
 
@@ -74,7 +78,7 @@ class CompanyService:
         self,
         user_id: int,
         payload: CompanyCreateRequest,
-    ) -> Company:
+    ) -> EmptyResponse:
         """Create a new company."""
         company = Company(
             name=payload.name,
@@ -88,13 +92,46 @@ class CompanyService:
         self.session.add(company)
         await self.session.commit()
         await self.session.refresh(company)
-        return company
+        return EmptyResponse()
+
+    async def create_subcompany(
+        self,
+        user_id: int,
+        payload: SubCompanyCreateRequest,
+    ) -> EmptyResponse:
+        """Create a new sub company."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role != UserRole.SUPERADMIN:
+            parent_company_id = await self.get_company_id_by_user_id(user_id)
+        else:
+            parent_company_id = payload.parent_company_id
+
+        subcompany = Company(
+            name=payload.name,
+            activity=payload.activity,
+            id_number=payload.id_number,
+            parent_company_id=parent_company_id,
+            logo=payload.logo,
+            type_document=payload.type_document,
+            created_by=user_id,
+        )
+
+        self.session.add(subcompany)
+        await self.session.commit()
+        await self.session.refresh(subcompany)
+        return EmptyResponse()
 
     async def update_company(
         self,
         company_id: int,
         payload: CompanyUpdateRequest,
-    ) -> Company:
+    ) -> EmptyResponse:
         """Update an existing company."""
         company = await self._get_company_by_id(company_id)
         if not company or not company.is_active:
@@ -109,7 +146,7 @@ class CompanyService:
 
         await self.session.commit()
         await self.session.refresh(company)
-        return company
+        return EmptyResponse()
 
     async def soft_delete_company(
         self,

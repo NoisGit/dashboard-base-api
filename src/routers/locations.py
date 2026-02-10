@@ -61,10 +61,21 @@ async def list_locations(
 async def get_location_detail(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    _=Depends(get_user_data_from_token),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+                UserRole.CLIENT,
+                UserRole.JANITOR,
+            ],
+        ),
+    ),
 ) -> LocationResponse:
     """Get a single active location by ID."""
     location = await service.get_location_detail(
+        user_id=user_id,
         location_id=location_id,
     )
     return location
@@ -143,7 +154,7 @@ async def delete_location(
     )
 
 
-@router.put(
+@router.post(
     "/{location_id}/company",
     response_model=LocationResponse,
 )
@@ -151,7 +162,7 @@ async def assign_company_to_location(
     location_id: int,
     payload: LocationAssignCompanyRequest,
     service: LocationService = Depends(get_location_service),
-    _=Depends(
+    requester_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -162,6 +173,7 @@ async def assign_company_to_location(
 ) -> LocationResponse:
     """Assign a company to a location."""
     location = await service.assign_company_to_location(
+        requester_id=requester_id,
         location_id=location_id,
         payload=payload,
     )

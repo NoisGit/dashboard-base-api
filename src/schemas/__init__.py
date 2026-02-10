@@ -45,6 +45,7 @@ from .blacklist_schemas import (
 from .company_schemas import (
     CompanyAssignUserRequest,
     CompanyCreateRequest,
+    SubCompanyCreateRequest,
     CompanyResponse,
     CompanyUpdateRequest,
     CompanyUserAssignmentResponse,
@@ -152,6 +153,7 @@ __all__ = [
     "CompanyResponse",
     "CompanyAssignUserRequest",
     "CompanyUserAssignmentResponse",
+    "SubCompanyCreateRequest",
     # Location schemas
     "LocationCreateRequest",
     "LocationUpdateRequest",
