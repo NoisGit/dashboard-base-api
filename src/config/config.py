@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Logo URL setting
     LOGO_URL: str
 
+    # Front URL Setting
+    FRONT_URL_BASE: str
+
     # Azure Storage settings
     AZURE_STORAGE_ACCOUNT_NAME: str
     AZURE_STORAGE_CONNECTION_STRING: str

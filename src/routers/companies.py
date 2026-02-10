@@ -7,11 +7,13 @@ from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_company_service
 from src.schemas import (
+    EmptyResponse,
     CompanyCreateRequest,
     CompanyUpdateRequest,
     CompanyResponse,
     CompanyAssignUserRequest,
     CompanyUserAssignmentResponse,
+    UserCreateRequest,
     SubCompanyCreateRequest,
 )
 
@@ -180,7 +182,30 @@ async def assign_user_to_company(
         user_id=payload.user_id,
     )
 
-    return CompanyUserAssignmentResponse(
+
+@router.post(
+    "/{company_id}/create-users",
+    response_model=EmptyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_user_and_assign_to_company(
+    company_id: int,
+    payload: UserCreateRequest,
+    service: CompanyService = Depends(get_company_service),
+    user_id=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+) -> EmptyResponse:
+    """Create user and assign an existing user to a company."""
+    await service.create_user_and_assign_company(
+        requester_id=user_id,
         company_id=company_id,
-        user_id=payload.user_id,
+        payload=payload,
     )
+
+    return EmptyResponse()
