@@ -43,10 +43,10 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
     # Core identity fields (match ERD: username, full_name, password_hash, email)
-    username: str = Field(max_length=50)
+    username: str = Field(max_length=50, unique=True, index=True)
     full_name: str = Field(max_length=100)
     password_hash: str = Field(max_length=255)
-    email: str = Field(max_length=100)
+    email: str = Field(max_length=100, unique=True, index=True)
 
     # DBML: status bool
     status: bool

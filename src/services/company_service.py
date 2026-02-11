@@ -234,6 +234,8 @@ class CompanyService:
             )
             return None
 
+        await UserService._ensure_username_unique(self, payload.username)
+
         password_hash = UserService._hash_password(self, payload.password)
 
         user = User(
