@@ -43,6 +43,7 @@ class CustomFormField(SQLModel, table=True):
 
     is_required: bool = Field(default=False)
     display_order: int = Field(default=0)
+    allow_image: bool = Field(default=False)
 
     # Soft delete - never hard delete for historical integrity
     is_active: bool = Field(default=True)

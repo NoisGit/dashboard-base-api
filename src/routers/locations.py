@@ -5,16 +5,21 @@ from typing import Optional
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
 
-from src.auth.utils import get_user_data_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_location_service
 from src.schemas import (
+    EmptyResponse,
     LocationCreateRequest,
     LocationUpdateRequest,
     LocationResponse,
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
+)
+from src.schemas.location_custom_form_schemas import (
+    LocationCustomFormResponse,
+    LocationCustomFormUpsertRequest,
+    LocationCustomFieldUpdateRequest,
 )
 from src.services.location_service import LocationService
 
@@ -83,7 +88,7 @@ async def get_location_detail(
 
 @router.post(
     "/",
-    response_model=LocationResponse,
+    response_model=EmptyResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_location(
@@ -97,18 +102,18 @@ async def create_location(
             ],
         ),
     ),
-) -> LocationResponse:
+) -> EmptyResponse:
     """Create a new location (portería)."""
-    location = await service.create_location(
+    await service.create_location(
         user_id=user_id,
         payload=payload,
     )
-    return location
+    return EmptyResponse()
 
 
 @router.put(
     "/{location_id}",
-    response_model=LocationResponse,
+    response_model=EmptyResponse,
 )
 async def update_location(
     location_id: int,
@@ -123,13 +128,13 @@ async def update_location(
             ],
         ),
     ),
-) -> LocationResponse:
+) -> EmptyResponse:
     """Update an existing location."""
-    location = await service.update_location(
+    await service.update_location(
         location_id=location_id,
         payload=payload,
     )
-    return location
+    return EmptyResponse()
 
 
 @router.delete(
@@ -156,7 +161,7 @@ async def delete_location(
 
 @router.post(
     "/{location_id}/company",
-    response_model=LocationResponse,
+    response_model=EmptyResponse,
 )
 async def assign_company_to_location(
     location_id: int,
@@ -170,18 +175,19 @@ async def assign_company_to_location(
             ],
         ),
     ),
-) -> LocationResponse:
+) -> EmptyResponse:
     """Assign a company to a location."""
-    location = await service.assign_company_to_location(
+    await service.assign_company_to_location(
         requester_id=requester_id,
         location_id=location_id,
         payload=payload,
     )
-    return location
+    return EmptyResponse()
 
 
 @router.post(
     "/{location_id}/users",
+    response_model=EmptyResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def assign_user_to_location(
@@ -197,10 +203,92 @@ async def assign_user_to_location(
             ],
         ),
     ),
-):
+) -> EmptyResponse:
     """Assign a user (janitor/portero) to a location."""
     await service.assign_user_to_location(
         requester_id=requester_id,
         location_id=location_id,
         payload=payload,
     )
+    return EmptyResponse()
+
+
+@router.get(
+    "/{location_id}/custom-form",
+    response_model=LocationCustomFormResponse,
+)
+async def get_location_custom_form(
+    location_id: int,
+    service: LocationService = Depends(get_location_service),
+    user_id=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> LocationCustomFormResponse:
+    """Get custom fields for a location."""
+    return await service.get_location_custom_form(
+        user_id=user_id,
+        location_id=location_id,
+    )
+
+
+@router.post(
+    "/{location_id}/custom-form/fields",
+    response_model=EmptyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_location_custom_form_fields(
+    location_id: int,
+    payload: LocationCustomFormUpsertRequest,
+    service: LocationService = Depends(get_location_service),
+    user_id=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> EmptyResponse:
+    """Create custom form fields for a location."""
+    await service.create_location_custom_form_fields(
+        user_id=user_id,
+        location_id=location_id,
+        payload=payload,
+    )
+    return EmptyResponse()
+
+
+@router.put(
+    "/{location_id}/custom-form/fields/{custom_form_field_id}",
+    response_model=EmptyResponse,
+)
+async def update_location_custom_form_field(
+    location_id: int,
+    custom_form_field_id: int,
+    payload: LocationCustomFieldUpdateRequest,
+    service: LocationService = Depends(get_location_service),
+    user_id=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+) -> EmptyResponse:
+    """Update a custom form field for a location."""
+    await service.update_location_custom_form_field(
+        user_id=user_id,
+        location_id=location_id,
+        custom_form_field_id=custom_form_field_id,
+        payload=payload,
+    )
+    return EmptyResponse()
