@@ -1,7 +1,7 @@
 """Location-related Pydantic schemas for the Sentinel Enterprise API."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -67,6 +67,10 @@ class AccessListResponse(BaseResponse):
     vehicle_plate: Optional[str] = None
     expiration_date: Optional[datetime] = None
     created_at: Optional[datetime] = None
+
+
+class AccessListResponseList(BaseModel):
+    items: List[AccessListResponse]
 
 
 __all__ = [

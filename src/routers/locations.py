@@ -1,6 +1,6 @@
 """Locations router module for Sentinel Enterprise API."""
 
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
@@ -209,11 +209,10 @@ async def assign_user_to_location(
 
 @router.get(
     "/{location_id}/access_lists",
-    response_model=Page[AccessListResponse],
+    response_model=List[AccessListResponse],
 )
 async def get_location_access_lists(
     location_id: int,
-    params: Params = Depends(),
     service: LocationService = Depends(get_location_service),
     user_id: int = Depends(
         RoleChecker(
@@ -223,11 +222,10 @@ async def get_location_access_lists(
             ],
         ),
     ),
-) -> Page[AccessListResponse]:
+) -> List[AccessListResponse]:
     """Get Access List for a location."""
     location_access_list = await service.get_location_access_lists(
         user_id=user_id,
         location_id=location_id,
-        params=params,
     )
     return location_access_list

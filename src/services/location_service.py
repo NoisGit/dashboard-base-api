@@ -343,9 +343,8 @@ class LocationService:
         self,
         user_id: int,
         location_id: int,
-        params: Params,
         include_expired: bool = False,
-    ) -> Page[AccessListResponse]:
+    ) -> List[AccessListResponse]:
         """Access list by location."""
         await self.check_user_permission_on_location(user_id, location_id)
 
@@ -353,7 +352,7 @@ class LocationService:
             select(
                 AccessList.id,
                 AccessList.location_id,
-                AccessList.name,
+                AccessList.name.label("full_name"),
                 AccessList.reason,
                 AccessList.vehicle_plate,
                 AccessList.expiration_date,
@@ -384,22 +383,20 @@ class LocationService:
                 )
             )
 
-        return await paginate(
-            self.session,
-            stmt,
-            params,
-            transformer=lambda items: [
-                AccessListResponse(
-                    id=item.id,
-                    location_id=item.location_id,
-                    id_number=item.id_number,
-                    full_name=item.name,
-                    reason=item.reason,
-                    type_access_list=item.type_access_list,
-                    vehicle_plate=item.vehicle_plate,
-                    expiration_date=item.expiration_date,
-                    created_at=item.created_at,
-                )
-                for item in cast(List, items)
-            ],
-        )
+        result = await self.session.execute(stmt)
+        res_detail_admins = result.mappings().all()
+
+        return [
+            AccessListResponse(
+                id=accessList.id,
+                location_id=accessList.location_id,
+                full_name=accessList.full_name,
+                reason=accessList.reason,
+                vehicle_plate=accessList.vehicle_plate,
+                expiration_date=accessList.expiration_date,
+                created_at=accessList.created_at,
+                id_number=accessList.id_number,
+                type_access_list=accessList.type_access_list,
+            )
+            for accessList in res_detail_admins
+        ]
