@@ -384,7 +384,7 @@ class LocationService:
             )
 
         result = await self.session.execute(stmt)
-        res_detail_admins = result.mappings().all()
+        res_access_list = result.mappings().all()
 
         return [
             AccessListResponse(
@@ -398,5 +398,5 @@ class LocationService:
                 id_number=accessList.id_number,
                 type_access_list=accessList.type_access_list,
             )
-            for accessList in res_detail_admins
+            for accessList in res_access_list
         ]
