@@ -78,6 +78,7 @@ from .location_schemas import (
     LocationResponse,
     LocationUpdateRequest,
     LocationUserAssignmentResponse,
+    AccessListResponse,
 )
 from .notification_schemas import (
     NotificationMessageResponse,
@@ -161,6 +162,7 @@ __all__ = [
     "LocationAssignCompanyRequest",
     "LocationAssignUserRequest",
     "LocationUserAssignmentResponse",
+    "AccessListResponse",
     # Auth schemas
     "AuthRecoveryPasswordRequest",
     "AuthResetPasswordRequest",

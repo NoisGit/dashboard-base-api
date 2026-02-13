@@ -1,7 +1,7 @@
 """Location-related Pydantic schemas for the Sentinel Enterprise API."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -56,6 +56,23 @@ class LocationUserAssignmentResponse(BaseResponse):
     created_at: datetime
 
 
+class AccessListResponse(BaseResponse):
+    """Schema for Access List response."""
+    id: int
+    location_id: int
+    id_number: str
+    full_name: str
+    type_access_list: str
+    reason: Optional[str] = None
+    vehicle_plate: Optional[str] = None
+    expiration_date: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+
+
+class AccessListResponseList(BaseModel):
+    items: List[AccessListResponse]
+
+
 __all__ = [
     "LocationCreateRequest",
     "LocationUpdateRequest",
@@ -63,4 +80,5 @@ __all__ = [
     "LocationAssignCompanyRequest",
     "LocationAssignUserRequest",
     "LocationUserAssignmentResponse",
+    "AccessListResponse",
 ]

@@ -2,7 +2,7 @@
 
 # pylint: disable=no-member, singleton-comparison
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional, cast
 
 from fastapi import HTTPException, status
@@ -10,7 +10,7 @@ from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlmodel import select
+from sqlmodel import select, desc, or_
 
 from src.core.enums import UserRole
 from src.models import (
@@ -19,6 +19,9 @@ from src.models import (
     CompanyStaff,
     UserLocationAccess,
     CompanyLocationAccess,
+    AccessList,
+    ExternalPeople,
+    TypeAccessList,
 )
 from src.schemas import (
     LocationCreateRequest,
@@ -26,6 +29,7 @@ from src.schemas import (
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
     LocationResponse,
+    AccessListResponse,
 )
 from src.services.user_service import UserService
 from src.services.company_service import CompanyService
@@ -334,3 +338,65 @@ class LocationService:
             )
 
         return location
+
+    async def get_location_access_lists(
+        self,
+        user_id: int,
+        location_id: int,
+        include_expired: bool = False,
+    ) -> List[AccessListResponse]:
+        """Access list by location."""
+        await self.check_user_permission_on_location(user_id, location_id)
+
+        stmt = (
+            select(
+                AccessList.id,
+                AccessList.location_id,
+                AccessList.name.label("full_name"),
+                AccessList.reason,
+                AccessList.vehicle_plate,
+                AccessList.expiration_date,
+                AccessList.created_at,
+                ExternalPeople.id_number,
+                TypeAccessList.name.label("type_access_list"),
+            )
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .join(
+                TypeAccessList,
+                TypeAccessList.id == AccessList.type_access_list_id,
+            )
+            .where(
+                AccessList.location_id == location_id,
+            )
+            .order_by(desc(AccessList.created_at))
+        )
+
+        if not include_expired:
+            today = date.today()
+            stmt = stmt.where(
+                or_(
+                    AccessList.expiration_date == None,  # noqa: E711
+                    AccessList.expiration_date >= today,
+                )
+            )
+
+        result = await self.session.execute(stmt)
+        res_access_list = result.mappings().all()
+
+        return [
+            AccessListResponse(
+                id=accessList.id,
+                location_id=accessList.location_id,
+                full_name=accessList.full_name,
+                reason=accessList.reason,
+                vehicle_plate=accessList.vehicle_plate,
+                expiration_date=accessList.expiration_date,
+                created_at=accessList.created_at,
+                id_number=accessList.id_number,
+                type_access_list=accessList.type_access_list,
+            )
+            for accessList in res_access_list
+        ]
