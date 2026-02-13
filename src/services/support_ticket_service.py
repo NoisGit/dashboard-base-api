@@ -109,9 +109,10 @@ class SupportTicketService:
     async def get_support_ticket_detail(
         self,
         ticket_id: int,
+        user_id: int,
     ) -> SupportTicketResponse:
         """Get a single support ticket by ID"""
-        ticket = await self._get_support_ticket_by_id(ticket_id)
+        ticket = await self.check_user_permission_on_ticket(user_id, ticket_id)
         if not ticket:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -373,3 +374,36 @@ class SupportTicketService:
 
         await self.session.delete(comment)
         await self.session.commit()
+
+    async def check_user_permission_on_ticket(
+        self,
+        user_id: int,
+        ticket_id: int,
+    ) -> SupportTicket:
+        """Validate User permission on ticket"""
+        ticket = await self._get_support_ticket_by_id(ticket_id)
+        if not ticket:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Support ticket not found.",
+            )
+
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        is_superadmin = user.role == UserRole.SUPERADMIN
+
+        if is_superadmin:
+            return ticket
+        else:
+            if ticket.created_by == user_id:
+                return ticket
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not allowed.",
+                )
