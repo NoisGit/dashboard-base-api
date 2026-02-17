@@ -85,10 +85,12 @@ async def list_my_support_tickets(
 async def get_support_ticket_detail(
     ticket_id: int,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    _=Depends(
+    user_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -96,6 +98,7 @@ async def get_support_ticket_detail(
     """Get a single support ticket by ID"""
     ticket = await service.get_support_ticket_detail(
         ticket_id=ticket_id,
+        user_id=user_id,
     )
     return ticket
 
