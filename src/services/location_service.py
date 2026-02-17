@@ -2,7 +2,7 @@
 
 # pylint: disable=no-member, singleton-comparison
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional, cast
 
 from fastapi import HTTPException, status
@@ -10,7 +10,7 @@ from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlmodel import select
+from sqlmodel import select, desc, or_
 
 from src.core.enums import UserRole, CustomFormFieldType
 from src.models import (
@@ -21,6 +21,9 @@ from src.models import (
     CompanyLocationAccess,
     CustomForm,
     CustomFormField,
+    AccessList,
+    ExternalPeople,
+    TypeAccessList,
 )
 from src.schemas import (
     LocationCreateRequest,
@@ -28,6 +31,7 @@ from src.schemas import (
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
     LocationResponse,
+    AccessListResponse,
 )
 from src.schemas.location_custom_form_schemas import (
     LocationCustomFormResponse,
@@ -43,7 +47,7 @@ MAX_CUSTOM_FIELDS_PER_LOCATION = 4
 
 
 class LocationService:
-    """Service for location operations and soft delete."""
+    """Service for location operations."""
 
     def __init__(
         self,
@@ -58,13 +62,13 @@ class LocationService:
     async def _get_location_by_id(
         self,
         location_id: int,
-    ) -> Optional[LocationResponse]:
+    ) -> Optional[Location]:
         stmt = select(Location).where(Location.id == location_id)
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def get_location_by_id(self, location_id: int) -> Optional[LocationResponse]:
-        """Public helper to retrieve a Location by ID (used by other services)."""
+    async def get_location_by_id(self, location_id: int) -> Optional[Location]:
+        """Public helper to retrieve a location by ID."""
         return await self._get_location_by_id(location_id)
 
     async def list_locations(
@@ -89,17 +93,22 @@ class LocationService:
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="User has no company assigned.",
                 )
-
-            # Forced company_id if user is not superadmin and provided company_id
             company_id = my_company_id
 
-        stmt = select(Location).where(Location.is_active == True).options(selectinload(Location.company_locations_accesses))  # noqa: E712
+        stmt = (
+            select(Location)
+            .where(Location.is_active == True)  # noqa: E712
+            .options(selectinload(Location.company_locations_accesses))
+        )
 
         if company_id is not None:
-            stmt = stmt.join(
-                CompanyLocationAccess,
-                CompanyLocationAccess.location_id == Location.id,
-            ).where(CompanyLocationAccess.company_id == company_id)
+            stmt = (
+                stmt.join(
+                    CompanyLocationAccess,
+                    CompanyLocationAccess.location_id == Location.id,
+                )
+                .where(CompanyLocationAccess.company_id == company_id)
+            )
 
         if search:
             like_pattern = f"%{search}%"
@@ -120,7 +129,8 @@ class LocationService:
                     country=location.country,
                     logo=location.logo,
                     company_ids=[
-                        access.company_id for access in location.company_locations_accesses
+                        access.company_id
+                        for access in location.company_locations_accesses
                     ],
                     is_active=location.is_active,
                     created_by=location.created_by,
@@ -135,18 +145,18 @@ class LocationService:
         user_id: int,
         location_id: int,
     ) -> Location:
-        """Get a single location by ID."""
-
-        location = await self.check_user_permission_on_location(user_id=user_id, location_id=location_id)
-
-        return location
+        """Get location detail."""
+        return await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
     async def create_location(
         self,
         user_id: int,
         payload: LocationCreateRequest,
     ):
-        """Create a new location."""
+        """Create a location."""
         location = Location(
             name=payload.name,
             address=payload.address,
@@ -166,7 +176,7 @@ class LocationService:
         location_id: int,
         payload: LocationUpdateRequest,
     ):
-        """Update an existing location."""
+        """Update a location."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -185,7 +195,7 @@ class LocationService:
         self,
         location_id: int,
     ):
-        """Soft delete a location by setting is_active = False."""
+        """Soft delete a location."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -234,7 +244,7 @@ class LocationService:
         location_id: int,
         payload: LocationAssignUserRequest,
     ):
-        """Assign a janitor user to a location."""
+        """Assign a user to a location."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -299,7 +309,7 @@ class LocationService:
         user_id: int,
         location_id: int,
     ) -> Location:
-        """Validate User-Company permission on location"""
+        """Validate access to a location."""
         user = await self.user_service.get_user_by_id(user_id)
         if not user or not getattr(user, "is_active", True):
             raise HTTPException(
@@ -346,7 +356,7 @@ class LocationService:
         user_id: int,
         location_id: int,
     ) -> LocationCustomFormResponse:
-        """Get custom fields for a location."""
+        """Get custom form for a location."""
         await self.check_user_permission_on_location(
             user_id=user_id,
             location_id=location_id,
@@ -426,7 +436,9 @@ class LocationService:
 
         existing_active_fields = []
         if form:
-            existing_active_fields = [f for f in form.fields if getattr(f, "is_active", True)]
+            existing_active_fields = [
+                f for f in form.fields if getattr(f, "is_active", True)
+            ]
 
         if len(existing_active_fields) + len(payload.fields) > MAX_CUSTOM_FIELDS_PER_LOCATION:
             raise HTTPException(
@@ -497,19 +509,21 @@ class LocationService:
                 }
             )
 
+        now = datetime.now()
+
         if not form:
             form = CustomForm(
                 location_id=location_id,
                 is_active=True,
                 created_by=user_id,
-                created_at=datetime.now(),
+                created_at=now,
                 updated_at=None,
             )
             self.session.add(form)
             await self.session.commit()
             await self.session.refresh(form)
         else:
-            form.updated_at = datetime.now()
+            form.updated_at = now
             self.session.add(form)
             await self.session.commit()
             await self.session.refresh(form)
@@ -523,7 +537,7 @@ class LocationService:
                 is_required=field["is_required"],
                 display_order=field["display_order"],
                 is_active=True,
-                created_at=datetime.now(),
+                created_at=now,
             )
 
             if hasattr(new_field, "allow_image"):
@@ -654,3 +668,65 @@ class LocationService:
             form.updated_at = datetime.now()
             self.session.add(form)
             await self.session.commit()
+
+    async def get_location_access_lists(
+        self,
+        user_id: int,
+        location_id: int,
+        include_expired: bool = False,
+    ) -> List[AccessListResponse]:
+        """Access list by location."""
+        await self.check_user_permission_on_location(user_id, location_id)
+
+        stmt = (
+            select(
+                AccessList.id,
+                AccessList.location_id,
+                AccessList.name.label("full_name"),
+                AccessList.reason,
+                AccessList.vehicle_plate,
+                AccessList.expiration_date,
+                AccessList.created_at,
+                ExternalPeople.id_number,
+                TypeAccessList.name.label("type_access_list"),
+            )
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .join(
+                TypeAccessList,
+                TypeAccessList.id == AccessList.type_access_list_id,
+            )
+            .where(
+                AccessList.location_id == location_id,
+            )
+            .order_by(desc(AccessList.created_at))
+        )
+
+        if not include_expired:
+            today = date.today()
+            stmt = stmt.where(
+                or_(
+                    AccessList.expiration_date == None,  # noqa: E711
+                    AccessList.expiration_date >= today,
+                )
+            )
+
+        result = await self.session.execute(stmt)
+        res_access_list = result.mappings().all()
+
+        return [
+            AccessListResponse(
+                id=accessList.id,
+                location_id=accessList.location_id,
+                full_name=accessList.full_name,
+                reason=accessList.reason,
+                vehicle_plate=accessList.vehicle_plate,
+                expiration_date=accessList.expiration_date,
+                created_at=accessList.created_at,
+                id_number=accessList.id_number,
+                type_access_list=accessList.type_access_list,
+            )
+            for accessList in res_access_list
+        ]

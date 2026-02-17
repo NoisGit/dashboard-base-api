@@ -78,6 +78,7 @@ from .location_schemas import (
     LocationResponse,
     LocationUpdateRequest,
     LocationUserAssignmentResponse,
+    AccessListResponse,
 )
 from .location_custom_form_schemas import (
     LocationCustomFieldRequest,
@@ -168,6 +169,7 @@ __all__ = [
     "LocationAssignCompanyRequest",
     "LocationAssignUserRequest",
     "LocationUserAssignmentResponse",
+    "AccessListResponse",
     # Location custom form schemas
     "LocationCustomFieldRequest",
     "LocationCustomFieldUpdateRequest",

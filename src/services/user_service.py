@@ -42,7 +42,6 @@ class UserService:
     ) -> None:
         stmt = select(User).where(
             User.email == email,
-            User.is_active == True,  # noqa: E712
         )
         if exclude_user_id is not None:
             stmt = stmt.where(User.id != exclude_user_id)
@@ -53,6 +52,22 @@ class UserService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email is already in use.",
+            )
+
+    async def _ensure_username_unique(
+        self,
+        username: str,
+    ) -> None:
+        stmt = select(User).where(
+            User.username == username,
+        )
+
+        result = await self.session.execute(stmt)
+        existing = result.scalars().first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username is already in use.",
             )
 
     async def _get_user_by_id(self, user_id: int) -> Optional[User]:
@@ -185,6 +200,7 @@ class UserService:
     ) -> User:
         """Create a new user."""
         await self._ensure_email_unique(payload.email)
+        await self._ensure_username_unique(payload.username)
 
         password_hash = self._hash_password(payload.password)
 

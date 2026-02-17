@@ -1,6 +1,6 @@
 """Locations router module for Sentinel Enterprise API."""
 
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
@@ -15,6 +15,7 @@ from src.schemas import (
     LocationResponse,
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
+    AccessListResponse,
 )
 from src.schemas.location_custom_form_schemas import (
     LocationCustomFormResponse,
@@ -50,13 +51,12 @@ async def list_locations(
     ),
 ) -> Page[LocationResponse]:
     """List active locations (porterías) visible for the current user."""
-    locations = await service.list_locations(
+    return await service.list_locations(
         user_id=user_id,
         params=params,
         company_id=company_id,
         search=search,
     )
-    return locations
 
 
 @router.get(
@@ -79,11 +79,10 @@ async def get_location_detail(
     ),
 ) -> LocationResponse:
     """Get a single active location by ID."""
-    location = await service.get_location_detail(
+    return await service.get_location_detail(
         user_id=user_id,
         location_id=location_id,
     )
-    return location
 
 
 @router.post(
@@ -94,7 +93,7 @@ async def get_location_detail(
 async def create_location(
     payload: LocationCreateRequest,
     service: LocationService = Depends(get_location_service),
-    user_id=Depends(
+    user_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -119,7 +118,7 @@ async def update_location(
     location_id: int,
     payload: LocationUpdateRequest,
     service: LocationService = Depends(get_location_service),
-    _=Depends(
+    _: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -144,7 +143,7 @@ async def update_location(
 async def delete_location(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    _=Depends(
+    _: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -194,7 +193,7 @@ async def assign_user_to_location(
     location_id: int,
     payload: LocationAssignUserRequest,
     service: LocationService = Depends(get_location_service),
-    requester_id=Depends(
+    requester_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -220,7 +219,7 @@ async def assign_user_to_location(
 async def get_location_custom_form(
     location_id: int,
     service: LocationService = Depends(get_location_service),
-    user_id=Depends(
+    user_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -246,7 +245,7 @@ async def create_location_custom_form_fields(
     location_id: int,
     payload: LocationCustomFormUpsertRequest,
     service: LocationService = Depends(get_location_service),
-    user_id=Depends(
+    user_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -274,7 +273,7 @@ async def update_location_custom_form_field(
     custom_form_field_id: int,
     payload: LocationCustomFieldUpdateRequest,
     service: LocationService = Depends(get_location_service),
-    user_id=Depends(
+    user_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -282,8 +281,7 @@ async def update_location_custom_form_field(
                 UserRole.SUBADMIN,
             ],
         ),
-    ),
-) -> EmptyResponse:
+    ) -> EmptyResponse:
     """Update a custom form field for a location."""
     await service.update_location_custom_form_field(
         user_id=user_id,
@@ -292,3 +290,26 @@ async def update_location_custom_form_field(
         payload=payload,
     )
     return EmptyResponse()
+
+
+@router.get(
+    "/{location_id}/access_lists",
+    response_model=List[AccessListResponse],
+)
+async def get_location_access_lists(
+    location_id: int,
+    service: LocationService = Depends(get_location_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.JANITOR,
+            ],
+        ),
+    ),
+) -> List[AccessListResponse]:
+    """Get Access List for a location."""
+    return await service.get_location_access_lists(
+        user_id=user_id,
+        location_id=location_id,
+    )

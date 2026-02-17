@@ -2,7 +2,7 @@
 
 # pylint: disable=no-member, singleton-comparison
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional, cast
 
 from fastapi import HTTPException, status
