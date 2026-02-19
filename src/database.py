@@ -88,6 +88,6 @@ async def test_connection():
         async with async_session() as session:
             await session.execute(select(1))
         return True
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         logger.error("❌ Database connection test failed")
         return False
