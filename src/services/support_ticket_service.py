@@ -22,7 +22,7 @@ from src.schemas import (
     SupportTicketCommentUpdateRequest,
     SupportTicketCommentResponse,
 )
-from src.services import UserService
+from src.services import UserService, AzureService
 
 
 class SupportTicketService:
@@ -32,9 +32,11 @@ class SupportTicketService:
         self,
         session: AsyncSession,
         user_service: UserService,
+        azure_service: AzureService,
     ):
         self.session = session
         self.user_service = user_service
+        self.azure_service = azure_service
 
     async def _get_support_ticket_by_id(
         self,
@@ -97,7 +99,10 @@ class SupportTicketService:
                     id=ticket.id,
                     title=ticket.title,
                     description=ticket.description,
-                    media_name=ticket.media_name,
+                    media_name=self.azure_service.generate_read_sas_url(
+                        container_name="support-tickets",
+                        blob_name=ticket.media_name,
+                    ),
                     status=ticket.status,
                     created_by=ticket.created_by,
                     created_at=ticket.created_at,
@@ -123,7 +128,10 @@ class SupportTicketService:
             id=ticket.id,
             title=ticket.title,
             description=ticket.description,
-            media_name=ticket.media_name,
+            media_name=self.azure_service.generate_read_sas_url(
+                container_name="support-tickets",
+                blob_name=ticket.media_name,
+            ),
             status=ticket.status,
             created_by=ticket.created_by,
             created_at=ticket.created_at,
@@ -151,7 +159,10 @@ class SupportTicketService:
             id=ticket.id,
             title=ticket.title,
             description=ticket.description,
-            media_name=ticket.media_name,
+            media_name=self.azure_service.generate_read_sas_url(
+                container_name="support-tickets",
+                blob_name=ticket.media_name,
+            ),
             status=ticket.status,
             created_by=ticket.created_by,
             created_at=ticket.created_at,
@@ -181,7 +192,10 @@ class SupportTicketService:
             id=ticket.id,
             title=ticket.title,
             description=ticket.description,
-            media_name=ticket.media_name,
+            media_name=self.azure_service.generate_read_sas_url(
+                container_name="support-tickets",
+                blob_name=ticket.media_name,
+            ),
             status=ticket.status,
             created_by=ticket.created_by,
             created_at=ticket.created_at,
