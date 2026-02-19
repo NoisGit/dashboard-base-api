@@ -49,7 +49,7 @@ async def list_locations(
             ],
         ),
     ),
-) -> Page[LocationResponse]:
+):
     """List active locations (porterías) visible for the current user."""
     return await service.list_locations(
         user_id=user_id,
@@ -77,7 +77,7 @@ async def get_location_detail(
             ],
         ),
     ),
-) -> LocationResponse:
+):
     """Get a single active location by ID."""
     return await service.get_location_detail(
         user_id=user_id,
@@ -101,7 +101,7 @@ async def create_location(
             ],
         ),
     ),
-) -> EmptyResponse:
+):
     """Create a new location (portería)."""
     await service.create_location(
         user_id=user_id,
@@ -112,7 +112,7 @@ async def create_location(
 
 @router.put(
     "/{location_id}",
-    response_model=EmptyResponse,
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 async def update_location(
     location_id: int,
@@ -127,13 +127,12 @@ async def update_location(
             ],
         ),
     ),
-) -> EmptyResponse:
+):
     """Update an existing location."""
     await service.update_location(
         location_id=location_id,
         payload=payload,
     )
-    return EmptyResponse()
 
 
 @router.delete(
@@ -174,7 +173,7 @@ async def assign_company_to_location(
             ],
         ),
     ),
-) -> EmptyResponse:
+):
     """Assign a company to a location."""
     await service.assign_company_to_location(
         requester_id=requester_id,
@@ -202,7 +201,7 @@ async def assign_user_to_location(
             ],
         ),
     ),
-) -> EmptyResponse:
+):
     """Assign a user (janitor/portero) to a location."""
     await service.assign_user_to_location(
         requester_id=requester_id,
@@ -228,7 +227,7 @@ async def get_location_custom_form(
             ],
         ),
     ),
-) -> LocationCustomFormResponse:
+):
     """Get custom fields for a location."""
     return await service.get_location_custom_form(
         user_id=user_id,
@@ -254,7 +253,7 @@ async def create_location_custom_form_fields(
             ],
         ),
     ),
-) -> EmptyResponse:
+):
     """Create custom form fields for a location."""
     await service.create_location_custom_form_fields(
         user_id=user_id,
@@ -266,7 +265,7 @@ async def create_location_custom_form_fields(
 
 @router.put(
     "/{location_id}/custom-form/fields/{custom_form_field_id}",
-    response_model=EmptyResponse,
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 async def update_location_custom_form_field(
     location_id: int,
@@ -281,7 +280,8 @@ async def update_location_custom_form_field(
                 UserRole.SUBADMIN,
             ],
         ),
-    ) -> EmptyResponse:
+    ),
+):
     """Update a custom form field for a location."""
     await service.update_location_custom_form_field(
         user_id=user_id,
@@ -289,7 +289,6 @@ async def update_location_custom_form_field(
         custom_form_field_id=custom_form_field_id,
         payload=payload,
     )
-    return EmptyResponse()
 
 
 @router.get(
@@ -307,7 +306,7 @@ async def get_location_access_lists(
             ],
         ),
     ),
-) -> List[AccessListResponse]:
+):
     """Get Access List for a location."""
     return await service.get_location_access_lists(
         user_id=user_id,

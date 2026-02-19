@@ -245,14 +245,18 @@ class LocationService:
         payload: LocationAssignUserRequest,
     ):
         """Assign a user to a location."""
-        location = await self._get_location_by_id(location_id)
-        if not location or not location.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
+        await self.check_user_permission_on_location(
+            user_id=requester_id,
+            location_id=location_id,
+        )
 
-        if location.company_id is None:
+        companies_stmt = select(CompanyLocationAccess.company_id).where(
+            CompanyLocationAccess.location_id == location_id,
+        )
+        companies_result = await self.session.execute(companies_stmt)
+        company_ids = [row[0] for row in companies_result.all()]
+
+        if not company_ids:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Location must be assigned to a company before adding users.",
@@ -265,7 +269,7 @@ class LocationService:
                 detail="User not found.",
             )
 
-        if target_user.role is not UserRole.JANITOR:
+        if target_user.role != UserRole.JANITOR:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only janitors can be assigned to locations.",
@@ -273,7 +277,7 @@ class LocationService:
 
         staff_stmt = select(CompanyStaff).where(
             CompanyStaff.user_id == payload.user_id,
-            CompanyStaff.company_id == location.company_id,
+            CompanyStaff.company_id.in_(company_ids),
         )
         staff_result = await self.session.execute(staff_stmt)
         staff_link = staff_result.scalars().first()
