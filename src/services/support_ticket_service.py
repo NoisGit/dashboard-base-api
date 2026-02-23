@@ -102,7 +102,7 @@ class SupportTicketService:
                     media_name=self.azure_service.generate_read_sas_url(
                         container_name="support-tickets",
                         blob_name=ticket.media_name,
-                    ),
+                    ) if ticket.media_name else None,
                     status=ticket.status,
                     created_by=ticket.created_by,
                     created_at=ticket.created_at,
@@ -131,7 +131,7 @@ class SupportTicketService:
             media_name=self.azure_service.generate_read_sas_url(
                 container_name="support-tickets",
                 blob_name=ticket.media_name,
-            ),
+            ) if ticket.media_name else None,
             status=ticket.status,
             created_by=ticket.created_by,
             created_at=ticket.created_at,
@@ -162,7 +162,7 @@ class SupportTicketService:
             media_name=self.azure_service.generate_read_sas_url(
                 container_name="support-tickets",
                 blob_name=ticket.media_name,
-            ),
+            ) if ticket.media_name else None,
             status=ticket.status,
             created_by=ticket.created_by,
             created_at=ticket.created_at,
@@ -195,7 +195,7 @@ class SupportTicketService:
             media_name=self.azure_service.generate_read_sas_url(
                 container_name="support-tickets",
                 blob_name=ticket.media_name,
-            ),
+            ) if ticket.media_name else None,
             status=ticket.status,
             created_by=ticket.created_by,
             created_at=ticket.created_at,
