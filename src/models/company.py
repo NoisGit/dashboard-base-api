@@ -67,7 +67,7 @@ class Company(SQLModel, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "[CompanyLocationAccess.company_id]"},
     )
-      
+
     # Documents owned by this company
     documents: List["Document"] = Relationship(
         back_populates="company",
