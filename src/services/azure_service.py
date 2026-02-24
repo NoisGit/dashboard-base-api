@@ -18,6 +18,7 @@ from src.config.config import settings
 
 ALLOWED_CONTAINERS = [
     "access-logs",
+    "companies",
     "documents",
     "location-logbook",
     "support-tickets",

@@ -14,10 +14,8 @@ from src.schemas import (
     CompanyAssignUserRequest,
     CompanyUserAssignmentResponse,
     UserCreateRequest,
-    SubCompanyCreateRequest,
+    SubCompanyCreateRequest
 )
-
-from src.schemas import EmptyResponse
 from src.services.company_service import CompanyService
 
 router = APIRouter(

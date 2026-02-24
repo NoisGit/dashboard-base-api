@@ -20,7 +20,7 @@ from src.schemas import (
     SubCompanyCreateRequest,
     EmptyResponse,
 )
-from src.services.user_service import UserService
+from src.services import UserService, AzureService
 
 
 class CompanyService:
@@ -29,17 +29,44 @@ class CompanyService:
     def __init__(
         self,
         session: AsyncSession,
-        user_service: Optional[UserService] = None,
+        user_service: UserService,
+        azure_service: AzureService
     ) -> None:
         self.session = session
         self.user_service = user_service or UserService(session)
+        self.azure_service = azure_service
 
     async def _get_company_by_id(self, company_id: int) -> Optional[CompanyResponse]:
-        return await self.session.get(Company, company_id)
+        company = await self.session.get(Company, company_id)
+
+        if not company or not company.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Company not found.",
+            )
+
+        return CompanyResponse(
+            id=company.id,
+            name=company.name,
+            activity=company.activity,
+            id_number=company.id_number,
+            logo=self.azure_service.generate_read_sas_url(
+                container_name="companies",
+                blob_name=company.logo,
+            ) if company.logo else None,
+            type_document=company.type_document,
+            is_active=company.is_active,
+            created_by=company.created_by,
+            created_at=company.created_at,
+        )
 
     async def list_companies(self, params: Params) -> Page[CompanyResponse]:
         """List active companies."""
-        stmt = select(Company).where(Company.is_active == True)
+
+        stmt = select(Company).where(
+            Company.is_active == True  # pylint: disable=singleton-comparison
+        )
+
         return await paginate(
             self.session,
             stmt,
@@ -50,7 +77,10 @@ class CompanyService:
                     name=company.name,
                     activity=company.activity,
                     id_number=company.id_number,
-                    logo=company.logo,
+                    logo=self.azure_service.generate_read_sas_url(
+                        container_name="companies",
+                        blob_name=company.logo,
+                    ) if company.logo else None,
                     type_document=company.type_document,
                     is_active=company.is_active,
                     created_by=company.created_by,
