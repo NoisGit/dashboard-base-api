@@ -80,6 +80,13 @@ from .location_schemas import (
     LocationUserAssignmentResponse,
     AccessListResponse,
 )
+from .location_custom_form_schemas import (
+    LocationCustomFieldRequest,
+    LocationCustomFieldUpdateRequest,
+    LocationCustomFormUpsertRequest,
+    LocationCustomFieldResponse,
+    LocationCustomFormResponse,
+)
 from .notification_schemas import (
     NotificationMessageResponse,
     NotificationResponse,
@@ -163,6 +170,12 @@ __all__ = [
     "LocationAssignUserRequest",
     "LocationUserAssignmentResponse",
     "AccessListResponse",
+    # Location custom form schemas
+    "LocationCustomFieldRequest",
+    "LocationCustomFieldUpdateRequest",
+    "LocationCustomFormUpsertRequest",
+    "LocationCustomFieldResponse",
+    "LocationCustomFormResponse",
     # Auth schemas
     "AuthRecoveryPasswordRequest",
     "AuthResetPasswordRequest",

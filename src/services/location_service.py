@@ -12,13 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select, desc, or_
 
-from src.core.enums import UserRole
+from src.core.enums import UserRole, CustomFormFieldType
 from src.models import (
     Location,
     Company,
     CompanyStaff,
     UserLocationAccess,
     CompanyLocationAccess,
+    CustomForm,
+    CustomFormField,
     AccessList,
     ExternalPeople,
     TypeAccessList,
@@ -31,12 +33,21 @@ from src.schemas import (
     LocationResponse,
     AccessListResponse,
 )
+from src.schemas.location_custom_form_schemas import (
+    LocationCustomFormResponse,
+    LocationCustomFormUpsertRequest,
+    LocationCustomFieldUpdateRequest,
+    LocationCustomFieldResponse,
+)
 from src.services.user_service import UserService
 from src.services.company_service import CompanyService
 
 
+MAX_CUSTOM_FIELDS_PER_LOCATION = 4
+
+
 class LocationService:
-    """Service for location operations and soft delete."""
+    """Service for location operations."""
 
     def __init__(
         self,
@@ -51,13 +62,13 @@ class LocationService:
     async def _get_location_by_id(
         self,
         location_id: int,
-    ) -> Optional[LocationResponse]:
+    ) -> Optional[Location]:
         stmt = select(Location).where(Location.id == location_id)
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def get_location_by_id(self, location_id: int) -> Optional[LocationResponse]:
-        """Public helper to retrieve a Location by ID (used by other services)."""
+    async def get_location_by_id(self, location_id: int) -> Optional[Location]:
+        """Public helper to retrieve a location by ID."""
         return await self._get_location_by_id(location_id)
 
     async def list_locations(
@@ -82,17 +93,22 @@ class LocationService:
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="User has no company assigned.",
                 )
-
-            # Forced company_id if user is not superadmin and provided company_id
             company_id = my_company_id
 
-        stmt = select(Location).where(Location.is_active == True).options(selectinload(Location.company_locations_accesses))  # noqa: E712
+        stmt = (
+            select(Location)
+            .where(Location.is_active == True)  # noqa: E712
+            .options(selectinload(Location.company_locations_accesses))
+        )
 
         if company_id is not None:
-            stmt = stmt.join(
-                CompanyLocationAccess,
-                CompanyLocationAccess.location_id == Location.id,
-            ).where(CompanyLocationAccess.company_id == company_id)
+            stmt = (
+                stmt.join(
+                    CompanyLocationAccess,
+                    CompanyLocationAccess.location_id == Location.id,
+                )
+                .where(CompanyLocationAccess.company_id == company_id)
+            )
 
         if search:
             like_pattern = f"%{search}%"
@@ -113,7 +129,8 @@ class LocationService:
                     country=location.country,
                     logo=location.logo,
                     company_ids=[
-                        access.company_id for access in location.company_locations_accesses
+                        access.company_id
+                        for access in location.company_locations_accesses
                     ],
                     is_active=location.is_active,
                     created_by=location.created_by,
@@ -128,18 +145,18 @@ class LocationService:
         user_id: int,
         location_id: int,
     ) -> Location:
-        """Get a single location by ID."""
-
-        location = await self.check_user_permission_on_location(user_id=user_id, location_id=location_id)
-
-        return location
+        """Get location detail."""
+        return await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
     async def create_location(
         self,
         user_id: int,
         payload: LocationCreateRequest,
-    ) -> Location:
-        """Create a new location."""
+    ):
+        """Create a location."""
         location = Location(
             name=payload.name,
             address=payload.address,
@@ -153,15 +170,13 @@ class LocationService:
 
         self.session.add(location)
         await self.session.commit()
-        await self.session.refresh(location)
-        return location
 
     async def update_location(
         self,
         location_id: int,
         payload: LocationUpdateRequest,
-    ) -> Location:
-        """Update an existing location."""
+    ):
+        """Update a location."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -175,14 +190,12 @@ class LocationService:
 
         self.session.add(location)
         await self.session.commit()
-        await self.session.refresh(location)
-        return location
 
     async def soft_delete_location(
         self,
         location_id: int,
     ):
-        """Soft delete a location by setting is_active = False."""
+        """Soft delete a location."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -199,7 +212,7 @@ class LocationService:
         requester_id: int,
         location_id: int,
         payload: LocationAssignCompanyRequest,
-    ) -> Location:
+    ):
         """Assign a company to a location."""
         location = await self._get_location_by_id(location_id)
         if not location or not location.is_active:
@@ -224,7 +237,6 @@ class LocationService:
 
         self.session.add(assignment)
         await self.session.commit()
-        return location
 
     async def assign_user_to_location(
         self,
@@ -232,15 +244,19 @@ class LocationService:
         location_id: int,
         payload: LocationAssignUserRequest,
     ):
-        """Assign a janitor user to a location."""
-        location = await self._get_location_by_id(location_id)
-        if not location or not location.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
+        """Assign a user to a location."""
+        await self.check_user_permission_on_location(
+            user_id=requester_id,
+            location_id=location_id,
+        )
 
-        if location.company_id is None:
+        companies_stmt = select(CompanyLocationAccess.company_id).where(
+            CompanyLocationAccess.location_id == location_id,
+        )
+        companies_result = await self.session.execute(companies_stmt)
+        company_ids = [row[0] for row in companies_result.all()]
+
+        if not company_ids:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Location must be assigned to a company before adding users.",
@@ -253,7 +269,7 @@ class LocationService:
                 detail="User not found.",
             )
 
-        if target_user.role is not UserRole.JANITOR:
+        if target_user.role != UserRole.JANITOR:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only janitors can be assigned to locations.",
@@ -261,7 +277,7 @@ class LocationService:
 
         staff_stmt = select(CompanyStaff).where(
             CompanyStaff.user_id == payload.user_id,
-            CompanyStaff.company_id == location.company_id,
+            CompanyStaff.company_id.in_(company_ids),
         )
         staff_result = await self.session.execute(staff_stmt)
         staff_link = staff_result.scalars().first()
@@ -297,7 +313,7 @@ class LocationService:
         user_id: int,
         location_id: int,
     ) -> Location:
-        """Validate User-Company permission on location"""
+        """Validate access to a location."""
         user = await self.user_service.get_user_by_id(user_id)
         if not user or not getattr(user, "is_active", True):
             raise HTTPException(
@@ -338,6 +354,324 @@ class LocationService:
             )
 
         return location
+
+    async def get_location_custom_form(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> LocationCustomFormResponse:
+        """Get custom form for a location."""
+        await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        stmt = (
+            select(CustomForm)
+            .where(
+                CustomForm.location_id == location_id,
+                CustomForm.is_active == True,  # noqa: E712
+            )
+            .options(selectinload(CustomForm.fields))
+        )
+        result = await self.session.execute(stmt)
+        form = result.scalars().first()
+
+        if not form:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Custom form not found.",
+            )
+
+        active_fields = [f for f in form.fields if getattr(f, "is_active", True)]
+
+        return LocationCustomFormResponse(
+            id=form.id,
+            location_id=form.location_id,
+            is_active=form.is_active,
+            created_by=form.created_by,
+            created_at=form.created_at,
+            updated_at=form.updated_at,
+            fields=[
+                LocationCustomFieldResponse(
+                    id=f.id,
+                    form_id=f.form_id,
+                    name=f.name,
+                    field_type=f.field_type,
+                    options=f.options,
+                    is_required=f.is_required,
+                    display_order=f.display_order,
+                    allow_image=getattr(f, "allow_image", False),
+                    is_active=f.is_active,
+                    created_at=f.created_at,
+                )
+                for f in active_fields
+            ],
+        )
+
+    async def create_location_custom_form_fields(
+        self,
+        user_id: int,
+        location_id: int,
+        payload: LocationCustomFormUpsertRequest,
+    ):
+        """Create custom form fields for a location."""
+        await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        if not payload.fields:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="fields is required.",
+            )
+
+        stmt = (
+            select(CustomForm)
+            .where(
+                CustomForm.location_id == location_id,
+                CustomForm.is_active == True,  # noqa: E712
+            )
+            .options(selectinload(CustomForm.fields))
+        )
+        result = await self.session.execute(stmt)
+        form = result.scalars().first()
+
+        existing_active_fields = []
+        if form:
+            existing_active_fields = [
+                f for f in form.fields if getattr(f, "is_active", True)
+            ]
+
+        if len(existing_active_fields) + len(payload.fields) > MAX_CUSTOM_FIELDS_PER_LOCATION:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Maximum {MAX_CUSTOM_FIELDS_PER_LOCATION} fields allowed.",
+            )
+
+        names = set()
+        for existing in existing_active_fields:
+            existing_name = (getattr(existing, "name", None) or "").strip()
+            if existing_name:
+                names.add(existing_name.lower())
+
+        cleaned_fields = []
+        for field in payload.fields:
+            field_name = (field.name or "").strip()
+            if not field_name:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Field name is required.",
+                )
+
+            lowered = field_name.lower()
+            if lowered in names:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Field names must be unique.",
+                )
+            names.add(lowered)
+
+            requires_options = field.field_type in (
+                CustomFormFieldType.DROPDOWN,
+                CustomFormFieldType.RADIO,
+                CustomFormFieldType.CHECKBOX,
+            )
+
+            options = None
+            if field.options is not None:
+                options = [o.strip() for o in field.options if o and o.strip()]
+
+            if requires_options:
+                if not options:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="options is required for this field type.",
+                    )
+                lowered_opts = [o.lower() for o in options]
+                if len(set(lowered_opts)) != len(lowered_opts):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="options must be unique.",
+                    )
+            else:
+                if field.options is not None:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="options is not allowed for this field type.",
+                    )
+
+            cleaned_fields.append(
+                {
+                    "name": field_name,
+                    "field_type": field.field_type,
+                    "options": options if requires_options else None,
+                    "is_required": field.is_required,
+                    "display_order": field.display_order,
+                    "allow_image": field.allow_image,
+                }
+            )
+
+        now = datetime.now()
+
+        if not form:
+            form = CustomForm(
+                location_id=location_id,
+                is_active=True,
+                created_by=user_id,
+                created_at=now,
+                updated_at=None,
+            )
+            self.session.add(form)
+            await self.session.commit()
+            await self.session.refresh(form)
+        else:
+            form.updated_at = now
+            self.session.add(form)
+            await self.session.commit()
+            await self.session.refresh(form)
+
+        for field in cleaned_fields:
+            new_field = CustomFormField(
+                form_id=form.id,
+                name=field["name"],
+                field_type=field["field_type"],
+                options=field["options"],
+                is_required=field["is_required"],
+                display_order=field["display_order"],
+                is_active=True,
+                created_at=now,
+            )
+
+            if hasattr(new_field, "allow_image"):
+                new_field.allow_image = field["allow_image"]
+
+            self.session.add(new_field)
+
+        await self.session.commit()
+
+    async def update_location_custom_form_field(
+        self,
+        user_id: int,
+        location_id: int,
+        custom_form_field_id: int,
+        payload: LocationCustomFieldUpdateRequest,
+    ):
+        """Update a custom form field for a location."""
+        await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        stmt = (
+            select(CustomFormField)
+            .join(CustomForm, CustomForm.id == CustomFormField.form_id)
+            .where(
+                CustomForm.location_id == location_id,
+                CustomForm.is_active == True,  # noqa: E712
+                CustomFormField.id == custom_form_field_id,
+            )
+        )
+        result = await self.session.execute(stmt)
+        field = result.scalars().first()
+
+        if not field or not getattr(field, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Custom form field not found.",
+            )
+
+        update_data = payload.model_dump(exclude_none=True)
+
+        if "name" in update_data:
+            new_name = (update_data.get("name") or "").strip()
+            if not new_name:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Field name is required.",
+                )
+
+            name_stmt = select(CustomFormField).where(
+                CustomFormField.form_id == field.form_id,
+                CustomFormField.is_active == True,  # noqa: E712
+            )
+            name_result = await self.session.execute(name_stmt)
+            siblings = name_result.scalars().all()
+
+            for sib in siblings:
+                if sib.id != field.id and (sib.name or "").strip().lower() == new_name.lower():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Field names must be unique.",
+                    )
+
+            field.name = new_name
+
+        new_field_type = field.field_type
+        if "field_type" in update_data:
+            new_field_type = update_data["field_type"]
+            field.field_type = new_field_type
+
+        requires_options = new_field_type in (
+            CustomFormFieldType.DROPDOWN,
+            CustomFormFieldType.RADIO,
+            CustomFormFieldType.CHECKBOX,
+        )
+
+        if "options" in update_data:
+            raw_options = update_data.get("options")
+            cleaned_options = None
+            if raw_options is not None:
+                cleaned_options = [o.strip() for o in raw_options if o and o.strip()]
+
+            if requires_options:
+                if not cleaned_options:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="options is required for this field type.",
+                    )
+                lowered_opts = [o.lower() for o in cleaned_options]
+                if len(set(lowered_opts)) != len(lowered_opts):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="options must be unique.",
+                    )
+                field.options = cleaned_options
+            else:
+                if raw_options is not None:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="options is not allowed for this field type.",
+                    )
+                field.options = None
+        else:
+            if "field_type" in update_data and not requires_options:
+                field.options = None
+
+            if "field_type" in update_data and requires_options and not field.options:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="options is required for this field type.",
+                )
+
+        if "is_required" in update_data:
+            field.is_required = update_data["is_required"]
+
+        if "display_order" in update_data:
+            field.display_order = update_data["display_order"]
+
+        if "allow_image" in update_data and hasattr(field, "allow_image"):
+            field.allow_image = update_data["allow_image"]
+
+        self.session.add(field)
+        await self.session.commit()
+
+        form = await self.session.get(CustomForm, field.form_id)
+        if form:
+            form.updated_at = datetime.now()
+            self.session.add(form)
+            await self.session.commit()
 
     async def get_location_access_lists(
         self,
