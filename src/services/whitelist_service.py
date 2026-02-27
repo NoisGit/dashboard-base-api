@@ -163,7 +163,8 @@ class WhitelistService:
             existing.external_people_id = external.id
             existing.name = full_name
             existing.reason = reason
-            existing.expiration_date = payload.expiration_date
+            existing.expiration_date = payload.expiration_date.replace(
+                tzinfo=None) if payload.expiration_date else None
             existing.created_by = user_id
 
             self.session.add(existing)
@@ -187,7 +188,8 @@ class WhitelistService:
             name=full_name,
             reason=reason,
             vehicle_plate=None,
-            expiration_date=payload.expiration_date,
+            expiration_date=payload.expiration_date.replace(
+                tzinfo=None) if payload.expiration_date else None,
             file_name=None,
             created_by=user_id,
         )
