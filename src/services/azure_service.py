@@ -21,8 +21,8 @@ ALLOWED_CONTAINERS = [
     "companies",
     "documents",
     "location-logbook",
-    "support-tickets",
     "locations",
+    "support-tickets",
 ]
 
 BLOB_SERVICE_CLIENT = BlobServiceClient.from_connection_string(
