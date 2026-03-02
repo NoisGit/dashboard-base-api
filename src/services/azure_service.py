@@ -21,6 +21,7 @@ ALLOWED_CONTAINERS = [
     "companies",
     "documents",
     "location-logbook",
+    "locations",
     "support-tickets",
 ]
 
