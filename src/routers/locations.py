@@ -333,7 +333,7 @@ async def list_janitors(
         ),
     ),
 ) -> Page[UserResponse]:
-    """List active users with filters and pagination."""
+    """List Janitors of a location."""
     users = await service.list_janitors(
         user_id=user_id,
         location_id=location_id,
