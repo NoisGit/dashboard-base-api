@@ -24,6 +24,7 @@ from src.models import (
     AccessList,
     ExternalPeople,
     TypeAccessList,
+    User,
 )
 from src.schemas import (
     LocationCreateRequest,
@@ -32,6 +33,7 @@ from src.schemas import (
     LocationAssignUserRequest,
     LocationResponse,
     AccessListResponse,
+    UserResponse,
 )
 from src.schemas.location_custom_form_schemas import (
     LocationCustomFormResponse,
@@ -383,7 +385,8 @@ class LocationService:
                 detail="Custom form not found.",
             )
 
-        active_fields = [f for f in form.fields if getattr(f, "is_active", True)]
+        active_fields = [
+            f for f in form.fields if getattr(f, "is_active", True)]
 
         return LocationCustomFormResponse(
             id=form.id,
@@ -623,7 +626,8 @@ class LocationService:
             raw_options = update_data.get("options")
             cleaned_options = None
             if raw_options is not None:
-                cleaned_options = [o.strip() for o in raw_options if o and o.strip()]
+                cleaned_options = [o.strip()
+                                   for o in raw_options if o and o.strip()]
 
             if requires_options:
                 if not cleaned_options:
@@ -734,3 +738,67 @@ class LocationService:
             )
             for accessList in res_access_list
         ]
+
+    async def list_janitors(
+        self,
+        user_id: int,
+        location_id: int,
+        search: Optional[str],
+        params: Params,
+    ) -> Page[UserResponse]:
+        """Return Janitors of a location."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        stmt = select(User).where(User.is_active == True).where(User.role == UserRole.JANITOR)  # noqa: E712
+
+        if search:
+            like_pattern = f"%{search}%"
+            stmt = stmt.where(
+                (User.full_name.ilike(like_pattern))
+                | (User.username.ilike(like_pattern)),
+            )
+
+        if user.role != UserRole.SUPERADMIN:
+            location_access = await self.check_user_permission_on_location(user_id, location_id)
+            if not location_access:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User does not have access to the specified location.",
+                )
+            else:
+                stmt = (
+                    stmt.join(UserLocationAccess,
+                              UserLocationAccess.user_id == User.id)
+                    .where(UserLocationAccess.location_id == location_id)
+                )
+        else:
+            stmt = (
+                stmt.join(UserLocationAccess,
+                          UserLocationAccess.user_id == User.id)
+                .where(UserLocationAccess.location_id == location_id)
+            )
+
+        return await paginate(
+            self.session,
+            stmt,
+            params,
+            transformer=lambda items: [
+                UserResponse(
+                    id=user.id,
+                    username=user.username,
+                    full_name=user.full_name,
+                    email=user.email,
+                    role=user.role,
+                    status=user.status,
+                    is_active=user.is_active,
+                    plan_id=user.plan_id,
+                    created_at=user.created_at,
+                )
+                for user in cast(List[User], items)
+            ],
+        )

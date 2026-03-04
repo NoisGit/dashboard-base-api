@@ -16,6 +16,7 @@ from src.schemas import (
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
     AccessListResponse,
+    UserResponse,
 )
 from src.schemas.location_custom_form_schemas import (
     LocationCustomFormResponse,
@@ -312,3 +313,31 @@ async def get_location_access_lists(
         user_id=user_id,
         location_id=location_id,
     )
+
+
+@router.get(
+    "/{location_id}/janitors",
+    response_model=Page[UserResponse],
+)
+async def list_janitors(
+    params: Params = Depends(),
+    location_id: int = None,
+    search: Optional[str] = None,
+    service: LocationService = Depends(get_location_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+) -> Page[UserResponse]:
+    """List active users with filters and pagination."""
+    users = await service.list_janitors(
+        user_id=user_id,
+        location_id=location_id,
+        search=search,
+        params=params,
+    )
+    return users
