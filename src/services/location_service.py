@@ -41,9 +41,7 @@ from src.schemas.location_custom_form_schemas import (
     LocationCustomFieldUpdateRequest,
     LocationCustomFieldResponse,
 )
-from src.services.user_service import UserService
-from src.services.company_service import CompanyService
-
+from src.services import UserService, CompanyService, AzureService
 
 MAX_CUSTOM_FIELDS_PER_LOCATION = 4
 
@@ -54,10 +52,12 @@ class LocationService:
     def __init__(
         self,
         session: AsyncSession,
+        azure_service: AzureService,
         user_service: UserService,
-        company_service: CompanyService,
+        company_service: CompanyService
     ):
         self.session = session
+        self.azure_service = azure_service
         self.user_service = user_service
         self.company_service = company_service
 
@@ -129,7 +129,10 @@ class LocationService:
                     name=location.name,
                     address=location.address,
                     country=location.country,
-                    logo=location.logo,
+                    logo=self.azure_service.generate_read_sas_url(
+                        container_name="locations",
+                        blob_name=location.logo,
+                    ) if location.logo else None,
                     company_ids=[
                         access.company_id
                         for access in location.company_locations_accesses
