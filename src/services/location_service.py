@@ -99,7 +99,7 @@ class LocationService:
 
         stmt = (
             select(Location)
-            .where(Location.is_active == True)  # noqa: E712
+            .where(Location.is_active == True)
             .options(selectinload(Location.company_locations_accesses))
         )
 
@@ -372,7 +372,7 @@ class LocationService:
             select(CustomForm)
             .where(
                 CustomForm.location_id == location_id,
-                CustomForm.is_active == True,  # noqa: E712
+                CustomForm.is_active == True,
             )
             .options(selectinload(CustomForm.fields))
         )
@@ -434,7 +434,7 @@ class LocationService:
             select(CustomForm)
             .where(
                 CustomForm.location_id == location_id,
-                CustomForm.is_active == True,  # noqa: E712
+                CustomForm.is_active == True,
             )
             .options(selectinload(CustomForm.fields))
         )
@@ -572,7 +572,7 @@ class LocationService:
             .join(CustomForm, CustomForm.id == CustomFormField.form_id)
             .where(
                 CustomForm.location_id == location_id,
-                CustomForm.is_active == True,  # noqa: E712
+                CustomForm.is_active == True,
                 CustomFormField.id == custom_form_field_id,
             )
         )
@@ -597,7 +597,7 @@ class LocationService:
 
             name_stmt = select(CustomFormField).where(
                 CustomFormField.form_id == field.form_id,
-                CustomFormField.is_active == True,  # noqa: E712
+                CustomFormField.is_active == True,
             )
             name_result = await self.session.execute(name_stmt)
             siblings = name_result.scalars().all()
@@ -716,7 +716,7 @@ class LocationService:
             today = date.today()
             stmt = stmt.where(
                 or_(
-                    AccessList.expiration_date == None,  # noqa: E711
+                    AccessList.expiration_date == None,
                     AccessList.expiration_date >= today,
                 )
             )
@@ -754,7 +754,9 @@ class LocationService:
                 detail="User not found.",
             )
 
-        stmt = select(User).where(User.is_active == True).where(User.role == UserRole.JANITOR)  # noqa: E712
+        stmt = select(User) \
+            .where(User.is_active == True) \
+            .where(User.role == UserRole.JANITOR)
 
         if search:
             like_pattern = f"%{search}%"
