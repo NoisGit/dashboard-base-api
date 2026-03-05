@@ -64,6 +64,16 @@ class UserResponse(BaseResponse):
     created_at: Optional[datetime] = None
 
 
+class JanitorResponse(BaseResponse):
+    """Schema for janitor response (without sensitive data)"""
+    id: int
+    username: str
+    full_name: str
+    email: EmailStr
+    status: bool
+    created_at: Optional[datetime] = None
+
+
 class UserMeResponse(BaseModel):
     """Schema for current user profile (/auth/me)"""
     id: int

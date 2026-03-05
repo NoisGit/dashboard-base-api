@@ -121,6 +121,7 @@ from .user_schemas import (
     UserResponse,
     UserSuspendRequest,
     UserUpdateRequest,
+    JanitorResponse,
 )
 from .whitelist_schemas import (
     WhitelistCreateRequest,
@@ -155,6 +156,7 @@ __all__ = [
     "UserMeResponse",
     "UserLoginRequest",
     "UserChangePasswordRequest",
+    "JanitorResponse",
     # Company schemas
     "CompanyCreateRequest",
     "CompanyUpdateRequest",

@@ -33,7 +33,7 @@ from src.schemas import (
     LocationAssignUserRequest,
     LocationResponse,
     AccessListResponse,
-    UserResponse,
+    JanitorResponse,
 )
 from src.schemas.location_custom_form_schemas import (
     LocationCustomFormResponse,
@@ -54,12 +54,12 @@ class LocationService:
     def __init__(
         self,
         session: AsyncSession,
-        user_service: Optional[UserService] = None,
-        company_service: Optional[CompanyService] = None,
+        user_service: UserService,
+        company_service: CompanyService,
     ):
         self.session = session
-        self.user_service = user_service or UserService(session)
-        self.company_service = company_service or CompanyService(session)
+        self.user_service = user_service
+        self.company_service = company_service
 
     async def _get_location_by_id(
         self,
@@ -82,7 +82,7 @@ class LocationService:
     ) -> Page[LocationResponse]:
         """List locations with optional filters."""
         user = await self.user_service.get_user_by_id(user_id)
-        if not user or not getattr(user, "is_active", True):
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
@@ -317,7 +317,7 @@ class LocationService:
     ) -> Location:
         """Validate access to a location."""
         user = await self.user_service.get_user_by_id(user_id)
-        if not user or not getattr(user, "is_active", True):
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
@@ -745,10 +745,10 @@ class LocationService:
         location_id: int,
         search: Optional[str],
         params: Params,
-    ) -> Page[UserResponse]:
+    ) -> Page[JanitorResponse]:
         """Return Janitors of a location."""
         user = await self.user_service.get_user_by_id(user_id)
-        if not user or not getattr(user, "is_active", True):
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
@@ -788,7 +788,7 @@ class LocationService:
             stmt,
             params,
             transformer=lambda items: [
-                UserResponse(
+                JanitorResponse(
                     id=user.id,
                     username=user.username,
                     full_name=user.full_name,
