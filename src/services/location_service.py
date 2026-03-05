@@ -50,15 +50,14 @@ class LocationService:
     def __init__(
         self,
         session: AsyncSession,
-        user_service: Optional[UserService] = None,
-        company_service: Optional[CompanyService] = None,
         azure_service: AzureService,
-
+        user_service: UserService,
+        company_service: CompanyService
     ):
         self.session = session
-        self.user_service = user_service or UserService(session)
-        self.company_service = company_service or CompanyService(session)
         self.azure_service = azure_service
+        self.user_service = user_service
+        self.company_service = company_service
 
     async def _get_location_by_id(
         self,
