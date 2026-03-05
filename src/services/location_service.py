@@ -39,9 +39,7 @@ from src.schemas.location_custom_form_schemas import (
     LocationCustomFieldUpdateRequest,
     LocationCustomFieldResponse,
 )
-from src.services.user_service import UserService
-from src.services.company_service import CompanyService
-
+from src.services import UserService, CompanyService, AzureService
 
 MAX_CUSTOM_FIELDS_PER_LOCATION = 4
 
@@ -52,12 +50,14 @@ class LocationService:
     def __init__(
         self,
         session: AsyncSession,
-        user_service: Optional[UserService] = None,
-        company_service: Optional[CompanyService] = None,
+        azure_service: AzureService,
+        user_service: UserService,
+        company_service: CompanyService
     ):
         self.session = session
-        self.user_service = user_service or UserService(session)
-        self.company_service = company_service or CompanyService(session)
+        self.azure_service = azure_service
+        self.user_service = user_service
+        self.company_service = company_service
 
     async def _get_location_by_id(
         self,
@@ -127,7 +127,10 @@ class LocationService:
                     name=location.name,
                     address=location.address,
                     country=location.country,
-                    logo=location.logo,
+                    logo=self.azure_service.generate_read_sas_url(
+                        container_name="locations",
+                        blob_name=location.logo,
+                    ) if location.logo else None,
                     company_ids=[
                         access.company_id
                         for access in location.company_locations_accesses
@@ -383,7 +386,8 @@ class LocationService:
                 detail="Custom form not found.",
             )
 
-        active_fields = [f for f in form.fields if getattr(f, "is_active", True)]
+        active_fields = [
+            f for f in form.fields if getattr(f, "is_active", True)]
 
         return LocationCustomFormResponse(
             id=form.id,
@@ -623,7 +627,8 @@ class LocationService:
             raw_options = update_data.get("options")
             cleaned_options = None
             if raw_options is not None:
-                cleaned_options = [o.strip() for o in raw_options if o and o.strip()]
+                cleaned_options = [o.strip()
+                                   for o in raw_options if o and o.strip()]
 
             if requires_options:
                 if not cleaned_options:
