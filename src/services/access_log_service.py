@@ -15,9 +15,12 @@ from src.services.user_service import UserService
 from src.services.location_service import LocationService
 
 from src.models import (
+    AccessList,
     AccessLog,
     AccessLogImage,
     ExternalPeople,
+    Location,
+    TypeAccessList,
 )
 
 from src.core.enums import AccessLogImageType
@@ -45,6 +48,83 @@ class AccessLogService:
         self.azure_service = azure_service
         self.user_service = user_service
         self.location_service = location_service
+
+    async def _get_blacklist_type_id(self) -> Optional[int]:
+        stmt = select(TypeAccessList).where(TypeAccessList.name == "blacklist")
+        result = await self.session.execute(stmt)
+        type_access = result.scalars().first()
+        return type_access.id if type_access else None
+
+    async def _get_company_id_by_location(self, location_id: int) -> int:
+        stmt = select(Location).where(Location.id == location_id)
+        result = await self.session.execute(stmt)
+        location = result.scalars().first()
+
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Location not found",
+            )
+
+        if not getattr(location, "company_id", None):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Location has no company assigned.",
+            )
+
+        return location.company_id
+
+    async def _ensure_not_blacklisted(
+        self,
+        company_id: int,
+        location_id: int,
+        id_number: str,
+    ) -> None:
+        blacklist_type_id = await self._get_blacklist_type_id()
+        if not blacklist_type_id:
+            return
+
+        stmt = (
+            select(AccessList)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.company_id == company_id,
+                AccessList.type_access_list_id == blacklist_type_id,
+                AccessList.location_id == location_id,
+                ExternalPeople.id_number == id_number,
+            )
+        )
+        result = await self.session.execute(stmt)
+        entry = result.scalars().first()
+        if entry:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene acceso permitido. Lista negra.",
+            )
+
+        stmt = (
+            select(AccessList)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.company_id == company_id,
+                AccessList.type_access_list_id == blacklist_type_id,
+                AccessList.location_id == None,  # pylint: disable=singleton-comparison
+                ExternalPeople.id_number == id_number,
+            )
+        )
+        result = await self.session.execute(stmt)
+        entry = result.scalars().first()
+        if entry:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene acceso permitido. Lista negra.",
+            )
 
     async def get_active_entries(self, location_id: int, user_id: int) -> List[AccessLogResponse]:
         """
@@ -105,6 +185,29 @@ class AccessLogService:
         Create a new access log entry (person entering).
         Only JANITOR role should call this.
         """
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=created_by,
+            location_id=payload.location_id,
+        )
+
+        result = await self.session.execute(
+            select(ExternalPeople).where(ExternalPeople.id == payload.external_people_id)
+        )
+        external = result.scalars().first()
+        if not external:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="External people not found",
+            )
+
+        company_id = await self._get_company_id_by_location(payload.location_id)
+
+        await self._ensure_not_blacklisted(
+            company_id=company_id,
+            location_id=payload.location_id,
+            id_number=external.id_number,
+        )
 
         if payload.created_at and payload.created_at.tzinfo:
             created_at = payload.created_at.replace(tzinfo=None)

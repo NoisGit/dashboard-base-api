@@ -39,6 +39,8 @@ from .base_schemas import (
     SuccessResponse,
 )
 from .blacklist_schemas import (
+    BlacklistCheckRequest,
+    BlacklistCheckResponse,
     BlacklistCreateRequest,
     BlacklistResponse,
 )
@@ -190,6 +192,8 @@ __all__ = [
     # Blacklist schemas
     "BlacklistCreateRequest",
     "BlacklistResponse",
+    "BlacklistCheckRequest",
+    "BlacklistCheckResponse",
     # Emergency contact schemas
     "EmergencyContactCreateRequest",
     "EmergencyContactUpdateRequest",

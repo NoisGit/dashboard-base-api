@@ -360,6 +360,42 @@ class LocationService:
 
         return location
 
+    async def check_janitor_permission_on_location(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> Location:
+        """Validate janitor access to a location."""
+        location = await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role != UserRole.JANITOR:
+            return location
+
+        stmt = select(UserLocationAccess).where(
+            UserLocationAccess.user_id == user_id,
+            UserLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        link = result.scalars().first()
+
+        if link is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed for this location.",
+            )
+
+        return location
+
     async def get_location_custom_form(
         self,
         user_id: int,

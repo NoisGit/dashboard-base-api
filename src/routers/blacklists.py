@@ -9,6 +9,8 @@ from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_blacklist_service
 from src.schemas import (
+    BlacklistCheckRequest,
+    BlacklistCheckResponse,
     BlacklistCreateRequest,
     BlacklistResponse,
 )
@@ -22,8 +24,9 @@ router = APIRouter(prefix="/blacklists", tags=["blacklists"])
     response_model=Page[BlacklistResponse],
 )
 async def list_blacklist(
-    location_id: int,
     params: Params = Depends(),
+    location_id: Optional[int] = None,
+    company_id: Optional[int] = None,
     search: Optional[str] = None,
     service: BlacklistService = Depends(get_blacklist_service),
     user_id: int = Depends(
@@ -37,14 +40,14 @@ async def list_blacklist(
         ),
     ),
 ) -> Page[BlacklistResponse]:
-    """List blacklist entries for a location."""
-    blacklist = await service.list_blacklist(
+    """List blacklist entries."""
+    return await service.list_blacklist(
         user_id=user_id,
         location_id=location_id,
+        company_id=company_id,
         params=params,
         search=search,
     )
-    return blacklist
 
 
 @router.post(
@@ -53,8 +56,9 @@ async def list_blacklist(
     status_code=status.HTTP_201_CREATED,
 )
 async def block_person(
-    location_id: int,
     payload: BlacklistCreateRequest,
+    location_id: Optional[int] = None,
+    company_id: Optional[int] = None,
     service: BlacklistService = Depends(get_blacklist_service),
     user_id: int = Depends(
         RoleChecker(
@@ -68,12 +72,12 @@ async def block_person(
     ),
 ) -> BlacklistResponse:
     """Block a person for a location."""
-    entry = await service.block_person(
+    return await service.block_person(
         user_id=user_id,
         location_id=location_id,
+        company_id=company_id,
         payload=payload,
     )
-    return entry
 
 
 @router.delete(
@@ -82,7 +86,8 @@ async def block_person(
 )
 async def unblock_person(
     id_number: str,
-    location_id: int,
+    location_id: Optional[int] = None,
+    company_id: Optional[int] = None,
     service: BlacklistService = Depends(get_blacklist_service),
     user_id: int = Depends(
         RoleChecker(
@@ -94,10 +99,30 @@ async def unblock_person(
             ],
         ),
     ),
-):
+) -> None:
     """Unblock a person for a location."""
     await service.unblock_person(
         user_id=user_id,
         location_id=location_id,
+        company_id=company_id,
         id_number=id_number,
+    )
+
+
+@router.post(
+    "/check",
+    response_model=BlacklistCheckResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def check_blacklist(
+    location_id: int,
+    payload: BlacklistCheckRequest,
+    service: BlacklistService = Depends(get_blacklist_service),
+    user_id: int = Depends(RoleChecker([UserRole.JANITOR])),
+) -> BlacklistCheckResponse:
+    """Check if a person is in blacklist (no AccessLog)."""
+    return await service.check_blacklist(
+        user_id=user_id,
+        location_id=location_id,
+        id_number=payload.id_number,
     )
