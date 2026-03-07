@@ -231,6 +231,19 @@ class LocationService:
                 detail="Company not found.",
             )
 
+        company_location_stmt = select(CompanyLocationAccess).where(
+            CompanyLocationAccess.location_id == location_id,
+            CompanyLocationAccess.company_id == payload.company_id,
+        )
+        company_location_result = await self.session.execute(company_location_stmt)
+        company_location = company_location_result.scalars().first()
+
+        if company_location:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Location is already assigned to this company.",
+            )
+
         assignment = CompanyLocationAccess(
             company_id=payload.company_id,
             location_id=location_id,
