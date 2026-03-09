@@ -305,7 +305,12 @@ class BlacklistService:
         if location_id is None:
             stmt = stmt.where(AccessList.location_id == None)  # noqa: E711
         else:
-            stmt = stmt.where(AccessList.location_id == location_id)
+            stmt = stmt.where(
+                or_(
+                    AccessList.location_id == location_id,
+                    AccessList.location_id == None,  # noqa: E711
+                )
+            )
 
         if search:
             like_pattern = f"%{search}%"
