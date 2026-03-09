@@ -19,7 +19,7 @@ from src.models import __all__ as _models  # pylint: disable=unused-import
 config = context.config  # pylint: disable=no-member
 
 # Set the database URL programmatically from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
