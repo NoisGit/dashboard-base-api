@@ -1,5 +1,0 @@
-# Database migrations (Alembic)
-
-This folder contains the Alembic migration environment for Sentinel Enterprise API.
-- `env.py` is configured to use src.config.config.get_settings() and SQLModel metadata.
-- Migration files live in `alembic/versions/`.
