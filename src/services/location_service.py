@@ -24,6 +24,7 @@ from src.models import (
     AccessList,
     ExternalPeople,
     TypeAccessList,
+    User,
 )
 from src.schemas import (
     LocationCreateRequest,
@@ -32,6 +33,7 @@ from src.schemas import (
     LocationAssignUserRequest,
     LocationResponse,
     AccessListResponse,
+    JanitorResponse,
 )
 from src.schemas.location_custom_form_schemas import (
     LocationCustomFormResponse,
@@ -80,7 +82,7 @@ class LocationService:
     ) -> Page[LocationResponse]:
         """List locations with optional filters."""
         user = await self.user_service.get_user_by_id(user_id)
-        if not user or not getattr(user, "is_active", True):
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
@@ -97,7 +99,7 @@ class LocationService:
 
         stmt = (
             select(Location)
-            .where(Location.is_active == True)  # noqa: E712
+            .where(Location.is_active == True)
             .options(selectinload(Location.company_locations_accesses))
         )
 
@@ -318,7 +320,7 @@ class LocationService:
     ) -> Location:
         """Validate access to a location."""
         user = await self.user_service.get_user_by_id(user_id)
-        if not user or not getattr(user, "is_active", True):
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
@@ -373,7 +375,7 @@ class LocationService:
             select(CustomForm)
             .where(
                 CustomForm.location_id == location_id,
-                CustomForm.is_active == True,  # noqa: E712
+                CustomForm.is_active == True,
             )
             .options(selectinload(CustomForm.fields))
         )
@@ -435,7 +437,7 @@ class LocationService:
             select(CustomForm)
             .where(
                 CustomForm.location_id == location_id,
-                CustomForm.is_active == True,  # noqa: E712
+                CustomForm.is_active == True,
             )
             .options(selectinload(CustomForm.fields))
         )
@@ -573,7 +575,7 @@ class LocationService:
             .join(CustomForm, CustomForm.id == CustomFormField.form_id)
             .where(
                 CustomForm.location_id == location_id,
-                CustomForm.is_active == True,  # noqa: E712
+                CustomForm.is_active == True,
                 CustomFormField.id == custom_form_field_id,
             )
         )
@@ -598,7 +600,7 @@ class LocationService:
 
             name_stmt = select(CustomFormField).where(
                 CustomFormField.form_id == field.form_id,
-                CustomFormField.is_active == True,  # noqa: E712
+                CustomFormField.is_active == True,
             )
             name_result = await self.session.execute(name_stmt)
             siblings = name_result.scalars().all()
@@ -717,7 +719,7 @@ class LocationService:
             today = date.today()
             stmt = stmt.where(
                 or_(
-                    AccessList.expiration_date == None,  # noqa: E711
+                    AccessList.expiration_date == None,
                     AccessList.expiration_date >= today,
                 )
             )
@@ -739,3 +741,69 @@ class LocationService:
             )
             for accessList in res_access_list
         ]
+
+    async def list_janitors(
+        self,
+        user_id: int,
+        location_id: int,
+        search: Optional[str],
+        params: Params,
+    ) -> Page[JanitorResponse]:
+        """Return Janitors of a location."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        stmt = select(User) \
+            .where(User.is_active == True) \
+            .where(User.role == UserRole.JANITOR)
+
+        if search:
+            like_pattern = f"%{search}%"
+            stmt = stmt.where(
+                (User.full_name.ilike(like_pattern))
+                | (User.username.ilike(like_pattern)),
+            )
+
+        if user.role != UserRole.SUPERADMIN:
+            location_access = await self.check_user_permission_on_location(user_id, location_id)
+            if not location_access:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User does not have access to the specified location.",
+                )
+            else:
+                stmt = (
+                    stmt.join(UserLocationAccess,
+                              UserLocationAccess.user_id == User.id)
+                    .where(UserLocationAccess.location_id == location_id)
+                )
+        else:
+            stmt = (
+                stmt.join(UserLocationAccess,
+                          UserLocationAccess.user_id == User.id)
+                .where(UserLocationAccess.location_id == location_id)
+            )
+
+        return await paginate(
+            self.session,
+            stmt,
+            params,
+            transformer=lambda items: [
+                JanitorResponse(
+                    id=user.id,
+                    username=user.username,
+                    full_name=user.full_name,
+                    email=user.email,
+                    role=user.role,
+                    status=user.status,
+                    is_active=user.is_active,
+                    plan_id=user.plan_id,
+                    created_at=user.created_at,
+                )
+                for user in cast(List[User], items)
+            ],
+        )
