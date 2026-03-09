@@ -7,7 +7,7 @@ from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlmodel import select, desc
+from sqlmodel import select, desc, or_
 
 
 from src.services.azure_service import AzureService
@@ -51,6 +51,12 @@ class AccessLogService:
 
     async def _get_blacklist_type_id(self) -> Optional[int]:
         stmt = select(TypeAccessList).where(TypeAccessList.name == "blacklist")
+        result = await self.session.execute(stmt)
+        type_access = result.scalars().first()
+        return type_access.id if type_access else None
+
+    async def _get_whitelist_type_id(self) -> Optional[int]:
+        stmt = select(TypeAccessList).where(TypeAccessList.name == "whitelist")
         result = await self.session.execute(stmt)
         type_access = result.scalars().first()
         return type_access.id if type_access else None
@@ -125,6 +131,64 @@ class AccessLogService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tiene acceso permitido. Lista negra.",
             )
+
+    async def _get_active_whitelist_entry(
+        self,
+        company_id: int,
+        location_id: int,
+        id_number: str,
+    ) -> Optional[AccessList]:
+        whitelist_type_id = await self._get_whitelist_type_id()
+        if not whitelist_type_id:
+            return None
+
+        now = datetime.now()
+
+        stmt = (
+            select(AccessList)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.company_id == company_id,
+                AccessList.type_access_list_id == whitelist_type_id,
+                AccessList.location_id == location_id,
+                ExternalPeople.id_number == id_number,
+            )
+            .where(
+                or_(
+                    AccessList.expiration_date == None,  # pylint: disable=singleton-comparison
+                    AccessList.expiration_date >= now,
+                )
+            )
+        )
+        result = await self.session.execute(stmt)
+        entry = result.scalars().first()
+        if entry:
+            return entry
+
+        stmt = (
+            select(AccessList)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.company_id == company_id,
+                AccessList.type_access_list_id == whitelist_type_id,
+                AccessList.location_id == None,  # pylint: disable=singleton-comparison
+                ExternalPeople.id_number == id_number,
+            )
+            .where(
+                or_(
+                    AccessList.expiration_date == None,  # pylint: disable=singleton-comparison
+                    AccessList.expiration_date >= now,
+                )
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
 
     async def get_active_entries(self, location_id: int, user_id: int) -> List[AccessLogResponse]:
         """
@@ -209,6 +273,19 @@ class AccessLogService:
             id_number=external.id_number,
         )
 
+        comment = (payload.comment or "").strip()
+        if not comment:
+            whitelist_entry = await self._get_active_whitelist_entry(
+                company_id=company_id,
+                location_id=payload.location_id,
+                id_number=external.id_number,
+            )
+            if whitelist_entry:
+                comment = (whitelist_entry.reason or "Lista blanca").strip()
+
+        if comment and len(comment) > 100:
+            comment = comment[:100]
+
         if payload.created_at and payload.created_at.tzinfo:
             created_at = payload.created_at.replace(tzinfo=None)
         else:
@@ -221,7 +298,7 @@ class AccessLogService:
             type_document=payload.type_document,
             vehicle_plate=payload.vehicle_plate,
             office=payload.office,
-            comment=payload.comment,
+            comment=comment or None,
             custom_form_responses=payload.custom_form_responses,
             created_at=created_at,
         )
