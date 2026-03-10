@@ -59,6 +59,53 @@ class WhitelistService:
         await self.session.refresh(type_access)
         return type_access
 
+    async def _get_blacklist_type_id(self) -> Optional[int]:
+        stmt = select(TypeAccessList).where(TypeAccessList.name == "blacklist")
+        result = await self.session.execute(stmt)
+        type_access = result.scalars().first()
+        return type_access.id if type_access else None
+
+    async def _ensure_not_blacklisted(
+        self,
+        company_id: int,
+        location_id: Optional[int],
+        id_number: str,
+    ) -> None:
+        blacklist_type_id = await self._get_blacklist_type_id()
+        if not blacklist_type_id:
+            return
+
+        stmt = (
+            select(AccessList.id)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.company_id == company_id,
+                AccessList.type_access_list_id == blacklist_type_id,
+                ExternalPeople.id_number == id_number,
+            )
+        )
+
+        if location_id is None:
+            pass
+        else:
+            stmt = stmt.where(
+                or_(
+                    AccessList.location_id == location_id,
+                    AccessList.location_id == None,  # noqa: E711
+                )
+            )
+
+        result = await self.session.execute(stmt)
+        row = result.scalars().first()
+        if row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La persona ya está en lista negra. Elimine el registro antes de crear lista blanca.",
+            )
+
     async def _get_external_by_id_number(
         self,
         id_number: str,
@@ -204,6 +251,12 @@ class WhitelistService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="full_name is required.",
             )
+
+        await self._ensure_not_blacklisted(
+            company_id=company_id,
+            location_id=location_id,
+            id_number=id_number,
+        )
 
         expiration_date = None
         if getattr(payload, "expiration_date", None) is not None:
