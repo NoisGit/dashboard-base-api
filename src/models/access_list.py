@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 
 
 class AccessList(SQLModel, table=True):
+    """AccessList database model for the Sentinel Enterprise API."""
     __tablename__ = "access_list"
 
     id: Optional[int] = Field(default=None, primary_key=True)
