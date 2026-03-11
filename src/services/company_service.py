@@ -131,7 +131,7 @@ class CompanyService:
     ) -> EmptyResponse:
         """Create a new sub company."""
         user = await self.user_service.get_user_by_id(user_id)
-        if not user or not getattr(user, "is_active", True):
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
