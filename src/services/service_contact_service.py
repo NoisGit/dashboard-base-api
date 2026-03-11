@@ -6,12 +6,12 @@ from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import paginate
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, or_, desc
+from sqlmodel import select, desc
 
 from src.core.enums import UserRole
 from src.services import UserService
 from src.services import LocationService
-from src.models import ServiceContact, CompanyStaff
+from src.models import ServiceContact
 from src.schemas import (
     ServiceContactResponse,
     ServiceContactCreateRequest,
