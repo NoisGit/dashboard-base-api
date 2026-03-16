@@ -2,10 +2,12 @@
 
 # pylint: disable=no-member, singleton-comparison
 
+import csv
+import io
 from datetime import datetime, date
 from typing import List, Optional, cast
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +36,7 @@ from src.schemas import (
     LocationResponse,
     AccessListResponse,
     JanitorResponse,
+    UserCreateRequest,
 )
 from src.schemas.location_custom_form_schemas import (
     LocationCustomFormResponse,
@@ -44,6 +47,7 @@ from src.schemas.location_custom_form_schemas import (
 from src.services import UserService, CompanyService, AzureService
 
 MAX_CUSTOM_FIELDS_PER_LOCATION = 4
+JANITOR_REQUIRED_CSV_HEADERS = {"id", "contraseña", "nombre"}
 
 
 class LocationService:
@@ -72,6 +76,265 @@ class LocationService:
     async def get_location_by_id(self, location_id: int) -> Optional[Location]:
         """Public helper to retrieve a location by ID."""
         return await self._get_location_by_id(location_id)
+
+    def _normalize_janitor_username(
+        self,
+        value: str,
+    ) -> str:
+        return value.strip().replace(".", "")
+
+    def _build_janitor_email(
+        self,
+        username: str,
+    ) -> str:
+        return f"{username}@portero.porteria.com"
+
+    async def _read_janitor_csv_rows(
+        self,
+        file: UploadFile,
+    ) -> List[dict]:
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file is required.",
+            )
+
+        if not file.filename.lower().endswith(".csv"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only .csv files are allowed.",
+            )
+
+        content = await file.read()
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file is empty.",
+            )
+
+        try:
+            decoded = content.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file must be UTF-8 encoded.",
+            ) from exc
+
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        if not reader.fieldnames:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV headers are required.",
+            )
+
+        headers = {(header or "").strip().lower() for header in reader.fieldnames}
+        missing_headers = JANITOR_REQUIRED_CSV_HEADERS - headers
+
+        if missing_headers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing required CSV headers: {', '.join(sorted(missing_headers))}.",
+            )
+
+        rows = []
+        seen_usernames = set()
+
+        for row_number, raw_row in enumerate(reader, start=2):
+            row = {
+                (key or "").strip().lower(): (value or "").strip()
+                for key, value in raw_row.items()
+            }
+
+            if not any(row.values()):
+                continue
+
+            if not row.get("id"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"id is required at row {row_number}.",
+                )
+
+            if not row.get("contraseña"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"contraseña is required at row {row_number}.",
+                )
+
+            if not row.get("nombre"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"nombre is required at row {row_number}.",
+                )
+
+            username = self._normalize_janitor_username(row["id"]).lower()
+
+            if not username:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"id is invalid at row {row_number}.",
+                )
+
+            if username in seen_usernames:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Duplicated id in CSV at row {row_number}.",
+                )
+
+            seen_usernames.add(username)
+            rows.append(row)
+
+        if not rows:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file does not contain valid rows.",
+            )
+
+        return rows
+
+    async def _get_bulk_janitor_company_id(
+        self,
+        location_id: int,
+    ) -> int:
+        stmt = select(CompanyLocationAccess.company_id).where(
+            CompanyLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        company_ids = list({row[0] for row in result.all()})
+
+        if not company_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Location must be assigned to a company before importing janitors.",
+            )
+
+        if len(company_ids) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Location has multiple companies assigned.",
+            )
+
+        return company_ids[0]
+
+    async def _ensure_company_staff(
+        self,
+        user_id: int,
+        company_id: int,
+        requester_id: int,
+    ) -> None:
+        stmt = select(CompanyStaff).where(
+            CompanyStaff.user_id == user_id,
+            CompanyStaff.company_id == company_id,
+        )
+        result = await self.session.execute(stmt)
+        existing = result.scalars().first()
+
+        if existing:
+            return
+
+        self.session.add(
+            CompanyStaff(
+                user_id=user_id,
+                company_id=company_id,
+                created_by=requester_id,
+                created_at=datetime.now(),
+            )
+        )
+        await self.session.commit()
+
+    async def _ensure_location_access(
+        self,
+        user_id: int,
+        location_id: int,
+        requester_id: int,
+    ) -> None:
+        stmt = select(UserLocationAccess).where(
+            UserLocationAccess.user_id == user_id,
+            UserLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        existing = result.scalars().first()
+
+        if existing:
+            return
+
+        self.session.add(
+            UserLocationAccess(
+                user_id=user_id,
+                location_id=location_id,
+                created_by=requester_id,
+                created_at=datetime.now(),
+            )
+        )
+        await self.session.commit()
+
+    async def bulk_import_janitors(
+        self,
+        requester_id: int,
+        location_id: int,
+        file: UploadFile,
+    ) -> None:
+        """Bulk import janitors from CSV."""
+        await self.check_user_permission_on_location(
+            user_id=requester_id,
+            location_id=location_id,
+        )
+
+        rows = await self._read_janitor_csv_rows(file)
+        company_id = await self._get_bulk_janitor_company_id(location_id)
+
+        for row_number, row in enumerate(rows, start=2):
+            username = self._normalize_janitor_username(row["id"])
+            email = self._build_janitor_email(username).lower()
+
+            existing_user = await self.user_service.get_user_by_email(email)
+
+            if existing_user:
+                if not existing_user.is_active:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"User with email {email} is inactive at row {row_number}.",
+                    )
+
+                if existing_user.role != UserRole.JANITOR:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"User with email {email} is not a janitor at row {row_number}.",
+                    )
+
+                await self._ensure_company_staff(
+                    user_id=existing_user.id,
+                    company_id=company_id,
+                    requester_id=requester_id,
+                )
+                await self._ensure_location_access(
+                    user_id=existing_user.id,
+                    location_id=location_id,
+                    requester_id=requester_id,
+                )
+                continue
+
+            payload = UserCreateRequest(
+                username=username,
+                full_name=row["nombre"],
+                email=email,
+                password=row["contraseña"],
+                role=UserRole.JANITOR,
+                status=True,
+            )
+
+            new_user = await self.user_service.create_user(payload)
+
+            await self._ensure_company_staff(
+                user_id=new_user.id,
+                company_id=company_id,
+                requester_id=requester_id,
+            )
+            await self._ensure_location_access(
+                user_id=new_user.id,
+                location_id=location_id,
+                requester_id=requester_id,
+            )
 
     async def list_locations(
         self,

@@ -1,22 +1,31 @@
 """Service contact service module for the Sentinel Enterprise API."""
 
+import csv
+import io
 from typing import List, cast
 
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import paginate
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, or_, desc
+from sqlmodel import select, desc
 
 from src.core.enums import UserRole
 from src.services import UserService
 from src.services import LocationService
-from src.models import ServiceContact, CompanyStaff
+from src.models import ServiceContact
 from src.schemas import (
     ServiceContactResponse,
     ServiceContactCreateRequest,
     ServiceContactUpdateRequest,
 )
+
+SERVICE_CONTACT_REQUIRED_CSV_HEADERS = {
+    "nombre del servicio",
+    "nombre del proveedor",
+    "teléfono",
+    "email",
+}
 
 
 class ServiceContactService:
@@ -41,6 +50,97 @@ class ServiceContactService:
             .where(ServiceContact.id == service_contact_id)
         result = await self.session.execute(stmt)
         return result.scalars().first()
+
+    async def _read_service_contact_csv(
+        self,
+        file: UploadFile,
+    ) -> List[dict]:
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file is required.",
+            )
+
+        if not file.filename.lower().endswith(".csv"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only .csv files are allowed.",
+            )
+
+        content = await file.read()
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file is empty.",
+            )
+
+        try:
+            decoded = content.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file must be UTF-8 encoded.",
+            ) from exc
+
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        if not reader.fieldnames:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV headers are required.",
+            )
+
+        headers = {(header or "").strip().lower() for header in reader.fieldnames}
+        missing_headers = SERVICE_CONTACT_REQUIRED_CSV_HEADERS - headers
+
+        if missing_headers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing required CSV headers: {', '.join(sorted(missing_headers))}.",
+            )
+
+        rows = []
+        seen_contacts = set()
+
+        for row_number, raw_row in enumerate(reader, start=2):
+            row = {
+                (key or "").strip().lower(): (value or "").strip()
+                for key, value in raw_row.items()
+            }
+
+            if not any(row.values()):
+                continue
+
+            for field in SERVICE_CONTACT_REQUIRED_CSV_HEADERS:
+                if not row.get(field):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"{field} is required at row {row_number}.",
+                    )
+
+            duplicate_key = (
+                row["nombre del servicio"].lower(),
+                row["nombre del proveedor"].lower(),
+                row["email"].lower(),
+                row["teléfono"],
+            )
+
+            if duplicate_key in seen_contacts:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Duplicated contact in CSV at row {row_number}.",
+                )
+
+            seen_contacts.add(duplicate_key)
+            rows.append(row)
+
+        if not rows:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file does not contain valid rows.",
+            )
+
+        return rows
 
     async def list_service_contacts(
         self,
@@ -133,6 +233,66 @@ class ServiceContactService:
         self.session.add(new_contact)
         await self.session.commit()
         await self.session.refresh(new_contact)
+
+    async def bulk_import_service_contacts(
+        self,
+        user_id: int,
+        location_id: int,
+        file: UploadFile,
+    ) -> None:
+        """
+        Create a new service contact.
+        Applies consistency rules and authorization checks.
+        """
+
+        user = await self.user_service.get_user_by_id(user_id)
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        location = await self.location_service.get_location_by_id(location_id)
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Location not found.",
+            )
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        rows = await self._read_service_contact_csv(file)
+
+        for row in rows:
+            stmt = select(ServiceContact).where(
+                ServiceContact.location_id == location_id,
+                ServiceContact.service_name == row["nombre del servicio"],
+                ServiceContact.person_name == row["nombre del proveedor"],
+                ServiceContact.email == row["email"],
+                ServiceContact.phone == row["teléfono"],
+            )
+            result = await self.session.execute(stmt)
+            existing_contact = result.scalars().first()
+
+            if existing_contact:
+                continue
+
+            self.session.add(
+                ServiceContact(
+                    service_name=row["nombre del servicio"],
+                    person_name=row["nombre del proveedor"],
+                    email=row["email"],
+                    phone=row["teléfono"],
+                    location_id=location_id,
+                    created_by=user_id,
+                )
+            )
+
+        await self.session.commit()
 
     async def update_service_contact(
         self,
