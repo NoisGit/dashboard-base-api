@@ -3,7 +3,6 @@
 from fastapi_pagination import Page, Params
 from fastapi import APIRouter, Depends, status
 
-from src.auth.utils import get_current_user
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_service_contact_service

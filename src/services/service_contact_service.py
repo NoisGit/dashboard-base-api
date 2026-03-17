@@ -6,12 +6,12 @@ from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import paginate
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, or_, desc
+from sqlmodel import select, desc
 
 from src.core.enums import UserRole
 from src.services import UserService
 from src.services import LocationService
-from src.models import ServiceContact, CompanyStaff
+from src.models import ServiceContact
 from src.schemas import (
     ServiceContactResponse,
     ServiceContactCreateRequest,
@@ -100,7 +100,7 @@ class ServiceContactService:
 
         user = await self.user_service.get_user_by_id(user_id)
 
-        if not user:
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
@@ -147,7 +147,7 @@ class ServiceContactService:
 
         user = await self.user_service.get_user_by_id(user_id)
 
-        if not user:
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
@@ -187,7 +187,7 @@ class ServiceContactService:
 
         user = await self.user_service.get_user_by_id(user_id)
 
-        if not user:
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
