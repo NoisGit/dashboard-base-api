@@ -82,7 +82,7 @@ class ServiceContactService:
                 detail="CSV file must be UTF-8 encoded.",
             ) from exc
 
-        reader = csv.DictReader(io.StringIO(decoded))
+        reader = csv.DictReader(io.StringIO(decoded), delimiter=';')
 
         if not reader.fieldnames:
             raise HTTPException(
