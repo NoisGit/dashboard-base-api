@@ -47,7 +47,7 @@ from src.schemas.location_custom_form_schemas import (
 from src.services import UserService, CompanyService, AzureService
 
 MAX_CUSTOM_FIELDS_PER_LOCATION = 4
-JANITOR_REQUIRED_CSV_HEADERS = {"id", "contraseña", "nombre"}
+JANITOR_REQUIRED_CSV_HEADERS = {"id", "contrasena", "nombre"}
 
 
 class LocationService:
@@ -155,10 +155,10 @@ class LocationService:
                     detail=f"id is required at row {row_number}.",
                 )
 
-            if not row.get("contraseña"):
+            if not row.get("contrasena"):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"contraseña is required at row {row_number}.",
+                    detail=f"contrasena is required at row {row_number}.",
                 )
 
             if not row.get("nombre"):
@@ -318,7 +318,7 @@ class LocationService:
                 username=username,
                 full_name=row["nombre"],
                 email=email,
-                password=row["contraseña"],
+                password=row["contrasena"],
                 role=UserRole.JANITOR,
                 status=True,
             )
