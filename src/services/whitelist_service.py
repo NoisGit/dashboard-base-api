@@ -235,7 +235,11 @@ class WhitelistService:
             id_number=id_number,
         )
 
-        if existing and self._is_active(existing.expiration_date.replace(tzinfo=None)):
+        existing_expiration_date = None
+        if existing and existing.expiration_date is not None:
+            existing_expiration_date = existing.expiration_date.replace(tzinfo=None)
+
+        if existing and self._is_active(existing_expiration_date):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Whitelist entry already exists for this location.",
@@ -258,7 +262,7 @@ class WhitelistService:
                 await self.session.commit()
                 await self.session.refresh(external)
 
-        if existing and not self._is_active(existing.expiration_date.replace(tzinfo=None)):
+        if existing and not self._is_active(existing_expiration_date):
             existing.external_people_id = external.id
             existing.name = full_name
             existing.reason = reason
