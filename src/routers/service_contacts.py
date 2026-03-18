@@ -1,7 +1,7 @@
 """Service contacts router module for Sentinel Enterprise API."""
 
 from fastapi_pagination import Page, Params
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
@@ -67,6 +67,37 @@ async def create_service_contact(
     """
 
     await service.create_service_contact(user_id, payload)
+    return EmptyResponse()
+
+
+@router.post(
+    "/{location_id}/bulk",
+    response_model=EmptyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def bulk_import_service_contacts(
+    location_id: int,
+    file: UploadFile = File(...),
+    service: ServiceContactService = Depends(get_service_contact_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        )
+    ),
+):
+    """
+    Create a new service contact.
+    """
+
+    await service.bulk_import_service_contacts(
+        user_id=user_id,
+        location_id=location_id,
+        file=file,
+    )
     return EmptyResponse()
 
 

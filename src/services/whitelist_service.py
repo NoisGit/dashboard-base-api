@@ -2,10 +2,12 @@
 
 # pylint: disable=no-member, singleton-comparison
 
+import csv
+import io
 from datetime import datetime, date
 from typing import List, Optional, cast
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,9 +16,7 @@ from sqlmodel import desc, or_, select
 from src.core.enums import UserRole
 from src.models import (
     AccessList,
-    CompanyStaff,
     ExternalPeople,
-    Location,
     TypeAccessList,
 )
 from src.schemas import (
@@ -25,6 +25,13 @@ from src.schemas import (
 )
 from src.services.user_service import UserService
 from src.services.location_service import LocationService
+
+WHITELIST_REQUIRED_CSV_HEADERS = {
+    "id",
+    "nombre",
+    "motivo",
+    "patente",
+}
 
 
 class WhitelistService:
@@ -91,6 +98,97 @@ class WhitelistService:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
+    async def _read_whitelist_csv(
+        self,
+        file: UploadFile,
+    ) -> List[dict]:
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file is required.",
+            )
+
+        if not file.filename.lower().endswith(".csv"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only .csv files are allowed.",
+            )
+
+        content = await file.read()
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file is empty.",
+            )
+
+        try:
+            decoded = content.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file must be UTF-8 encoded.",
+            ) from exc
+
+        reader = csv.DictReader(io.StringIO(decoded), delimiter=';')
+
+        if not reader.fieldnames:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV headers are required.",
+            )
+
+        headers = {(header or "").strip().lower() for header in reader.fieldnames}
+        missing_headers = WHITELIST_REQUIRED_CSV_HEADERS - headers
+
+        if missing_headers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing required CSV headers: {', '.join(sorted(missing_headers))}.",
+            )
+
+        rows = []
+        seen_ids = set()
+
+        for row_number, raw_row in enumerate(reader, start=2):
+            row = {
+                (key or "").strip().lower(): (value or "").strip()
+                for key, value in raw_row.items()
+            }
+
+            if not any(row.values()):
+                continue
+
+            if not row.get("id"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"id is required at row {row_number}.",
+                )
+
+            if not row.get("nombre"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"nombre is required at row {row_number}.",
+                )
+
+            id_number = row["id"]
+
+            if id_number in seen_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Duplicated id in CSV at row {row_number}.",
+                )
+
+            seen_ids.add(id_number)
+            rows.append(row)
+
+        if not rows:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file does not contain valid rows.",
+            )
+
+        return rows
+
     def _is_active(self, expiration_date: Optional[datetime]) -> bool:
         """Check active state by expiration date."""
         if expiration_date is None:
@@ -109,6 +207,7 @@ class WhitelistService:
         id_number = (payload.id_number or "").strip()
         full_name = (payload.full_name or "").strip()
         reason = (getattr(payload, "reason", None) or "").strip() or None
+        vehicle_plate = (getattr(payload, "vehicle_plate", None) or "").strip() or None
 
         if not id_number:
             raise HTTPException(
@@ -136,7 +235,11 @@ class WhitelistService:
             id_number=id_number,
         )
 
-        if existing and self._is_active(existing.expiration_date.replace(tzinfo=None)):
+        existing_expiration_date = None
+        if existing and existing.expiration_date is not None:
+            existing_expiration_date = existing.expiration_date.replace(tzinfo=None)
+
+        if existing and self._is_active(existing_expiration_date):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Whitelist entry already exists for this location.",
@@ -159,10 +262,11 @@ class WhitelistService:
                 await self.session.commit()
                 await self.session.refresh(external)
 
-        if existing and not self._is_active(existing.expiration_date.replace(tzinfo=None)):
+        if existing and not self._is_active(existing_expiration_date):
             existing.external_people_id = external.id
             existing.name = full_name
             existing.reason = reason
+            existing.vehicle_plate = vehicle_plate
             existing.expiration_date = payload.expiration_date.replace(
                 tzinfo=None) if payload.expiration_date else None
             existing.created_by = user_id
@@ -177,6 +281,7 @@ class WhitelistService:
                 id_number=external.id_number,
                 full_name=existing.name,
                 reason=existing.reason,
+                vehicle_plate=existing.vehicle_plate,
                 expiration_date=existing.expiration_date,
                 created_at=existing.created_at,
             )
@@ -187,7 +292,7 @@ class WhitelistService:
             type_access_list_id=whitelist_type.id,
             name=full_name,
             reason=reason,
-            vehicle_plate=None,
+            vehicle_plate=vehicle_plate,
             expiration_date=payload.expiration_date.replace(
                 tzinfo=None) if payload.expiration_date else None,
             file_name=None,
@@ -204,9 +309,41 @@ class WhitelistService:
             id_number=external.id_number,
             full_name=entry.name,
             reason=entry.reason,
+            vehicle_plate=entry.vehicle_plate,
             expiration_date=entry.expiration_date,
             created_at=entry.created_at,
         )
+
+    async def bulk_import_whitelist(
+        self,
+        user_id: int,
+        location_id: int,
+        file: UploadFile,
+    ) -> None:
+        """Create whitelist entry."""
+        await self.location_service.check_user_permission_on_location(user_id, location_id)
+
+        rows = await self._read_whitelist_csv(file)
+
+        for row in rows:
+            payload = WhitelistCreateRequest(
+                id_number=row["id"],
+                full_name=row["nombre"],
+                reason=row["motivo"] or None,
+                vehicle_plate=row["patente"] or None,
+                expiration_date=None,
+            )
+
+            try:
+                await self.allow_person(
+                    user_id=user_id,
+                    location_id=location_id,
+                    payload=payload,
+                )
+            except HTTPException as exc:
+                if exc.status_code == status.HTTP_400_BAD_REQUEST and exc.detail == "Whitelist entry already exists for this location.":
+                    continue
+                raise
 
     async def list_whitelist(
         self,
@@ -227,6 +364,7 @@ class WhitelistService:
                 AccessList.location_id,
                 AccessList.name,
                 AccessList.reason,
+                AccessList.vehicle_plate,
                 AccessList.expiration_date,
                 AccessList.created_at,
                 ExternalPeople.id_number,
@@ -258,6 +396,7 @@ class WhitelistService:
                     ExternalPeople.id_number.ilike(like_pattern),
                     ExternalPeople.name.ilike(like_pattern),
                     AccessList.name.ilike(like_pattern),
+                    AccessList.vehicle_plate.ilike(like_pattern),
                 )
             )
 
@@ -272,6 +411,7 @@ class WhitelistService:
                     id_number=item.id_number,
                     full_name=item.name,
                     reason=item.reason,
+                    vehicle_plate=item.vehicle_plate,
                     expiration_date=item.expiration_date,
                     created_at=item.created_at,
                 )

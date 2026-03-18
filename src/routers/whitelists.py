@@ -2,13 +2,14 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from fastapi_pagination import Page, Params
 
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_whitelist_service
 from src.schemas import (
+    EmptyResponse,
     WhitelistCreateRequest,
     WhitelistResponse,
 )
@@ -76,6 +77,35 @@ async def allow_person(
         payload=payload,
     )
     return entry
+
+
+@router.post(
+    "/bulk",
+    response_model=EmptyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def bulk_import_whitelist(
+    location_id: int,
+    file: UploadFile = File(...),
+    service: WhitelistService = Depends(get_whitelist_service),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+                UserRole.CLIENT,
+            ],
+        )
+    ),
+) -> EmptyResponse:
+    """Allow a person for a location."""
+    await service.bulk_import_whitelist(
+        user_id=user_id,
+        location_id=location_id,
+        file=file,
+    )
+    return EmptyResponse()
 
 
 @router.delete(

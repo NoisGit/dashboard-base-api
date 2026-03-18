@@ -2,7 +2,7 @@
 
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from fastapi_pagination import Page, Params
 
 from src.auth.permissions import RoleChecker
@@ -208,6 +208,34 @@ async def assign_user_to_location(
         requester_id=requester_id,
         location_id=location_id,
         payload=payload,
+    )
+    return EmptyResponse()
+
+
+@router.post(
+    "/{location_id}/bulk/janitors",
+    response_model=EmptyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def bulk_import_janitors(
+    location_id: int,
+    file: UploadFile = File(...),
+    service: LocationService = Depends(get_location_service),
+    requester_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+                UserRole.SUBADMIN,
+            ],
+        ),
+    ),
+):
+    """Assign a user (janitor/portero) to a location."""
+    await service.bulk_import_janitors(
+        requester_id=requester_id,
+        location_id=location_id,
+        file=file,
     )
     return EmptyResponse()
 
