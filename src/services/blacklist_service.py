@@ -18,7 +18,6 @@ from src.models import (
     TypeAccessList,
 )
 from src.schemas import (
-    BlacklistCheckResponse,
     BlacklistCreateRequest,
     BlacklistResponse,
 )
@@ -87,9 +86,7 @@ class BlacklistService:
             )
         )
 
-        if location_id is None:
-            pass
-        else:
+        if location_id is not None:
             stmt = stmt.where(
                 or_(
                     AccessList.location_id == location_id,
@@ -429,61 +426,3 @@ class BlacklistService:
 
         await self.session.delete(existing)
         await self.session.commit()
-
-    async def check_blacklist(
-        self,
-        user_id: int,
-        location_id: int,
-        id_number: str,
-    ) -> BlacklistCheckResponse:
-        """Check if a person is in blacklist."""
-        company_id = await self._get_company_id(
-            user_id=user_id,
-            company_id=None,
-        )
-        await self._validate_location_for_company(
-            user_id=user_id,
-            company_id=company_id,
-            location_id=location_id,
-        )
-
-        blacklist_type = await self._get_blacklist_type(created_by=user_id)
-
-        entry = await self._get_existing_blacklist_entry(
-            company_id=company_id,
-            location_id=location_id,
-            type_access_list_id=blacklist_type.id,
-            id_number=id_number,
-        )
-
-        if not entry:
-            entry = await self._get_existing_blacklist_entry(
-                company_id=company_id,
-                location_id=None,
-                type_access_list_id=blacklist_type.id,
-                id_number=id_number,
-            )
-
-        if not entry:
-            external = await self._get_external_by_id_number(id_number)
-            return BlacklistCheckResponse(
-                company_id=company_id,
-                location_id=location_id,
-                external_people_id=external.id if external else None,
-                id_number=id_number,
-                full_name=external.name if external else None,
-                status="ALLOWED",
-                message="Acceso permitido.",
-                reason=None,
-            )
-
-        return BlacklistCheckResponse(
-            company_id=entry.company_id,
-            location_id=location_id,
-            external_people_id=entry.external_people_id,
-            id_number=id_number,
-            full_name=entry.name,
-            status="DENIED",
-            message="No tiene acceso permitido. Lista negra.",
-            reason=entry.reason or None,
-        )

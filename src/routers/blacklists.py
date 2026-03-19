@@ -9,8 +9,6 @@ from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_blacklist_service
 from src.schemas import (
-    BlacklistCheckRequest,
-    BlacklistCheckResponse,
     BlacklistCreateRequest,
     BlacklistResponse,
 )
@@ -106,23 +104,4 @@ async def unblock_person(
         location_id=location_id,
         company_id=company_id,
         id_number=id_number,
-    )
-
-
-@router.post(
-    "/check",
-    response_model=BlacklistCheckResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def check_blacklist(
-    location_id: int,
-    payload: BlacklistCheckRequest,
-    service: BlacklistService = Depends(get_blacklist_service),
-    user_id: int = Depends(RoleChecker([UserRole.JANITOR])),
-) -> BlacklistCheckResponse:
-    """Check if a person is in blacklist (no AccessLog)."""
-    return await service.check_blacklist(
-        user_id=user_id,
-        location_id=location_id,
-        id_number=payload.id_number,
     )
