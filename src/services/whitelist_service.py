@@ -19,7 +19,6 @@ from src.models import (
     TypeAccessList,
 )
 from src.schemas import (
-    WhitelistCheckResponse,
     WhitelistCreateRequest,
     WhitelistResponse,
 )
@@ -88,9 +87,7 @@ class WhitelistService:
             )
         )
 
-        if location_id is None:
-            pass
-        else:
+        if location_id is not None:
             stmt = stmt.where(
                 or_(
                     AccessList.location_id == location_id,
@@ -480,63 +477,3 @@ class WhitelistService:
 
         await self.session.delete(existing)
         await self.session.commit()
-
-    async def check_whitelist(
-        self,
-        user_id: int,
-        location_id: int,
-        id_number: str,
-    ) -> WhitelistCheckResponse:
-        """Check if a person is in whitelist."""
-        company_id = await self._get_company_id(
-            user_id=user_id,
-            company_id=None,
-        )
-        await self._validate_location_for_company(
-            user_id=user_id,
-            company_id=company_id,
-            location_id=location_id,
-        )
-
-        whitelist_type = await self._get_whitelist_type(created_by=user_id)
-
-        entry = await self._get_existing_whitelist_entry(
-            company_id=company_id,
-            location_id=location_id,
-            type_access_list_id=whitelist_type.id,
-            id_number=id_number,
-        )
-
-        if not entry:
-            entry = await self._get_existing_whitelist_entry(
-                company_id=company_id,
-                location_id=None,
-                type_access_list_id=whitelist_type.id,
-                id_number=id_number,
-            )
-
-        if not entry or not self._is_active(entry.expiration_date):
-            external = await self._get_external_by_id_number(id_number)
-            return WhitelistCheckResponse(
-                company_id=company_id,
-                location_id=location_id,
-                external_people_id=external.id if external else None,
-                id_number=id_number,
-                full_name=external.name if external else None,
-                status="NONE",
-                message="Acceso permitido.",
-                reason=None,
-                expiration_date=None,
-            )
-
-        return WhitelistCheckResponse(
-            company_id=entry.company_id,
-            location_id=location_id,
-            external_people_id=entry.external_people_id,
-            id_number=id_number,
-            full_name=entry.name,
-            status="WHITELIST",
-            message="Acceso permitido. Lista blanca.",
-            reason=entry.reason or None,
-            expiration_date=entry.expiration_date,
-        )

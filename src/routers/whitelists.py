@@ -9,8 +9,6 @@ from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_whitelist_service
 from src.schemas import (
-    WhitelistCheckRequest,
-    WhitelistCheckResponse,
     WhitelistCreateRequest,
     WhitelistResponse,
 )
@@ -108,23 +106,4 @@ async def revoke_person(
         location_id=location_id,
         company_id=company_id,
         id_number=id_number,
-    )
-
-
-@router.post(
-    "/check",
-    response_model=WhitelistCheckResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def check_whitelist(
-    location_id: int,
-    payload: WhitelistCheckRequest,
-    service: WhitelistService = Depends(get_whitelist_service),
-    user_id: int = Depends(RoleChecker([UserRole.JANITOR])),
-) -> WhitelistCheckResponse:
-    """Check if a person is in whitelist (no AccessLog)."""
-    return await service.check_whitelist(
-        user_id=user_id,
-        location_id=location_id,
-        id_number=payload.id_number,
     )

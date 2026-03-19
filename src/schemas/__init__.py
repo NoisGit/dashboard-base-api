@@ -126,8 +126,6 @@ from .user_schemas import (
     JanitorResponse,
 )
 from .whitelist_schemas import (
-    WhitelistCheckRequest,
-    WhitelistCheckResponse,
     WhitelistCreateRequest,
     WhitelistResponse,
 )
@@ -191,8 +189,6 @@ __all__ = [
     # Whitelist schemas
     "WhitelistCreateRequest",
     "WhitelistResponse",
-    "WhitelistCheckRequest",
-    "WhitelistCheckResponse",
     # Blacklist schemas
     "BlacklistCreateRequest",
     "BlacklistResponse",
