@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select, desc, or_
 
-
 from src.services.azure_service import AzureService
 from src.services.user_service import UserService
 from src.services.location_service import LocationService
@@ -80,15 +79,25 @@ class AccessLogService:
 
         return location.company_id
 
-    async def _ensure_not_blacklisted(
+    async def _get_external_people_by_id_number(
+        self,
+        id_number: str,
+    ) -> Optional[ExternalPeople]:
+        stmt = select(ExternalPeople).where(
+            ExternalPeople.id_number == id_number,
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def _get_blacklist_entry(
         self,
         company_id: int,
         location_id: int,
         id_number: str,
-    ) -> None:
+    ) -> Optional[AccessList]:
         blacklist_type_id = await self._get_blacklist_type_id()
         if not blacklist_type_id:
-            return
+            return None
 
         stmt = (
             select(AccessList)
@@ -106,10 +115,7 @@ class AccessLogService:
         result = await self.session.execute(stmt)
         entry = result.scalars().first()
         if entry:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tiene acceso permitido. Lista negra.",
-            )
+            return entry
 
         stmt = (
             select(AccessList)
@@ -125,12 +131,7 @@ class AccessLogService:
             )
         )
         result = await self.session.execute(stmt)
-        entry = result.scalars().first()
-        if entry:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tiene acceso permitido. Lista negra.",
-            )
+        return result.scalars().first()
 
     async def _get_active_whitelist_entry(
         self,
@@ -189,6 +190,61 @@ class AccessLogService:
         )
         result = await self.session.execute(stmt)
         return result.scalars().first()
+
+    async def check_access_list_status(
+        self,
+        user_id: int,
+        location_id: int,
+        id_number: str,
+    ) -> dict:
+        """Check access list status before creating an access log."""
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        id_number = (id_number or "").strip()
+        company_id = await self._get_company_id_by_location(location_id)
+        external_people = await self._get_external_people_by_id_number(id_number)
+
+        blacklist_entry = await self._get_blacklist_entry(
+            company_id=company_id,
+            location_id=location_id,
+            id_number=id_number,
+        )
+        if blacklist_entry:
+            return {
+                "external_people_id": blacklist_entry.external_people_id,
+                "id_number": id_number,
+                "full_name": external_people.name if external_people else blacklist_entry.name,
+                "status": "BLACKLIST",
+                "message": "No tiene acceso permitido. Lista negra.",
+                "reason": blacklist_entry.reason or None,
+            }
+
+        whitelist_entry = await self._get_active_whitelist_entry(
+            company_id=company_id,
+            location_id=location_id,
+            id_number=id_number,
+        )
+        if whitelist_entry:
+            return {
+                "external_people_id": whitelist_entry.external_people_id,
+                "id_number": id_number,
+                "full_name": external_people.name if external_people else whitelist_entry.name,
+                "status": "WHITELIST",
+                "message": "Acceso permitido. Lista blanca.",
+                "reason": whitelist_entry.reason or None,
+            }
+
+        return {
+            "external_people_id": external_people.id if external_people else None,
+            "id_number": id_number,
+            "full_name": external_people.name if external_people else None,
+            "status": "NONE",
+            "message": "No existe en listas.",
+            "reason": None,
+        }
 
     async def get_active_entries(self, location_id: int, user_id: int) -> List[AccessLogResponse]:
         """
@@ -265,23 +321,21 @@ class AccessLogService:
                 detail="External people not found",
             )
 
-        company_id = await self._get_company_id_by_location(payload.location_id)
-
-        await self._ensure_not_blacklisted(
-            company_id=company_id,
+        access_list_status = await self.check_access_list_status(
+            user_id=created_by,
             location_id=payload.location_id,
             id_number=external.id_number,
         )
 
-        comment = (payload.comment or "").strip()
-        if not comment:
-            whitelist_entry = await self._get_active_whitelist_entry(
-                company_id=company_id,
-                location_id=payload.location_id,
-                id_number=external.id_number,
+        if access_list_status["status"] == "BLACKLIST":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=access_list_status["message"],
             )
-            if whitelist_entry:
-                comment = (whitelist_entry.reason or "Lista blanca").strip()
+
+        comment = (payload.comment or "").strip()
+        if not comment and access_list_status["status"] == "WHITELIST":
+            comment = (access_list_status["reason"] or "Lista blanca").strip()
 
         if comment and len(comment) > 100:
             comment = comment[:100]
@@ -392,10 +446,6 @@ class AccessLogService:
 
         return self._convert_to_response(access_log)
 
-    # =========================================================================
-    # DASHBOARD - Admin Exit Methods
-    # =========================================================================
-
     async def register_exit_admin(
         self,
         access_log_id: int,
@@ -501,10 +551,6 @@ class AccessLogService:
         await self.session.commit()
 
         return EmptyResponse()
-
-    # =========================================================================
-    # DASHBOARD - Admin Methods (Paginated)
-    # =========================================================================
 
     async def get_logs_paginated(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
