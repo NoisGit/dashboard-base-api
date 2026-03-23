@@ -218,7 +218,7 @@ class AccessLogService:
                 "id_number": id_number,
                 "full_name": external_people.name if external_people else blacklist_entry.name,
                 "status": "BLACKLIST",
-                "message": "No tiene acceso permitido. Lista negra.",
+                "message": "Access denied. Blacklist.",
                 "reason": blacklist_entry.reason or None,
             }
 
@@ -233,7 +233,7 @@ class AccessLogService:
                 "id_number": id_number,
                 "full_name": external_people.name if external_people else whitelist_entry.name,
                 "status": "WHITELIST",
-                "message": "Acceso permitido. Lista blanca.",
+                "message": "Access allowed. Whitelist.",
                 "reason": whitelist_entry.reason or None,
             }
 
@@ -242,7 +242,7 @@ class AccessLogService:
             "id_number": id_number,
             "full_name": external_people.name if external_people else None,
             "status": "NONE",
-            "message": "No existe en listas.",
+            "message": "Not found in access lists.",
             "reason": None,
         }
 
@@ -335,7 +335,7 @@ class AccessLogService:
 
         comment = (payload.comment or "").strip()
         if not comment and access_list_status["status"] == "WHITELIST":
-            comment = (access_list_status["reason"] or "Lista blanca").strip()
+            comment = (access_list_status["reason"] or "Whitelist").strip()
 
         if comment and len(comment) > 100:
             comment = comment[:100]
