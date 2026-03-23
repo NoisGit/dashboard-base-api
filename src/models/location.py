@@ -66,6 +66,10 @@ class Location(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
+    company: Optional["Company"] = Relationship(
+        back_populates="locations",
+    )
+
     user_locations: List["UserLocationAccess"] = Relationship(
         back_populates="location",
     )

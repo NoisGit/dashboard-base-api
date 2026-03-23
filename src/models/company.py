@@ -56,6 +56,11 @@ class Company(SQLModel, table=True):
         back_populates="company",
     )
 
+    # Locations owned by this company
+    locations: List["Location"] = Relationship(
+        back_populates="company",
+    )
+
     # Locations owned by this company through access table
     company_location_accesses: List["CompanyLocationAccess"] = Relationship(
         back_populates="company",
