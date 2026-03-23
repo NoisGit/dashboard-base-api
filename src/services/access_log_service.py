@@ -71,11 +71,11 @@ class AccessLogService:
                 detail="Location not found",
             )
 
-        if not getattr(location, "company_id", None):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Location has no company assigned.",
-            )
+        # if not getattr(location, "company_id", None):
+        #    raise HTTPException(
+        #        status_code=status.HTTP_400_BAD_REQUEST,
+        #        detail="Location has no company assigned.",
+        #    )
 
         return location.company_id
 
@@ -312,7 +312,8 @@ class AccessLogService:
         )
 
         result = await self.session.execute(
-            select(ExternalPeople).where(ExternalPeople.id == payload.external_people_id)
+            select(ExternalPeople).where(
+                ExternalPeople.id == payload.external_people_id)
         )
         external = result.scalars().first()
         if not external:
