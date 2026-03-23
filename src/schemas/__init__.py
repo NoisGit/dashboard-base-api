@@ -117,6 +117,7 @@ from .user_schemas import (
     UserChangePasswordRequest,
     UserCreateRequest,
     UserLoginRequest,
+    JanitorLoginRequest,
     UserMeResponse,
     UserResponse,
     UserSuspendRequest,
@@ -155,6 +156,7 @@ __all__ = [
     "UserResponse",
     "UserMeResponse",
     "UserLoginRequest",
+    "JanitorLoginRequest",
     "UserChangePasswordRequest",
     "JanitorResponse",
     # Company schemas
