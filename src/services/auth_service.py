@@ -145,7 +145,7 @@ class AuthService:
         """Authenticate janitor and return token pair"""
         user = await self.get_user_by_username(user_data.username)
 
-        if not user or user.role != UserRole.JANITOR:
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -159,6 +159,12 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
+            )
+
+        if user.role != UserRole.JANITOR:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized access",
             )
 
         # Block suspended users
