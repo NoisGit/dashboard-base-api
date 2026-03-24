@@ -17,8 +17,8 @@ from src.models import (
     AccessList,
     AccessLog,
     AccessLogImage,
+    CompanyLocationAccess,
     ExternalPeople,
-    Location,
     TypeAccessList,
 )
 
@@ -60,24 +60,40 @@ class AccessLogService:
         type_access = result.scalars().first()
         return type_access.id if type_access else None
 
-    async def _get_company_id_by_location(self, location_id: int) -> int:
-        stmt = select(Location).where(Location.id == location_id)
-        result = await self.session.execute(stmt)
-        location = result.scalars().first()
+    async def _get_company_id_by_location(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> int:
+        user = await self.user_service.get_user_by_id(user_id)
 
-        if not location:
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found",
+                detail="User not found",
             )
 
-        if not getattr(location, "company_id", None):
+        company_id = await self.location_service.company_service.get_company_id_by_user_id(user_id)
+        if not company_id:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Location has no company assigned.",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no company assigned.",
             )
 
-        return location.company_id
+        stmt = select(CompanyLocationAccess).where(
+            CompanyLocationAccess.company_id == company_id,
+            CompanyLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        company_location_access = result.scalars().first()
+
+        if not company_location_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no access to this location",
+            )
+
+        return company_id
 
     async def _get_external_people_by_id_number(
         self,
@@ -204,7 +220,10 @@ class AccessLogService:
         )
 
         id_number = (id_number or "").strip()
-        company_id = await self._get_company_id_by_location(location_id)
+        company_id = await self._get_company_id_by_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
         external_people = await self._get_external_people_by_id_number(id_number)
 
         blacklist_entry = await self._get_blacklist_entry(
