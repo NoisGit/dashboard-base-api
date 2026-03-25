@@ -14,10 +14,11 @@ from src.services.email_service import EmailService
 from src.config.config import settings
 import secrets
 
-
+from src.core.enums import UserRole
 from src.models import User
 from src.schemas import (
     UserLoginRequest,
+    JanitorLoginRequest,
     RefreshTokenRequest,
     AuthTokenResponse,
     AccessTokenResponse,
@@ -76,6 +77,13 @@ class AuthService:
         user = result.scalar_one_or_none()
         return user
 
+    async def get_user_by_username(self, username: str) -> Optional[User]:
+        """Get user by username"""
+        statement = select(User).where(User.username == username)
+        result = await self.session.execute(statement)
+        user = result.scalar_one_or_none()
+        return user
+
     async def update_user_password(self, user_id: int, new_password: str):
         """Update user details"""
         user = await self.get_user_by_id(user_id)
@@ -110,6 +118,53 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
+            )
+
+        # Block suspended users
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is suspended",
+            )
+
+        # Rehash password if needed
+        if ph.check_needs_rehash(user.password_hash):
+            user.password_hash = ph.hash(user_data.password)
+            await self.update_user_password(user.id, user.password_hash)
+
+        await self.update_user_last_login(user.id)
+
+        token_pair = create_token_pair(user.id, user.role)
+        user_token_response = AuthTokenResponse(**token_pair)
+
+        await self.update_refresh_token(user.id, user_token_response.refresh_token)
+
+        return user_token_response
+
+    async def login_janitor(self, user_data: JanitorLoginRequest) -> AuthTokenResponse:
+        """Authenticate janitor and return token pair"""
+        user = await self.get_user_by_username(user_data.username)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        # Verify password match with Argon2 Hash
+        try:
+            ph.verify(user.password_hash, user_data.password)
+        # if password does not match
+        except VerifyMismatchError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        if user.role != UserRole.JANITOR:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized access",
             )
 
         # Block suspended users
