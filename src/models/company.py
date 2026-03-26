@@ -18,7 +18,6 @@ from sqlmodel import Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from .company_staff import CompanyStaff
     from .user import User
-    from .location import Location
     from .company_location_access import CompanyLocationAccess
     from .document import Document
 
@@ -53,11 +52,6 @@ class Company(SQLModel, table=True):
     # Relationships
     # Company is linked to users through the company_staff join table
     staff_memberships: List["CompanyStaff"] = Relationship(
-        back_populates="company",
-    )
-
-    # Locations owned by this company
-    locations: List["Location"] = Relationship(
         back_populates="company",
     )
 

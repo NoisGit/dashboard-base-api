@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from .access_list import AccessList
     from .access_log import AccessLog
     from .user import User
-    from .company import Company
 
 
 class Location(SQLModel, table=True):
@@ -52,23 +51,12 @@ class Location(SQLModel, table=True):
     country: Optional[str] = Field(default=None, max_length=20)
     logo: Optional[str] = Field(default=None, max_length=255)
 
-    # Owning company (can be assigned later)
-    company_id: Optional[int] = Field(
-        default=None,
-        foreign_key="company.id",
-    )
-
     # Soft delete flag (same pattern as User/Company)
     is_active: bool = Field(default=True)
 
     # DBML: created_by int, created_at timestamp
     created_by: int = Field(foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.now)
-
-    # Relationships
-    company: Optional["Company"] = Relationship(
-        back_populates="locations",
-    )
 
     user_locations: List["UserLocationAccess"] = Relationship(
         back_populates="location",
