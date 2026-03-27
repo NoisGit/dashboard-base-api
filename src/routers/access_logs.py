@@ -11,14 +11,15 @@ from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_access_log_service
 from src.schemas.access_log_schemas import (
+    AccessLogBulkExitRequest,
+    AccessLogCheckRequest,
+    AccessLogCheckResponse,
     AccessLogCreateRequest,
     AccessLogExitRequest,
-    AccessLogBulkExitRequest,
     AccessLogResponse,
 )
 from src.schemas import EmptyResponse
 from src.services.access_log_service import AccessLogService
-
 
 router = APIRouter(prefix="/access-logs", tags=["access-logs"])
 
@@ -30,12 +31,16 @@ router = APIRouter(prefix="/access-logs", tags=["access-logs"])
 async def get_active_entries(
     location_id: int,
     service: AccessLogService = Depends(get_access_log_service),
-    user_id: int = Depends(RoleChecker([
-        UserRole.JANITOR,
-        UserRole.SUBADMIN,
-        UserRole.ADMIN,
-        UserRole.SUPERADMIN
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.JANITOR,
+                UserRole.SUBADMIN,
+                UserRole.ADMIN,
+                UserRole.SUPERADMIN,
+            ]
+        )
+    ),
 ) -> List[AccessLogResponse]:
     """
     Get active access logs for a specific location.
@@ -51,17 +56,43 @@ async def get_active_entries(
 async def get_today_exits(
     location_id: int,
     service: AccessLogService = Depends(get_access_log_service),
-    user_id: int = Depends(RoleChecker([
-        UserRole.JANITOR,
-        UserRole.SUBADMIN,
-        UserRole.ADMIN,
-        UserRole.SUPERADMIN
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.JANITOR,
+                UserRole.SUBADMIN,
+                UserRole.ADMIN,
+                UserRole.SUPERADMIN,
+            ]
+        )
+    ),
 ) -> List[AccessLogResponse]:
     """
     Get access logs with exits from today for a specific location.
     """
     return await service.get_today_exits(location_id, user_id)
+
+
+@router.post(
+    "/check",
+    response_model=AccessLogCheckResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def check_access_list_status(
+    location_id: int,
+    payload: AccessLogCheckRequest,
+    service: AccessLogService = Depends(get_access_log_service),
+    user_id: int = Depends(RoleChecker([UserRole.JANITOR])),
+) -> AccessLogCheckResponse:
+    """
+    Check access list status before creating an access log.
+    """
+    result = await service.check_access_list_status(
+        user_id=user_id,
+        location_id=location_id,
+        id_number=payload.id_number,
+    )
+    return AccessLogCheckResponse(**result)
 
 
 @router.post(
@@ -72,7 +103,7 @@ async def get_today_exits(
 async def create_access_log(
     payload: AccessLogCreateRequest,
     service: AccessLogService = Depends(get_access_log_service),
-    user_id=Depends(RoleChecker([UserRole.JANITOR])),
+    user_id: int = Depends(RoleChecker([UserRole.JANITOR])),
 ) -> AccessLogResponse:
     """
     Create a new access log entry (person entering).
@@ -92,7 +123,7 @@ async def register_exit(
     access_log_id: int,
     payload: AccessLogExitRequest,
     service: AccessLogService = Depends(get_access_log_service),
-    user_id=Depends(RoleChecker([UserRole.JANITOR])),
+    user_id: int = Depends(RoleChecker([UserRole.JANITOR])),
 ) -> AccessLogResponse:
     """
     Register exit for an existing access log.
@@ -113,11 +144,15 @@ async def register_exit_dashboard(
     access_log_id: int,
     payload: AccessLogExitRequest,
     service: AccessLogService = Depends(get_access_log_service),
-    user_id=Depends(RoleChecker([
-        UserRole.SUBADMIN,
-        UserRole.ADMIN,
-        UserRole.SUPERADMIN
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUBADMIN,
+                UserRole.ADMIN,
+                UserRole.SUPERADMIN,
+            ]
+        )
+    ),
     current_user=Depends(get_current_user),
 ) -> EmptyResponse:
     """
@@ -142,11 +177,15 @@ async def register_exit_dashboard(
 async def register_exit_bulk_dashboard(
     payload: AccessLogBulkExitRequest,
     service: AccessLogService = Depends(get_access_log_service),
-    user_id=Depends(RoleChecker([
-        UserRole.SUBADMIN,
-        UserRole.ADMIN,
-        UserRole.SUPERADMIN
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUBADMIN,
+                UserRole.ADMIN,
+                UserRole.SUPERADMIN,
+            ]
+        )
+    ),
     current_user=Depends(get_current_user),
 ) -> EmptyResponse:
     """
@@ -197,12 +236,16 @@ async def get_logs_dashboard(  # pylint: disable=too-many-arguments, too-many-po
         description="Search by person DNI",
     ),
     service: AccessLogService = Depends(get_access_log_service),
-    user_id: int = Depends(RoleChecker([
-        UserRole.CLIENT,
-        UserRole.SUBADMIN,
-        UserRole.ADMIN,
-        UserRole.SUPERADMIN
-    ])),
+    user_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.CLIENT,
+                UserRole.SUBADMIN,
+                UserRole.ADMIN,
+                UserRole.SUPERADMIN,
+            ]
+        )
+    ),
 ) -> Page[AccessLogResponse]:
     """
     Get access logs with pagination and filters for dashboard.

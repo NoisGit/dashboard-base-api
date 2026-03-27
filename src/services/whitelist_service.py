@@ -4,7 +4,7 @@
 
 import csv
 import io
-from datetime import datetime, date
+from datetime import datetime
 from typing import List, Optional, cast
 
 from fastapi import HTTPException, UploadFile, status
@@ -16,6 +16,7 @@ from sqlmodel import desc, or_, select
 from src.core.enums import UserRole
 from src.models import (
     AccessList,
+    CompanyLocationAccess,
     ExternalPeople,
     TypeAccessList,
 )
@@ -66,19 +67,130 @@ class WhitelistService:
         await self.session.refresh(type_access)
         return type_access
 
+    async def _get_blacklist_type_id(self) -> Optional[int]:
+        stmt = select(TypeAccessList).where(TypeAccessList.name == "blacklist")
+        result = await self.session.execute(stmt)
+        type_access = result.scalars().first()
+        return type_access.id if type_access else None
+
+    async def _ensure_not_blacklisted(
+        self,
+        company_id: int,
+        location_id: Optional[int],
+        id_number: str,
+    ) -> None:
+        blacklist_type_id = await self._get_blacklist_type_id()
+        if not blacklist_type_id:
+            return
+
+        stmt = (
+            select(AccessList.id)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.company_id == company_id,
+                AccessList.type_access_list_id == blacklist_type_id,
+                ExternalPeople.id_number == id_number,
+            )
+        )
+
+        if location_id is not None:
+            stmt = stmt.where(
+                or_(
+                    AccessList.location_id == location_id,
+                    AccessList.location_id == None,  # noqa: E711
+                )
+            )
+
+        result = await self.session.execute(stmt)
+        row = result.scalars().first()
+        if row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La persona ya está en lista negra. Elimine el registro antes de crear lista blanca.",
+            )
+
     async def _get_external_by_id_number(
         self,
         id_number: str,
     ) -> Optional[ExternalPeople]:
         """Get external people by id_number."""
         stmt = select(ExternalPeople).where(
-            ExternalPeople.id_number == id_number)
+            ExternalPeople.id_number == id_number
+        )
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
+    async def _get_company_id(
+        self,
+        user_id: int,
+        company_id: Optional[int],
+    ) -> int:
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role == UserRole.SUPERADMIN:
+            if not company_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="company_id is required.",
+                )
+            return company_id
+
+        my_company_id = await self.location_service.company_service.get_company_id_by_user_id(
+            user_id
+        )
+        if not my_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no company assigned.",
+            )
+
+        if company_id is not None and company_id != my_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed for this company.",
+            )
+
+        return my_company_id
+
+    async def _validate_location_for_company(
+        self,
+        user_id: int,
+        company_id: int,
+        location_id: Optional[int],
+    ) -> None:
+        if location_id is None:
+            return
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        stmt = select(CompanyLocationAccess).where(
+            CompanyLocationAccess.company_id == company_id,
+            CompanyLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalars().first()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="company_id does not match location_id.",
+            )
+
     async def _get_existing_whitelist_entry(
         self,
-        location_id: int,
+        company_id: int,
+        location_id: Optional[int],
         type_access_list_id: int,
         id_number: str,
     ) -> Optional[AccessList]:
@@ -90,11 +202,17 @@ class WhitelistService:
                 ExternalPeople.id == AccessList.external_people_id,
             )
             .where(
-                AccessList.location_id == location_id,
+                AccessList.company_id == company_id,
                 AccessList.type_access_list_id == type_access_list_id,
                 ExternalPeople.id_number == id_number,
             )
         )
+
+        if location_id is None:
+            stmt = stmt.where(AccessList.location_id == None)  # noqa: E711
+        else:
+            stmt = stmt.where(AccessList.location_id == location_id)
+
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
@@ -193,16 +311,27 @@ class WhitelistService:
         """Check active state by expiration date."""
         if expiration_date is None:
             return True
-        return expiration_date >= datetime.now()
+
+        exp = expiration_date.replace(tzinfo=None) if expiration_date.tzinfo else expiration_date
+        return exp >= datetime.now()
 
     async def allow_person(
         self,
         user_id: int,
-        location_id: int,
+        location_id: Optional[int],
+        company_id: Optional[int],
         payload: WhitelistCreateRequest,
     ) -> WhitelistResponse:
         """Create whitelist entry."""
-        await self.location_service.check_user_permission_on_location(user_id, location_id)
+        company_id = await self._get_company_id(
+            user_id=user_id,
+            company_id=company_id,
+        )
+        await self._validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
+            location_id=location_id,
+        )
 
         id_number = (payload.id_number or "").strip()
         full_name = (payload.full_name or "").strip()
@@ -221,15 +350,25 @@ class WhitelistService:
                 detail="full_name is required.",
             )
 
-        if payload.expiration_date is not None and payload.expiration_date.replace(tzinfo=None) < datetime.now():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="expiration_date must be today or a future date.",
-            )
+        await self._ensure_not_blacklisted(
+            company_id=company_id,
+            location_id=location_id,
+            id_number=id_number,
+        )
+
+        expiration_date = None
+        if getattr(payload, "expiration_date", None) is not None:
+            expiration_date = payload.expiration_date.replace(tzinfo=None)  # type: ignore[union-attr]
+            if expiration_date < datetime.now():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="expiration_date must be today or a future date.",
+                )
 
         whitelist_type = await self._get_whitelist_type(created_by=user_id)
 
         existing = await self._get_existing_whitelist_entry(
+            company_id=company_id,
             location_id=location_id,
             type_access_list_id=whitelist_type.id,
             id_number=id_number,
@@ -242,7 +381,7 @@ class WhitelistService:
         if existing and self._is_active(existing_expiration_date):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Whitelist entry already exists for this location.",
+                detail="Whitelist entry already exists.",
             )
 
         external = await self._get_external_by_id_number(id_number)
@@ -267,8 +406,7 @@ class WhitelistService:
             existing.name = full_name
             existing.reason = reason
             existing.vehicle_plate = vehicle_plate
-            existing.expiration_date = payload.expiration_date.replace(
-                tzinfo=None) if payload.expiration_date else None
+            existing.expiration_date = expiration_date
             existing.created_by = user_id
 
             self.session.add(existing)
@@ -277,7 +415,9 @@ class WhitelistService:
 
             return WhitelistResponse(
                 id=existing.id,
+                company_id=existing.company_id,
                 location_id=existing.location_id,
+                external_people_id=external.id,
                 id_number=external.id_number,
                 full_name=existing.name,
                 reason=existing.reason,
@@ -287,14 +427,14 @@ class WhitelistService:
             )
 
         entry = AccessList(
+            company_id=company_id,
             location_id=location_id,
             external_people_id=external.id,
             type_access_list_id=whitelist_type.id,
             name=full_name,
             reason=reason,
             vehicle_plate=vehicle_plate,
-            expiration_date=payload.expiration_date.replace(
-                tzinfo=None) if payload.expiration_date else None,
+            expiration_date=expiration_date,
             file_name=None,
             created_by=user_id,
         )
@@ -305,7 +445,9 @@ class WhitelistService:
 
         return WhitelistResponse(
             id=entry.id,
+            company_id=entry.company_id,
             location_id=entry.location_id,
+            external_people_id=external.id,
             id_number=external.id_number,
             full_name=entry.name,
             reason=entry.reason,
@@ -338,29 +480,40 @@ class WhitelistService:
                 await self.allow_person(
                     user_id=user_id,
                     location_id=location_id,
+                    company_id=None,
                     payload=payload,
                 )
             except HTTPException as exc:
-                if exc.status_code == status.HTTP_400_BAD_REQUEST and exc.detail == "Whitelist entry already exists for this location.":
+                if exc.status_code == status.HTTP_400_BAD_REQUEST and exc.detail == "Whitelist entry already exists.":
                     continue
                 raise
 
     async def list_whitelist(
         self,
         user_id: int,
-        location_id: int,
+        location_id: Optional[int],
+        company_id: Optional[int],
         params: Params,
         search: Optional[str] = None,
         include_expired: bool = False,
     ) -> Page[WhitelistResponse]:
-        """List whitelist by location."""
-        await self.location_service.check_user_permission_on_location(user_id, location_id)
+        """List whitelist entries."""
+        company_id = await self._get_company_id(
+            user_id=user_id,
+            company_id=company_id,
+        )
+        await self._validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
+            location_id=location_id,
+        )
 
         whitelist_type = await self._get_whitelist_type(created_by=user_id)
 
         stmt = (
             select(
                 AccessList.id,
+                AccessList.company_id,
                 AccessList.location_id,
                 AccessList.name,
                 AccessList.reason,
@@ -368,24 +521,35 @@ class WhitelistService:
                 AccessList.expiration_date,
                 AccessList.created_at,
                 ExternalPeople.id_number,
+                ExternalPeople.id.label("external_people_id"),
             )
             .join(
                 ExternalPeople,
                 ExternalPeople.id == AccessList.external_people_id,
             )
             .where(
-                AccessList.location_id == location_id,
+                AccessList.company_id == company_id,
                 AccessList.type_access_list_id == whitelist_type.id,
             )
             .order_by(desc(AccessList.created_at))
         )
 
+        if location_id is None:
+            stmt = stmt.where(AccessList.location_id == None)  # noqa: E711
+        else:
+            stmt = stmt.where(
+                or_(
+                    AccessList.location_id == location_id,
+                    AccessList.location_id == None,  # noqa: E711
+                )
+            )
+
         if not include_expired:
-            today = date.today()
+            now = datetime.now()
             stmt = stmt.where(
                 or_(
                     AccessList.expiration_date == None,  # noqa: E711
-                    AccessList.expiration_date >= today,
+                    AccessList.expiration_date >= now,
                 )
             )
 
@@ -407,7 +571,9 @@ class WhitelistService:
             transformer=lambda items: [
                 WhitelistResponse(
                     id=item.id,
+                    company_id=item.company_id,
                     location_id=item.location_id,
+                    external_people_id=getattr(item, "external_people_id", None),
                     id_number=item.id_number,
                     full_name=item.name,
                     reason=item.reason,
@@ -422,15 +588,25 @@ class WhitelistService:
     async def revoke_person(
         self,
         user_id: int,
-        location_id: int,
+        location_id: Optional[int],
+        company_id: Optional[int],
         id_number: str,
     ) -> None:
         """Revoke whitelist entry."""
-        await self.location_service.check_user_permission_on_location(user_id, location_id)
+        company_id = await self._get_company_id(
+            user_id=user_id,
+            company_id=company_id,
+        )
+        await self._validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
+            location_id=location_id,
+        )
 
         whitelist_type = await self._get_whitelist_type(created_by=user_id)
 
         existing = await self._get_existing_whitelist_entry(
+            company_id=company_id,
             location_id=location_id,
             type_access_list_id=whitelist_type.id,
             id_number=id_number,

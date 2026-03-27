@@ -7,17 +7,19 @@ from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlmodel import select, desc
-
+from sqlmodel import select, desc, or_
 
 from src.services.azure_service import AzureService
 from src.services.user_service import UserService
 from src.services.location_service import LocationService
 
 from src.models import (
+    AccessList,
     AccessLog,
     AccessLogImage,
+    CompanyLocationAccess,
     ExternalPeople,
+    TypeAccessList,
 )
 
 from src.core.enums import AccessLogImageType
@@ -45,6 +47,221 @@ class AccessLogService:
         self.azure_service = azure_service
         self.user_service = user_service
         self.location_service = location_service
+
+    async def _get_blacklist_type_id(self) -> Optional[int]:
+        stmt = select(TypeAccessList).where(TypeAccessList.name == "blacklist")
+        result = await self.session.execute(stmt)
+        type_access = result.scalars().first()
+        return type_access.id if type_access else None
+
+    async def _get_whitelist_type_id(self) -> Optional[int]:
+        stmt = select(TypeAccessList).where(TypeAccessList.name == "whitelist")
+        result = await self.session.execute(stmt)
+        type_access = result.scalars().first()
+        return type_access.id if type_access else None
+
+    async def _get_company_id_by_location(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> int:
+        user = await self.user_service.get_user_by_id(user_id)
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        company_id = await self.location_service.company_service.get_company_id_by_user_id(user_id)
+        if not company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no company assigned.",
+            )
+
+        stmt = select(CompanyLocationAccess).where(
+            CompanyLocationAccess.company_id == company_id,
+            CompanyLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        company_location_access = result.scalars().first()
+
+        if not company_location_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no access to this location",
+            )
+
+        return company_id
+
+    async def _get_external_people_by_id_number(
+        self,
+        id_number: str,
+    ) -> Optional[ExternalPeople]:
+        stmt = select(ExternalPeople).where(
+            ExternalPeople.id_number == id_number,
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def _get_blacklist_entry(
+        self,
+        company_id: int,
+        location_id: int,
+        id_number: str,
+    ) -> Optional[AccessList]:
+        blacklist_type_id = await self._get_blacklist_type_id()
+        if not blacklist_type_id:
+            return None
+
+        stmt = (
+            select(AccessList)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.type_access_list_id == blacklist_type_id,
+                AccessList.location_id == location_id,
+                ExternalPeople.id_number == id_number,
+            )
+        )
+        result = await self.session.execute(stmt)
+        entry = result.scalars().first()
+        if entry:
+            return entry
+
+        stmt = (
+            select(AccessList)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.company_id == company_id,
+                AccessList.type_access_list_id == blacklist_type_id,
+                AccessList.location_id == None,  # pylint: disable=singleton-comparison
+                ExternalPeople.id_number == id_number,
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def _get_active_whitelist_entry(
+        self,
+        company_id: int,
+        location_id: int,
+        id_number: str,
+    ) -> Optional[AccessList]:
+        whitelist_type_id = await self._get_whitelist_type_id()
+        if not whitelist_type_id:
+            return None
+
+        now = datetime.now()
+
+        stmt = (
+            select(AccessList)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.type_access_list_id == whitelist_type_id,
+                AccessList.location_id == location_id,
+                ExternalPeople.id_number == id_number,
+            )
+            .where(
+                or_(
+                    AccessList.expiration_date == None,  # pylint: disable=singleton-comparison
+                    AccessList.expiration_date >= now,
+                )
+            )
+        )
+        result = await self.session.execute(stmt)
+        entry = result.scalars().first()
+        if entry:
+            return entry
+
+        stmt = (
+            select(AccessList)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.company_id == company_id,
+                AccessList.type_access_list_id == whitelist_type_id,
+                AccessList.location_id == None,  # pylint: disable=singleton-comparison
+                ExternalPeople.id_number == id_number,
+            )
+            .where(
+                or_(
+                    AccessList.expiration_date == None,  # pylint: disable=singleton-comparison
+                    AccessList.expiration_date >= now,
+                )
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def check_access_list_status(
+        self,
+        user_id: int,
+        location_id: int,
+        id_number: str,
+    ) -> dict:
+        """Check access list status before creating an access log."""
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        id_number = (id_number or "").strip()
+        company_id = await self._get_company_id_by_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+        external_people = await self._get_external_people_by_id_number(id_number)
+
+        blacklist_entry = await self._get_blacklist_entry(
+            company_id=company_id,
+            location_id=location_id,
+            id_number=id_number,
+        )
+        if blacklist_entry:
+            return {
+                "external_people_id": blacklist_entry.external_people_id,
+                "id_number": id_number,
+                "full_name": external_people.name if external_people else blacklist_entry.name,
+                "status": "BLACKLIST",
+                "message": "Access denied. Blacklist.",
+                "reason": blacklist_entry.reason or None,
+            }
+
+        whitelist_entry = await self._get_active_whitelist_entry(
+            company_id=company_id,
+            location_id=location_id,
+            id_number=id_number,
+        )
+        if whitelist_entry:
+            return {
+                "external_people_id": whitelist_entry.external_people_id,
+                "id_number": id_number,
+                "full_name": external_people.name if external_people else whitelist_entry.name,
+                "status": "WHITELIST",
+                "message": "Access allowed. Whitelist.",
+                "reason": whitelist_entry.reason or None,
+            }
+
+        return {
+            "external_people_id": external_people.id if external_people else None,
+            "id_number": id_number,
+            "full_name": external_people.name if external_people else None,
+            "status": "NONE",
+            "message": "Not found in access lists.",
+            "reason": None,
+        }
 
     async def get_active_entries(self, location_id: int, user_id: int) -> List[AccessLogResponse]:
         """
@@ -106,6 +323,41 @@ class AccessLogService:
         Only JANITOR role should call this.
         """
 
+        await self.location_service.check_user_permission_on_location(
+            user_id=created_by,
+            location_id=payload.location_id,
+        )
+
+        result = await self.session.execute(
+            select(ExternalPeople).where(
+                ExternalPeople.id == payload.external_people_id)
+        )
+        external = result.scalars().first()
+        if not external:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="External people not found",
+            )
+
+        access_list_status = await self.check_access_list_status(
+            user_id=created_by,
+            location_id=payload.location_id,
+            id_number=external.id_number,
+        )
+
+        if access_list_status["status"] == "BLACKLIST":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=access_list_status["message"],
+            )
+
+        comment = (payload.comment or "").strip()
+        if not comment and access_list_status["status"] == "WHITELIST":
+            comment = (access_list_status["reason"] or "Whitelist").strip()
+
+        if comment and len(comment) > 100:
+            comment = comment[:100]
+
         if payload.created_at and payload.created_at.tzinfo:
             created_at = payload.created_at.replace(tzinfo=None)
         else:
@@ -118,7 +370,7 @@ class AccessLogService:
             type_document=payload.type_document,
             vehicle_plate=payload.vehicle_plate,
             office=payload.office,
-            comment=payload.comment,
+            comment=comment or None,
             custom_form_responses=payload.custom_form_responses,
             created_at=created_at,
         )
@@ -211,10 +463,6 @@ class AccessLogService:
         access_log = result.scalar_one()
 
         return self._convert_to_response(access_log)
-
-    # =========================================================================
-    # DASHBOARD - Admin Exit Methods
-    # =========================================================================
 
     async def register_exit_admin(
         self,
@@ -321,10 +569,6 @@ class AccessLogService:
         await self.session.commit()
 
         return EmptyResponse()
-
-    # =========================================================================
-    # DASHBOARD - Admin Methods (Paginated)
-    # =========================================================================
 
     async def get_logs_paginated(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,

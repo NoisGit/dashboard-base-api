@@ -20,7 +20,7 @@ Matches the `access_list` table in the ERD:
 - created_at
 """
 
-from datetime import datetime, date
+from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
 from sqlmodel import SQLModel, Field, Relationship
@@ -33,12 +33,14 @@ if TYPE_CHECKING:
 
 
 class AccessList(SQLModel, table=True):
+    """AccessList database model for the Sentinel Enterprise API."""
     __tablename__ = "access_list"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
     # FKs
-    location_id: int = Field(foreign_key="location.id")
+    company_id: int = Field(foreign_key="company.id")
+    location_id: Optional[int] = Field(default=None, foreign_key="location.id")
     external_people_id: int = Field(foreign_key="external_people.id")
     type_access_list_id: int = Field(foreign_key="type_access_list.id")
 
@@ -54,7 +56,7 @@ class AccessList(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
-    location: "Location" = Relationship(back_populates="access_lists")
+    location: Optional["Location"] = Relationship(back_populates="access_lists")
     external_people: "ExternalPeople" = Relationship(
         back_populates="access_lists",
     )

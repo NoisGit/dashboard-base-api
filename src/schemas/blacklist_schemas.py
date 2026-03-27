@@ -18,7 +18,9 @@ class BlacklistCreateRequest(BaseModel):
 class BlacklistResponse(BaseResponse):
     """Schema for blacklist response."""
     id: int
-    location_id: int
+    company_id: int
+    location_id: Optional[int] = None
+    external_people_id: Optional[int] = None
     id_number: str
     full_name: str
     reason: str

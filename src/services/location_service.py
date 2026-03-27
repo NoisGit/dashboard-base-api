@@ -430,7 +430,6 @@ class LocationService:
             address=payload.address,
             country=payload.country,
             logo=payload.logo,
-            company_id=None,
             is_active=True,
             created_by=user_id,
             created_at=datetime.now(),
@@ -1053,14 +1052,18 @@ class LocationService:
                 )
             else:
                 stmt = (
-                    stmt.join(UserLocationAccess,
-                              UserLocationAccess.user_id == User.id)
+                    stmt.join(
+                        UserLocationAccess,
+                        UserLocationAccess.user_id == User.id,
+                    )
                     .where(UserLocationAccess.location_id == location_id)
                 )
         else:
             stmt = (
-                stmt.join(UserLocationAccess,
-                          UserLocationAccess.user_id == User.id)
+                stmt.join(
+                    UserLocationAccess,
+                    UserLocationAccess.user_id == User.id,
+                )
                 .where(UserLocationAccess.location_id == location_id)
             )
 

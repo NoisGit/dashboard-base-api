@@ -14,6 +14,7 @@ from sqlmodel import desc, or_, select
 
 from src.models import (
     AccessList,
+    CompanyLocationAccess,
     ExternalPeople,
     TypeAccessList,
 )
@@ -69,19 +70,130 @@ class BlacklistService:
         await self.session.refresh(type_access)
         return type_access
 
+    async def _get_whitelist_type_id(self) -> Optional[int]:
+        stmt = select(TypeAccessList).where(TypeAccessList.name == "whitelist")
+        result = await self.session.execute(stmt)
+        type_access = result.scalars().first()
+        return type_access.id if type_access else None
+
+    async def _ensure_not_whitelisted(
+        self,
+        company_id: int,
+        location_id: Optional[int],
+        id_number: str,
+    ) -> None:
+        whitelist_type_id = await self._get_whitelist_type_id()
+        if not whitelist_type_id:
+            return
+
+        stmt = (
+            select(AccessList.id)
+            .join(
+                ExternalPeople,
+                ExternalPeople.id == AccessList.external_people_id,
+            )
+            .where(
+                AccessList.company_id == company_id,
+                AccessList.type_access_list_id == whitelist_type_id,
+                ExternalPeople.id_number == id_number,
+            )
+        )
+
+        if location_id is not None:
+            stmt = stmt.where(
+                or_(
+                    AccessList.location_id == location_id,
+                    AccessList.location_id == None,  # noqa: E711
+                )
+            )
+
+        result = await self.session.execute(stmt)
+        row = result.scalars().first()
+        if row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La persona ya está en lista blanca. Elimine el registro antes de crear lista negra.",
+            )
+
     async def _get_external_by_id_number(
         self,
         id_number: str,
     ) -> Optional[ExternalPeople]:
         """Get external people by id_number."""
         stmt = select(ExternalPeople).where(
-            ExternalPeople.id_number == id_number)
+            ExternalPeople.id_number == id_number
+        )
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
+    async def _get_company_id(
+        self,
+        user_id: int,
+        company_id: Optional[int],
+    ) -> int:
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not getattr(user, "is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role == UserRole.SUPERADMIN:
+            if not company_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="company_id is required.",
+                )
+            return company_id
+
+        my_company_id = await self.location_service.company_service.get_company_id_by_user_id(
+            user_id
+        )
+        if not my_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no company assigned.",
+            )
+
+        if company_id is not None and company_id != my_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed for this company.",
+            )
+
+        return my_company_id
+
+    async def _validate_location_for_company(
+        self,
+        user_id: int,
+        company_id: int,
+        location_id: Optional[int],
+    ) -> None:
+        if location_id is None:
+            return
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        stmt = select(CompanyLocationAccess).where(
+            CompanyLocationAccess.company_id == company_id,
+            CompanyLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalars().first()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="company_id does not match location_id.",
+            )
+
     async def _get_existing_blacklist_entry(
         self,
-        location_id: int,
+        company_id: int,
+        location_id: Optional[int],
         type_access_list_id: int,
         id_number: str,
     ) -> Optional[AccessList]:
@@ -93,11 +205,17 @@ class BlacklistService:
                 ExternalPeople.id == AccessList.external_people_id,
             )
             .where(
-                AccessList.location_id == location_id,
+                AccessList.company_id == company_id,
                 AccessList.type_access_list_id == type_access_list_id,
                 ExternalPeople.id_number == id_number,
             )
         )
+
+        if location_id is None:
+            stmt = stmt.where(AccessList.location_id == None)  # noqa: E711
+        else:
+            stmt = stmt.where(AccessList.location_id == location_id)
+
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
@@ -208,12 +326,18 @@ class BlacklistService:
     async def block_person(
         self,
         user_id: int,
-        location_id: int,
+        location_id: Optional[int],
+        company_id: Optional[int],
         payload: BlacklistCreateRequest,
     ) -> BlacklistResponse:
         """Create or update blacklist entry."""
-        await self.location_service.check_user_permission_on_location(
+        company_id = await self._get_company_id(
             user_id=user_id,
+            company_id=company_id,
+        )
+        await self._validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
             location_id=location_id,
         )
 
@@ -239,9 +363,16 @@ class BlacklistService:
                 detail="Reason is required.",
             )
 
+        await self._ensure_not_whitelisted(
+            company_id=company_id,
+            location_id=location_id,
+            id_number=payload.id_number,
+        )
+
         blacklist_type = await self._get_blacklist_type(created_by=user_id)
 
         existing = await self._get_existing_blacklist_entry(
+            company_id=company_id,
             location_id=location_id,
             type_access_list_id=blacklist_type.id,
             id_number=id_number,
@@ -273,7 +404,9 @@ class BlacklistService:
 
             return BlacklistResponse(
                 id=existing.id,
+                company_id=existing.company_id,
                 location_id=existing.location_id,
+                external_people_id=external.id,
                 id_number=external.id_number,
                 full_name=existing.name,
                 reason=existing.reason or "",
@@ -281,6 +414,7 @@ class BlacklistService:
             )
 
         entry = AccessList(
+            company_id=company_id,
             location_id=location_id,
             external_people_id=external.id,
             type_access_list_id=blacklist_type.id,
@@ -298,7 +432,9 @@ class BlacklistService:
 
         return BlacklistResponse(
             id=entry.id,
+            company_id=entry.company_id,
             location_id=entry.location_id,
+            external_people_id=external.id,
             id_number=external.id_number,
             full_name=entry.name,
             reason=entry.reason or "",
@@ -334,13 +470,19 @@ class BlacklistService:
     async def list_blacklist(
         self,
         user_id: int,
-        location_id: int,
+        location_id: Optional[int],
+        company_id: Optional[int],
         params: Params,
         search: Optional[str] = None,
     ) -> Page[BlacklistResponse]:
         """List blacklist by location."""
-        await self.location_service.check_user_permission_on_location(
+        company_id = await self._get_company_id(
             user_id=user_id,
+            company_id=company_id,
+        )
+        await self._validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
             location_id=location_id,
         )
 
@@ -349,22 +491,34 @@ class BlacklistService:
         stmt = (
             select(
                 AccessList.id,
+                AccessList.company_id,
                 AccessList.location_id,
                 AccessList.name,
                 AccessList.reason,
                 AccessList.created_at,
                 ExternalPeople.id_number,
+                ExternalPeople.id.label("external_people_id"),
             )
             .join(
                 ExternalPeople,
                 ExternalPeople.id == AccessList.external_people_id,
             )
             .where(
-                AccessList.location_id == location_id,
+                AccessList.company_id == company_id,
                 AccessList.type_access_list_id == blacklist_type.id,
             )
             .order_by(desc(AccessList.created_at))
         )
+
+        if location_id is None:
+            stmt = stmt.where(AccessList.location_id == None)  # noqa: E711
+        else:
+            stmt = stmt.where(
+                or_(
+                    AccessList.location_id == location_id,
+                    AccessList.location_id == None,  # noqa: E711
+                )
+            )
 
         if search:
             like_pattern = f"%{search}%"
@@ -383,7 +537,9 @@ class BlacklistService:
             transformer=lambda items: [
                 BlacklistResponse(
                     id=item.id,
+                    company_id=item.company_id,
                     location_id=item.location_id,
+                    external_people_id=getattr(item, "external_people_id", None),
                     id_number=item.id_number,
                     full_name=item.name,
                     reason=item.reason or "",
@@ -396,12 +552,18 @@ class BlacklistService:
     async def unblock_person(
         self,
         user_id: int,
-        location_id: int,
+        location_id: Optional[int],
+        company_id: Optional[int],
         id_number: str,
     ) -> None:
         """Remove blacklist entry."""
-        await self.location_service.check_user_permission_on_location(
+        company_id = await self._get_company_id(
             user_id=user_id,
+            company_id=company_id,
+        )
+        await self._validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
             location_id=location_id,
         )
 
@@ -409,6 +571,7 @@ class BlacklistService:
         normalized_id_number = self._normalize_id_number(id_number)
 
         existing = await self._get_existing_blacklist_entry(
+            company_id=company_id,
             location_id=location_id,
             type_access_list_id=blacklist_type.id,
             id_number=normalized_id_number,

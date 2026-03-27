@@ -20,7 +20,9 @@ class WhitelistCreateRequest(BaseModel):
 class WhitelistResponse(BaseResponse):
     """Schema for whitelist response."""
     id: int
-    location_id: int
+    company_id: int
+    location_id: Optional[int] = None
+    external_people_id: Optional[int] = None
     id_number: str
     full_name: str
     reason: Optional[str] = None

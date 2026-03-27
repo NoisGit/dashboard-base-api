@@ -6,6 +6,8 @@ API requests and responses across the application.
 """
 
 from .access_log_schemas import (
+    AccessLogCheckRequest,
+    AccessLogCheckResponse,
     AccessLogCreateRequest,
     AccessLogExitRequest,
     AccessLogBulkExitRequest,
@@ -219,6 +221,8 @@ __all__ = [
     "StatsDataResponse",
     "DetailAdminsResponse",
     # Access log schemas
+    "AccessLogCheckRequest",
+    "AccessLogCheckResponse",
     "AccessLogCreateRequest",
     "AccessLogExitRequest",
     "AccessLogBulkExitRequest",

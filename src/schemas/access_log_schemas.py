@@ -6,10 +6,6 @@ from typing import Optional, List, Any
 from pydantic import BaseModel, Field
 
 
-# =============================================================================
-# Request Schemas
-# =============================================================================
-
 class AccessLogCreateRequest(BaseModel):
     """Request schema for creating an access log entry."""
     location_id: int
@@ -29,6 +25,11 @@ class AccessLogCreateRequest(BaseModel):
     created_at: Optional[datetime] = None
 
 
+class AccessLogCheckRequest(BaseModel):
+    """Request schema for checking access list status."""
+    id_number: str
+
+
 class AccessLogExitRequest(BaseModel):
     """Request schema for registering an exit."""
     exit_comment: Optional[str] = Field(default=None, max_length=100)
@@ -42,11 +43,6 @@ class AccessLogExitRequest(BaseModel):
 class AccessLogBulkExitRequest(BaseModel):
     """Request schema for registering exits in bulk."""
     access_log_ids: List[int] = Field(..., min_length=1)
-
-
-# =============================================================================
-# Response Schemas
-# =============================================================================
 
 
 class ExternalPeopleResponse(BaseModel):
@@ -63,6 +59,16 @@ class LocationResponse(BaseModel):
     id: int
     name: str
     address: Optional[str] = None
+
+
+class AccessLogCheckResponse(BaseModel):
+    """Response schema for checking access list status."""
+    external_people_id: Optional[int] = None
+    id_number: str
+    full_name: Optional[str] = None
+    status: str
+    message: str
+    reason: Optional[str] = None
 
 
 class AccessLogResponse(BaseModel):
