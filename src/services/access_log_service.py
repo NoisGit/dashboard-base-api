@@ -122,7 +122,6 @@ class AccessLogService:
                 ExternalPeople.id == AccessList.external_people_id,
             )
             .where(
-                AccessList.company_id == company_id,
                 AccessList.type_access_list_id == blacklist_type_id,
                 AccessList.location_id == location_id,
                 ExternalPeople.id_number == id_number,
@@ -168,7 +167,6 @@ class AccessLogService:
                 ExternalPeople.id == AccessList.external_people_id,
             )
             .where(
-                AccessList.company_id == company_id,
                 AccessList.type_access_list_id == whitelist_type_id,
                 AccessList.location_id == location_id,
                 ExternalPeople.id_number == id_number,
