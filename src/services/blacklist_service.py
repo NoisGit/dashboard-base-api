@@ -2,15 +2,16 @@
 
 # pylint: disable=no-member, singleton-comparison
 
+import csv
+import io
 from typing import List, Optional, cast
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import desc, or_, select
 
-from src.core.enums import UserRole
 from src.models import (
     AccessList,
     CompanyLocationAccess,
@@ -23,6 +24,12 @@ from src.schemas import (
 )
 from src.services.user_service import UserService
 from src.services.location_service import LocationService
+
+BLACKLIST_REQUIRED_CSV_HEADERS = {
+    "rut",
+    "nombre",
+    "motivo",
+}
 
 
 class BlacklistService:
@@ -37,6 +44,12 @@ class BlacklistService:
         self.session = session
         self.user_service = user_service
         self.location_service = location_service
+
+    def _normalize_id_number(
+        self,
+        id_number: str,
+    ) -> str:
+        return (id_number or "").strip().replace(".", "")
 
     async def _get_blacklist_type(self, created_by: int) -> TypeAccessList:
         """Get or create blacklist type"""
@@ -206,6 +219,110 @@ class BlacklistService:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
+    async def _read_blacklist_csv(
+        self,
+        file: UploadFile,
+    ) -> List[dict]:
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file is required.",
+            )
+
+        if not file.filename.lower().endswith(".csv"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only .csv files are allowed.",
+            )
+
+        content = await file.read()
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file is empty.",
+            )
+
+        try:
+            decoded = content.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file must be UTF-8 encoded.",
+            ) from exc
+
+        reader = csv.DictReader(io.StringIO(decoded), delimiter=';')
+
+        if not reader.fieldnames:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV headers are required.",
+            )
+
+        headers = {(header or "").strip().lower() for header in reader.fieldnames}
+        missing_headers = BLACKLIST_REQUIRED_CSV_HEADERS - headers
+
+        if missing_headers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing required CSV headers: {', '.join(sorted(missing_headers))}.",
+            )
+
+        rows = []
+        seen_ids = set()
+
+        for row_number, raw_row in enumerate(reader, start=2):
+            row = {
+                (key or "").strip().lower(): (value or "").strip()
+                for key, value in raw_row.items()
+            }
+
+            if not any(row.values()):
+                continue
+
+            if not row.get("rut"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"rut is required at row {row_number}.",
+                )
+
+            if not row.get("nombre"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"nombre is required at row {row_number}.",
+                )
+
+            if not row.get("motivo"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"motivo is required at row {row_number}.",
+                )
+
+            id_number = self._normalize_id_number(row["rut"])
+
+            if not id_number:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"rut is invalid at row {row_number}.",
+                )
+
+            if id_number in seen_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Duplicated rut in CSV at row {row_number}.",
+                )
+
+            seen_ids.add(id_number)
+            row["rut"] = id_number
+            rows.append(row)
+
+        if not rows:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file does not contain valid rows.",
+            )
+
+        return rows
+
     async def block_person(
         self,
         user_id: int,
@@ -224,7 +341,22 @@ class BlacklistService:
             location_id=location_id,
         )
 
+        id_number = self._normalize_id_number(payload.id_number)
+        full_name = (payload.full_name or "").strip()
         reason = (payload.reason or "").strip()
+
+        if not id_number:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="id_number is required.",
+            )
+
+        if not full_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="full_name is required.",
+            )
+
         if not reason:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -243,29 +375,29 @@ class BlacklistService:
             company_id=company_id,
             location_id=location_id,
             type_access_list_id=blacklist_type.id,
-            id_number=payload.id_number,
+            id_number=id_number,
         )
 
-        external = await self._get_external_by_id_number(payload.id_number)
+        external = await self._get_external_by_id_number(id_number)
         if not external:
             external = ExternalPeople(
-                name=payload.full_name,
-                id_number=payload.id_number,
+                name=full_name,
+                id_number=id_number,
                 created_by=user_id,
             )
             self.session.add(external)
             await self.session.commit()
             await self.session.refresh(external)
         else:
-            if payload.full_name and external.name != payload.full_name:
-                external.name = payload.full_name
+            if full_name and external.name != full_name:
+                external.name = full_name
                 self.session.add(external)
                 await self.session.commit()
                 await self.session.refresh(external)
 
         if existing:
             existing.reason = reason
-            existing.name = payload.full_name
+            existing.name = full_name
             self.session.add(existing)
             await self.session.commit()
             await self.session.refresh(existing)
@@ -286,7 +418,7 @@ class BlacklistService:
             location_id=location_id,
             external_people_id=external.id,
             type_access_list_id=blacklist_type.id,
-            name=payload.full_name,
+            name=full_name,
             reason=reason,
             vehicle_plate=None,
             expiration_date=None,
@@ -308,6 +440,32 @@ class BlacklistService:
             reason=entry.reason or "",
             created_at=entry.created_at,
         )
+
+    async def bulk_import_blacklist(
+        self,
+        user_id: int,
+        location_id: int,
+        file: UploadFile,
+    ) -> None:
+        """Create or update blacklist entry."""
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        rows = await self._read_blacklist_csv(file)
+
+        for row in rows:
+            payload = BlacklistCreateRequest(
+                id_number=row["rut"],
+                full_name=row["nombre"],
+                reason=row["motivo"],
+            )
+            await self.block_person(
+                user_id=user_id,
+                location_id=location_id,
+                payload=payload,
+            )
 
     async def list_blacklist(
         self,
@@ -410,12 +568,13 @@ class BlacklistService:
         )
 
         blacklist_type = await self._get_blacklist_type(created_by=user_id)
+        normalized_id_number = self._normalize_id_number(id_number)
 
         existing = await self._get_existing_blacklist_entry(
             company_id=company_id,
             location_id=location_id,
             type_access_list_id=blacklist_type.id,
-            id_number=id_number,
+            id_number=normalized_id_number,
         )
 
         if not existing:

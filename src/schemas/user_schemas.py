@@ -39,6 +39,12 @@ class UserLoginRequest(BaseModel):
     password: str
 
 
+class JanitorLoginRequest(BaseModel):
+    """Schema for janitor login"""
+    username: str
+    password: str
+
+
 class RefreshTokenRequest(BaseModel):
     """Schema for refresh token request"""
     refresh_token: str

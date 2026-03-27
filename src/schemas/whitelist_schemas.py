@@ -13,6 +13,7 @@ class WhitelistCreateRequest(BaseModel):
     id_number: str
     full_name: str
     reason: Optional[str] = None
+    vehicle_plate: Optional[str] = None
     expiration_date: Optional[datetime] = None
 
 
@@ -25,6 +26,7 @@ class WhitelistResponse(BaseResponse):
     id_number: str
     full_name: str
     reason: Optional[str] = None
+    vehicle_plate: Optional[str] = None
     expiration_date: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
