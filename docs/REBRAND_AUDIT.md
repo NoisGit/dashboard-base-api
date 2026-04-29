@@ -1,4 +1,4 @@
-# Dashboard Base API Rebrand Audit
+# Dashboard Base API Identity Audit
 
 ## Goal
 
@@ -7,14 +7,27 @@ Transform this repository into an original backend API that works as the backend
 The product identity direction is:
 
 ```text
-Product name: Nois Admin
-API name: Nois Admin API
+Product name: Coredeck
+Frontend name: Coredeck Dashboard
+API name: Coredeck API
 Demo email: admin@nois.dev
+Demo password: 1234
 Frontend repository: dashboard-base
 Backend repository: dashboard-base-api
 ```
 
-This API must move away from previous product-specific identity and become a generic admin/SaaS backend prepared for authentication, users, workspaces, projects, support tickets, dashboard metrics, audit logs, and future modules.
+This API must become a generic admin/SaaS backend prepared for authentication, users, workspaces, projects, support tickets, dashboard metrics, audit logs, and future modules.
+
+## Hard Rules
+
+```text
+No previous brand references.
+No Nexa references.
+No ECME references.
+No old product logos.
+No old product colors as identity.
+No secrets committed to the repository.
+```
 
 ## Current Status
 
@@ -26,75 +39,36 @@ NoisGit/dashboard-base-api
 
 The API already has a FastAPI structure with routers, services, models, auth utilities, database configuration, pagination, migrations and security-related dependencies.
 
-However, it still contains old identity and business-domain references.
+The remaining work is to rename old business-domain modules into Coredeck's generic domain and connect the frontend safely.
 
 ## High Priority Findings
 
-### 1. README still references Sentinel Enterprise API
+### 1. README must use Coredeck API only
 
-The current README uses:
-
-```text
-Sentinel Enterprise API
-```
-
-It also describes the API as a backend for access control, guards and administrators.
-
-Required change:
+The README must stay aligned with:
 
 ```text
-Replace README with Nois Admin API documentation.
+Coredeck API
+Coredeck Dashboard
+admin@nois.dev / 1234
 ```
 
-Suggested sections:
+### 2. main.py metadata must use Coredeck API only
 
-```text
-- Project overview
-- Tech stack
-- Local setup
-- Environment variables
-- API architecture
-- Auth flow
-- Main modules
-- Frontend integration with dashboard-base
-- Roadmap
-```
-
-### 2. main.py still references old product identity
-
-Current app metadata includes old names and descriptions:
-
-```text
-Sentinel Enterprise API
-Porteria Enterprise
-```
-
-Required new direction:
+Required metadata:
 
 ```python
 app = FastAPI(
-    title="Nois Admin API",
-    description="Backend API for Nois Admin, a portfolio-ready admin platform.",
+    title="Coredeck API",
+    description="Backend API for Coredeck, a portfolio-ready admin platform.",
 )
 ```
 
-MCP naming should also be updated or disabled until needed.
+MCP naming must also use Coredeck if MCP stays enabled.
 
-### 3. Router set contains business-specific modules
+### 3. Router set contains old business-specific modules
 
-Current router registration includes modules such as:
-
-```text
-access_logs
-emergency_contacts
-locations
-service_contacts
-whitelists
-blacklists
-location_logbook
-```
-
-These may still be useful technically, but the domain should be reviewed.
+Current router registration includes modules that must be reviewed and renamed gradually.
 
 Recommended generic module direction:
 
@@ -109,22 +83,6 @@ location_logbook -> workspace_logbook or activity_notes
 ```
 
 ### 4. Model layer contains old domain names
-
-Current model exports include:
-
-```text
-Location
-UserLocationAccess
-CompanyLocationAccess
-EmergencyContact
-TypeAccessList
-AccessList
-ExternalPeople
-AccessLog
-ServiceContact
-LocationLogbook
-PoliceAccessPermit
-```
 
 Recommended target naming:
 
@@ -195,18 +153,17 @@ Required backend security work:
 ## Suggested Work Order
 
 ```text
-1. Replace README.
-2. Update FastAPI metadata in main.py.
-3. Define final product/domain names.
-4. Decide which old modules stay, which are renamed and which are removed.
-5. Create auth contract aligned with frontend.
-6. Create users contract aligned with frontend.
-7. Rename Location domain to Workspace if kept.
-8. Add Projects module if missing.
-9. Align Support Tickets with frontend.
-10. Add dashboard metrics endpoint.
-11. Add deployment configuration.
-12. Connect frontend to API.
+1. Create develop branch.
+2. Confirm identity cleanup.
+3. Harden CORS and settings.
+4. Create auth contract aligned with frontend.
+5. Create users contract aligned with frontend.
+6. Rename Location domain to Workspace if kept.
+7. Add Projects module if missing.
+8. Align Support Tickets with frontend.
+9. Add dashboard metrics endpoint.
+10. Add deployment configuration.
+11. Connect frontend to API.
 ```
 
 ## Migration Warning
@@ -227,8 +184,8 @@ Recommended approach:
 Do not deploy this API publicly until:
 
 ```text
-- README no longer references old product names.
-- main.py metadata is updated.
+- README uses Coredeck only.
+- main.py metadata uses Coredeck only.
 - CORS is restricted.
 - Auth flow is verified.
 - Environment variables are documented.
