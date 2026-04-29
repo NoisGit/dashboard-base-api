@@ -1,86 +1,159 @@
-# Sentinel Enterprise API
+# Nois Admin API
 
-**Sentinel Enterprise API** is a backend service built with [FastAPI](https://fastapi.tiangolo.com/) and [SQLModel](https://sqlmodel.tiangolo.com/) for managing access control. It powers mobile and dashboard applications used by **guards**, and **administrators**.
+Nois Admin API is the backend service for the Nois Admin dashboard.
+
+It is built with FastAPI, SQLModel, SQLAlchemy async, Pydantic, JWT authentication and role-based access patterns.
+
+## Project Status
+
+This API is in active cleanup and rebuild mode.
+
+Current goals:
+
+- Remove all previous product identity.
+- Keep the backend aligned with `dashboard-base`.
+- Provide secure authentication for the frontend.
+- Expose typed and predictable API modules.
+- Prepare the project for portfolio usage and future deployment.
+
+## Product Identity
+
+```text
+Product: Nois Admin
+API: Nois Admin API
+Demo email: admin@nois.dev
+Frontend repository: dashboard-base
+Backend repository: dashboard-base-api
+```
+
+## Planned Modules
+
+```text
+- Auth
+- Users
+- Organizations
+- Workspaces
+- Projects
+- Support Tickets
+- Dashboard Metrics
+- Audit Logs
+- Settings
+```
 
 ## Project Structure
 
-```plaintext
-sentinel-enterprise-api
+```text
+dashboard-base-api
 ├── src
-│   ├── main.py          # Entry point of the FastAPI application
-│   ├── database.py      # Database connection handling
-│   ├── auth             # Directory for authentication and authorization
-│   │   └── __init__.py  # Authentication utilities and JWT handling
-│   ├── models           # Directory for SQLModel models
-│   │   └── __init__.py  # Model definitions
-│   ├── routers          # Directory for API routers
-│   │   └── __init__.py  # API route definitions
-│   ├── schemas          # Directory for Pydantic schemas
-│   │   └── __init__.py  # Schema definitions
-│   └── services         # Business logic layer
-│       └── __init__.py  # Service definitions
-├── requirements.txt     # Project dependencies
-├── .env                 # Environment variables
-└── README.md            # Project documentation
+│   ├── main.py
+│   ├── api
+│   ├── auth
+│   ├── config
+│   ├── core
+│   ├── database
+│   ├── models
+│   ├── routers
+│   ├── schemas
+│   └── services
+├── requirements.txt
+└── README.md
 ```
 
-## Database Models
+## Local Setup
 
-For detailed model relationships, see the `/src/models/` directory.
+Create a virtual environment:
 
-## Setup Instructions
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone <repository-url>
-   cd sentinel-enterprise-api
-   ```
-
-2. **Create a virtual environment:**
-
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
-
-3. **Install dependencies:**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure the database:**
-   - Create a `.env` file in the root directory and add your database connection string:
-
-     ```plaintext
-     DATABASE_URL=mysql+asyncmy://<username>:<password>@<host>:<port>/<database>
-     ```
-
-5. **Run the application:**
-
-   ```bash
-   uvicorn src.main:app --reload --host 127.0.0.1 --port 8000 --log-level debug
-   ```
-
-## Usage
-
-- Access the API documentation at `http://127.0.0.1:8000/docs`.
-- Use the endpoints defined in the routers to interact with the application.
-
-## MCP Server
-
-Sentinel Enterprise API includes a **MCP (Model Context Protocol)** to connect with MCP client applications. To test the MCP server, you can use the following configuration in your MCP client, like vscode, cursor or any other MCP client using their respective MCP configuration file:
-
-```json
-{
-  "servers": {
-    "sentinel-enterprise-mcp": {
-      "url": "http://127.0.0.1:8000/mcp",
-      "headers": {
-        "Authorization": "Bearer <your-jwt-token>"
-      }
-    }
-  }
-}
+```bash
+python -m venv venv
 ```
+
+Activate it on Windows:
+
+```bash
+venv\Scripts\activate
+```
+
+Activate it on macOS/Linux:
+
+```bash
+source venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Create a `.env` file:
+
+```env
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/nois_admin
+JWT_SECRET_KEY=change-me
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+BACKEND_CORS_ORIGINS=http://localhost:5173
+```
+
+Run the API:
+
+```bash
+uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Open API docs:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+## Frontend Integration
+
+The frontend repository should consume this API from:
+
+```text
+http://localhost:8000/api/v1
+```
+
+Expected frontend environment variable:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+```
+
+## Planned API Contract
+
+```text
+POST /api/v1/auth/login
+POST /api/v1/auth/logout
+POST /api/v1/auth/refresh
+GET  /api/v1/auth/me
+GET  /api/v1/users
+GET  /api/v1/organizations
+GET  /api/v1/workspaces
+GET  /api/v1/projects
+GET  /api/v1/support-tickets
+GET  /api/v1/dashboard/metrics
+GET  /api/v1/audit-logs
+```
+
+## Security Roadmap
+
+- Password hashing with Argon2.
+- Access and refresh token flow.
+- Role-based route protection.
+- Environment-based CORS.
+- Safe error responses.
+- Audit logs for sensitive actions.
+- No secrets committed to the repository.
+
+## Repository Workflow
+
+```text
+feature branches → develop → main
+```
+
+## Author
+
+Developed by NoisGit.
