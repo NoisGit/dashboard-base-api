@@ -1,6 +1,6 @@
-# Nois Admin API
+# Coredeck API
 
-Nois Admin API is the backend service for the Nois Admin dashboard.
+Coredeck API is the backend service for Coredeck Dashboard.
 
 It is built with FastAPI, SQLModel, SQLAlchemy async, Pydantic, JWT authentication and role-based access patterns.
 
@@ -19,9 +19,11 @@ Current goals:
 ## Product Identity
 
 ```text
-Product: Nois Admin
-API: Nois Admin API
+Product: Coredeck
+Frontend: Coredeck Dashboard
+Backend: Coredeck API
 Demo email: admin@nois.dev
+Demo password: 1234
 Frontend repository: dashboard-base
 Backend repository: dashboard-base-api
 ```
@@ -85,15 +87,17 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Create a `.env` file:
+Create a `.env` file based on the future `.env.example` file.
 
-```env
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/nois_admin
-JWT_SECRET_KEY=change-me
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=7
-BACKEND_CORS_ORIGINS=http://localhost:5173
+Required environment variables:
+
+```text
+DATABASE_URL
+JWT_SECRET_KEY
+JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS
+BACKEND_CORS_ORIGINS
 ```
 
 Run the API:
@@ -118,8 +122,8 @@ http://localhost:8000/api/v1
 
 Expected frontend environment variable:
 
-```env
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+```text
+VITE_API_BASE_URL
 ```
 
 ## Planned API Contract
