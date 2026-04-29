@@ -1,8 +1,8 @@
 """
-Nois Admin API - Main FastAPI application module.
+Coredeck API - Main FastAPI application module.
 
-This module initializes and configures the FastAPI application for the Nois
-Admin platform.
+This module initializes and configures the FastAPI application for the Coredeck
+platform.
 """
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,8 +15,8 @@ from src.api.endpoints import root, health_check, protected_route
 
 # Create the FastAPI application
 app = FastAPI(
-    title="Nois Admin API",
-    description="Backend API for Nois Admin, a portfolio-ready admin platform.",
+    title="Coredeck API",
+    description="Backend API for Coredeck, a portfolio-ready admin platform.",
     version="0.0.5",
     lifespan=lifespan,
     swagger_ui_parameters={
@@ -44,7 +44,7 @@ app.get("/protected")(protected_route)
 # Create the MCP server
 mcp = FastApiMCP(
     app,
-    name="Nois Admin MCP",
+    name="Coredeck MCP",
     auth_config=AuthConfig(
         dependencies=[Depends(get_current_user)],
     )
