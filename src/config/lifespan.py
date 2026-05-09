@@ -7,7 +7,6 @@ including database connections and cleanup.
 import logging
 from contextlib import asynccontextmanager
 from src.database import connect_db, disconnect_db, test_connection
-from src.config.firebase import initialize_firebase
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +16,6 @@ async def lifespan(_):
     """Manages the application lifespan events for the FastAPI app."""
     try:
         logger.info("🚀 Starting up Coredeck API...")
-        initialize_firebase()
         await connect_db()
 
         if await test_connection():
