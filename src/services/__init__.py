@@ -25,6 +25,7 @@ from .document_service import DocumentService
 
 # Temporary import compatibility while large services finish migrating to StorageService.
 AzureService = StorageService
+_storage_service_module.AzureService = StorageService
 sys.modules[__name__ + ".azure_service"] = _storage_service_module
 
 __all__ = [
