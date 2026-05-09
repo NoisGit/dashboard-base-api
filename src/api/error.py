@@ -5,11 +5,16 @@ class InvalidContainerError(ValueError):
     """Thrown when an invalid container is specified."""
 
 
-class AzureServiceError(RuntimeError):
-    """Thrown for general errors when generating the URL."""
+class StorageServiceError(RuntimeError):
+    """Thrown for storage URL generation errors."""
+
+
+# Backward-compatible alias while legacy imports migrate to StorageServiceError.
+AzureServiceError = StorageServiceError
 
 
 __all__ = [
     "InvalidContainerError",
-    "AzureServiceError"
+    "StorageServiceError",
+    "AzureServiceError",
 ]

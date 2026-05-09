@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, status
 
 from src.auth import get_current_user
 from src.auth.utils import get_user_id_from_token
-from src.dependencies import get_auth_service
+from src.dependencies import get_auth_service, get_user_service
 from src.schemas import (
     UserLoginRequest,
+    UserMeResponse,
     OperatorLoginRequest,
     AuthTokenResponse,
     RefreshTokenRequest,
@@ -15,6 +16,7 @@ from src.schemas import (
     AuthResetPasswordRequest,
 )
 from src.services.auth_service import AuthService
+from src.services.user_service import UserService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -37,6 +39,15 @@ async def login_operator(
     """Operator login endpoint"""
     user_token = await service.login_operator(user_data)
     return user_token
+
+
+@router.get("/me", response_model=UserMeResponse)
+async def get_current_user_profile(
+    service: UserService = Depends(get_user_service),
+    user_id: int = Depends(get_user_id_from_token),
+) -> UserMeResponse:
+    """Return current user profile for dashboard-base."""
+    return await service.get_user_profile(user_id=user_id)
 
 
 @router.post("/refresh", response_model=AuthTokenResponse)
