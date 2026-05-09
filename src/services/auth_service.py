@@ -1,4 +1,4 @@
-"""Auth service module for Coredeck API."""
+"""Auth service module for Sentinel Enterprise API."""
 
 from datetime import datetime, timedelta
 from typing import Optional
@@ -18,7 +18,7 @@ from src.core.enums import UserRole
 from src.models import User
 from src.schemas import (
     UserLoginRequest,
-    AgentLoginRequest,
+    JanitorLoginRequest,
     RefreshTokenRequest,
     AuthTokenResponse,
     AccessTokenResponse,
@@ -141,8 +141,8 @@ class AuthService:
 
         return user_token_response
 
-    async def login_agent(self, user_data: AgentLoginRequest) -> AuthTokenResponse:
-        """Authenticate agent and return token pair"""
+    async def login_janitor(self, user_data: JanitorLoginRequest) -> AuthTokenResponse:
+        """Authenticate janitor and return token pair"""
         user = await self.get_user_by_username(user_data.username)
 
         if not user:
@@ -161,7 +161,7 @@ class AuthService:
                 detail="Invalid credentials"
             )
 
-        if user.role != UserRole.AGENT:
+        if user.role != UserRole.JANITOR:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Unauthorized access",

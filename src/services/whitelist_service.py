@@ -1,4 +1,4 @@
-"""Whitelist service module for the Coredeck API."""
+"""Whitelist service module for the Sentinel Enterprise API."""
 
 # pylint: disable=no-member, singleton-comparison
 

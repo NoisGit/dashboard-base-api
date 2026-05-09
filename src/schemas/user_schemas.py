@@ -1,4 +1,4 @@
-"""User-related Pydantic schemas for the Coredeck API."""
+"""User-related Pydantic schemas for the Sentinel Enterprise API."""
 
 from datetime import datetime
 from typing import Optional
@@ -39,8 +39,8 @@ class UserLoginRequest(BaseModel):
     password: str
 
 
-class AgentLoginRequest(BaseModel):
-    """Schema for agent login"""
+class JanitorLoginRequest(BaseModel):
+    """Schema for janitor login"""
     username: str
     password: str
 
@@ -70,8 +70,8 @@ class UserResponse(BaseResponse):
     created_at: Optional[datetime] = None
 
 
-class AgentResponse(BaseResponse):
-    """Schema for agent response (without sensitive data)"""
+class JanitorResponse(BaseResponse):
+    """Schema for janitor response (without sensitive data)"""
     id: int
     username: str
     full_name: str

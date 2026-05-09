@@ -1,5 +1,5 @@
 """
-TypeAccessList database model for the Coredeck API.
+TypeAccessList database model for the Sentinel Enterprise API.
 
 Represents the type/category of an access list entry (e.g. visitor,
 provider, delivery, etc.). Each AccessList row is associated with exactly

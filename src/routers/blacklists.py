@@ -1,4 +1,4 @@
-"""Blacklists router module for Coredeck API."""
+"""Blacklists router module for Sentinel Enterprise API."""
 
 from typing import Optional
 
@@ -33,6 +33,7 @@ async def list_blacklist(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         ),
@@ -63,6 +64,7 @@ async def block_person(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         ),
@@ -91,6 +93,7 @@ async def bulk_import_blacklist(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         ),
@@ -119,6 +122,7 @@ async def unblock_person(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         ),

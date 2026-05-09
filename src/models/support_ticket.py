@@ -1,5 +1,5 @@
 """
-Support ticket database model for the Coredeck API.
+Support ticket database model for the Sentinel Enterprise API.
 
 Represents a support request opened by a user, including:
 - Title and detailed description

@@ -1,5 +1,5 @@
 """
-Emergency contact database model for the Coredeck API.
+Emergency contact database model for the Sentinel Enterprise API.
 
 Represents an emergency contact associated with a specific location
 (e.g. building, site). Each contact stores a name and phone number

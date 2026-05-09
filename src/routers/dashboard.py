@@ -19,6 +19,7 @@ async def dashboard_stats(
     user_id=Depends(RoleChecker([
         UserRole.SUPERADMIN,
         UserRole.ADMIN,
+        UserRole.SUBADMIN,
         UserRole.CLIENT,
     ])),
 ) -> DashboardStatsResponse:

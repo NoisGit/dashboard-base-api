@@ -1,5 +1,5 @@
 """
-Custom Form database model for the Coredeck API.
+Custom Form database model for the Sentinel Enterprise API.
 
 Represents a dynamic form template attached to a location.
 Each location can have at most one custom form for access log entries.

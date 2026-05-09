@@ -1,5 +1,5 @@
 """
-Support response database model for the Coredeck API.
+Support response database model for the Sentinel Enterprise API.
 
 Represents an individual response to a support ticket, including:
 - The parent ticket (ticket_id)

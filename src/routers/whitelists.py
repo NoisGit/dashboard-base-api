@@ -1,4 +1,4 @@
-"""Whitelists router module for Coredeck API."""
+"""Whitelists router module for Sentinel Enterprise API."""
 
 from typing import Optional
 
@@ -34,6 +34,7 @@ async def list_whitelist(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         )
@@ -65,6 +66,7 @@ async def allow_person(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         )
@@ -93,6 +95,7 @@ async def bulk_import_whitelist(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         )
@@ -121,6 +124,7 @@ async def revoke_person(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         )

@@ -1,4 +1,4 @@
-"""Application configuration module for the Coredeck API.
+"""Application configuration module for the Sentinel Enterprise API.
 
 Defines the Settings class used to load and centralize environment
 configuration (database, secrets, runtime environment, etc.).
@@ -36,12 +36,6 @@ class Settings(BaseSettings):
     # Front URL Setting
     FRONT_URL_BASE: str
 
-    # CORS settings
-    backend_cors_origins: str = Field(
-        default="http://localhost:5173,http://127.0.0.1:5173",
-        alias="BACKEND_CORS_ORIGINS",
-    )
-
     # Azure Storage settings
     AZURE_STORAGE_ACCOUNT_NAME: str
     AZURE_STORAGE_CONNECTION_STRING: str
@@ -63,15 +57,6 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         """database URL."""
         return self.database_url_env
-
-    @property
-    def cors_origins(self) -> list[str]:
-        """Allowed CORS origins parsed from a comma-separated environment value."""
-        return [
-            origin.strip()
-            for origin in self.backend_cors_origins.split(",")
-            if origin.strip()
-        ]
 
 
 settings = Settings()

@@ -1,4 +1,4 @@
-"""Service contacts router module for Coredeck API."""
+"""Service contacts router module for Sentinel Enterprise API."""
 
 from fastapi_pagination import Page, Params
 from fastapi import APIRouter, Depends, File, UploadFile, status
@@ -30,6 +30,7 @@ async def list_service_contacts(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         )
@@ -55,6 +56,7 @@ async def create_service_contact(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         )
@@ -82,6 +84,7 @@ async def bulk_import_service_contacts(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
             ],
         )
     ),
@@ -111,6 +114,7 @@ async def update_service_contact(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         )
@@ -134,6 +138,7 @@ async def delete_service_contact(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         )

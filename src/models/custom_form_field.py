@@ -1,5 +1,5 @@
 """
-Custom Form Field database model for the Coredeck API.
+Custom Form Field database model for the Sentinel Enterprise API.
 
 Represents a single field definition within a custom form.
 Supports types: TEXT, NUMBER, DROPDOWN, CHECKBOX, RADIO.

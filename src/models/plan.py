@@ -1,9 +1,9 @@
 
 """
-Plan database model for the Coredeck API.
+Plan database model for the Sentinel Enterprise API.
 
 Represents the subscription/usage plan assigned to users, including limits
-for workspaces, admins, agents and daily reads.
+for locations, admins, janitors and daily reads.
 """
 
 from typing import Optional, TYPE_CHECKING, List
@@ -23,7 +23,7 @@ class Plan(SQLModel, table=True):
     - name
     - qty_locations
     - qty_admins
-    - qty_agents
+    - qty_janitors
     - qty_daily_reads
     """
 
@@ -34,10 +34,10 @@ class Plan(SQLModel, table=True):
     # DBML: name varchar(100)
     name: str = Field(max_length=100)
 
-    # DBML: qty_locations int, qty_admins int, qty_agents int, qty_daily_reads int
+    # DBML: qty_locations int, qty_admins int, qty_janitors int, qty_daily_reads int
     qty_locations: int
     qty_admins: int
-    qty_agents: int
+    qty_janitors: int
     qty_daily_reads: int
 
     # Relationships

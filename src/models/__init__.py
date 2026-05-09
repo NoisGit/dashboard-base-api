@@ -1,5 +1,5 @@
 """
-Models package for the Coredeck API.
+Models package for the Sentinel Enterprise API.
 
 This package contains all the data models and entities used throughout the application.
 

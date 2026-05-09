@@ -1,4 +1,4 @@
-"""Access Logs Router for Coredeck API."""
+"""Access Logs Router for Sentinel Enterprise API."""
 
 from datetime import datetime
 from typing import Optional, List
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/access-logs", tags=["access-logs"])
 
 
 @router.get(
-    "/agent/active/{location_id}",
+    "/guard/active/{location_id}",
     response_model=List[AccessLogResponse],
 )
 async def get_active_entries(
@@ -34,7 +34,8 @@ async def get_active_entries(
     user_id: int = Depends(
         RoleChecker(
             [
-                UserRole.AGENT,
+                UserRole.JANITOR,
+                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]
@@ -49,7 +50,7 @@ async def get_active_entries(
 
 
 @router.get(
-    "/agent/exits-today/{location_id}",
+    "/guard/exits-today/{location_id}",
     response_model=List[AccessLogResponse],
 )
 async def get_today_exits(
@@ -58,7 +59,8 @@ async def get_today_exits(
     user_id: int = Depends(
         RoleChecker(
             [
-                UserRole.AGENT,
+                UserRole.JANITOR,
+                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]
@@ -80,7 +82,7 @@ async def check_access_list_status(
     location_id: int,
     payload: AccessLogCheckRequest,
     service: AccessLogService = Depends(get_access_log_service),
-    user_id: int = Depends(RoleChecker([UserRole.AGENT])),
+    user_id: int = Depends(RoleChecker([UserRole.JANITOR])),
 ) -> AccessLogCheckResponse:
     """
     Check access list status before creating an access log.
@@ -101,11 +103,11 @@ async def check_access_list_status(
 async def create_access_log(
     payload: AccessLogCreateRequest,
     service: AccessLogService = Depends(get_access_log_service),
-    user_id: int = Depends(RoleChecker([UserRole.AGENT])),
+    user_id: int = Depends(RoleChecker([UserRole.JANITOR])),
 ) -> AccessLogResponse:
     """
     Create a new access log entry (person entering).
-    Only an agent role can create entries.
+    Only JANITOR (guard) can create entries.
     """
     return await service.create_access_log(
         payload=payload,
@@ -121,11 +123,11 @@ async def register_exit(
     access_log_id: int,
     payload: AccessLogExitRequest,
     service: AccessLogService = Depends(get_access_log_service),
-    user_id: int = Depends(RoleChecker([UserRole.AGENT])),
+    user_id: int = Depends(RoleChecker([UserRole.JANITOR])),
 ) -> AccessLogResponse:
     """
     Register exit for an existing access log.
-    Only an agent role can register exits.
+    Only JANITOR (guard) can register exits.
     """
     return await service.register_exit(
         access_log_id=access_log_id,
@@ -145,6 +147,7 @@ async def register_exit_dashboard(
     user_id: int = Depends(
         RoleChecker(
             [
+                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]
@@ -177,6 +180,7 @@ async def register_exit_bulk_dashboard(
     user_id: int = Depends(
         RoleChecker(
             [
+                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]
@@ -236,6 +240,7 @@ async def get_logs_dashboard(  # pylint: disable=too-many-arguments, too-many-po
         RoleChecker(
             [
                 UserRole.CLIENT,
+                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]

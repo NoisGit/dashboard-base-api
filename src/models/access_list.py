@@ -1,5 +1,5 @@
 """
-Access list database model for the Coredeck API.
+Access list database model for the Sentinel Enterprise API.
 
 Represents an allowed external person for a specific location
 (e.g. visitor, provider), with optional vehicle information
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 
 class AccessList(SQLModel, table=True):
-    """AccessList database model for the Coredeck API."""
+    """AccessList database model for the Sentinel Enterprise API."""
     __tablename__ = "access_list"
 
     id: Optional[int] = Field(default=None, primary_key=True)

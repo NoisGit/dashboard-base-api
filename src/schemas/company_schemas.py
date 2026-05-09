@@ -1,4 +1,4 @@
-"""Company-related Pydantic schemas for the Coredeck API."""
+"""Company-related Pydantic schemas for the Sentinel Enterprise API."""
 
 from datetime import datetime
 from typing import Optional

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(_):
     """Manages the application lifespan events for the FastAPI app."""
     try:
-        logger.info("🚀 Starting up Coredeck API...")
+        logger.info("🚀 Starting up Sentinel Enterprise API...")
         initialize_firebase()
         await connect_db()
 
@@ -31,7 +31,7 @@ async def lifespan(_):
     yield
 
     try:
-        logger.info("🛑 Shutting down Coredeck API...")
+        logger.info("🛑 Shutting down Sentinel Enterprise API...")
         await disconnect_db()
         logger.info("✅ Database disconnected")
     except Exception as e:

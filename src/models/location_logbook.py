@@ -1,5 +1,5 @@
 """
-Location logbook database models for the Coredeck API.
+Location logbook database models for the Sentinel Enterprise API.
 
 This module contains SQLModel classes that represent logbook entries for a
 Location, feature settings (enable/disable) and an authority access permit

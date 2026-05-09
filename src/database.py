@@ -1,5 +1,5 @@
 """
-Database configuration and connection management for Coredeck API.
+Database configuration and connection management for Sentinel Enterprise API.
 
 This module provides asynchronous database operations using SQLModel and SQLAlchemy.
 It handles database engine creation, session management, table creation, and connection

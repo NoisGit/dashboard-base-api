@@ -1,4 +1,4 @@
-"""Company service module for the Coredeck API."""
+"""Company service module for the Sentinel Enterprise API."""
 
 from typing import List, Optional, cast
 from datetime import datetime

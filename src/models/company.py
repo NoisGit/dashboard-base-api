@@ -1,4 +1,4 @@
-"""Company database model for the Coredeck API.
+"""Company database model for the Sentinel Enterprise API.
 
 Represents a client company that uses the platform.
 

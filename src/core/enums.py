@@ -1,13 +1,14 @@
-"""Core enums for the Coredeck API."""
+"""Core enums for the Sentinel Enterprise API."""
 
 from enum import Enum
 
 
 class UserRole(str, Enum):
-    """Global user roles enumeration for the Coredeck dashboard."""
+    """Global user roles enumeration for the Enterprise dashboard."""
     SUPERADMIN = "SUPERADMIN"
     ADMIN = "ADMIN"
-    AGENT = "AGENT"
+    SUBADMIN = "SUBADMIN"
+    JANITOR = "JANITOR"
     CLIENT = "CLIENT"
 
 

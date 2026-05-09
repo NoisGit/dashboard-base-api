@@ -1,4 +1,4 @@
-"""Companies router module for Coredeck API."""
+"""Companies router module for Sentinel Enterprise API."""
 
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params

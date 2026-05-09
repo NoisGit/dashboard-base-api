@@ -1,4 +1,4 @@
-"""Locations router module for Coredeck API."""
+"""Locations router module for Sentinel Enterprise API."""
 
 from typing import Optional, List
 
@@ -16,7 +16,7 @@ from src.schemas import (
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
     AccessListResponse,
-    AgentResponse,
+    JanitorResponse,
 )
 from src.schemas.location_custom_form_schemas import (
     LocationCustomFormResponse,
@@ -45,12 +45,13 @@ async def list_locations(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         ),
     ),
 ):
-    """List active locations (workspaces) visible for the current user."""
+    """List active locations (porterías) visible for the current user."""
     return await service.list_locations(
         user_id=user_id,
         params=params,
@@ -71,8 +72,9 @@ async def get_location_detail(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
-                UserRole.AGENT,
+                UserRole.JANITOR,
             ],
         ),
     ),
@@ -101,7 +103,7 @@ async def create_location(
         ),
     ),
 ):
-    """Create a new location (workspace)."""
+    """Create a new location (portería)."""
     await service.create_location(
         user_id=user_id,
         payload=payload,
@@ -122,6 +124,7 @@ async def update_location(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -195,11 +198,12 @@ async def assign_user_to_location(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
             ],
         ),
     ),
 ):
-    """Assign a user (agent) to a location."""
+    """Assign a user (janitor/portero) to a location."""
     await service.assign_user_to_location(
         requester_id=requester_id,
         location_id=location_id,
@@ -209,11 +213,11 @@ async def assign_user_to_location(
 
 
 @router.post(
-    "/{location_id}/bulk/agents",
+    "/{location_id}/bulk/janitors",
     response_model=EmptyResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def bulk_import_agents(
+async def bulk_import_janitors(
     location_id: int,
     file: UploadFile = File(...),
     service: LocationService = Depends(get_location_service),
@@ -222,12 +226,13 @@ async def bulk_import_agents(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
             ],
         ),
     ),
 ):
-    """Assign a user (agent) to a location."""
-    await service.bulk_import_agents(
+    """Assign a user (janitor/portero) to a location."""
+    await service.bulk_import_janitors(
         requester_id=requester_id,
         location_id=location_id,
         file=file,
@@ -247,6 +252,7 @@ async def get_location_custom_form(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -272,6 +278,7 @@ async def create_location_custom_form_fields(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -299,6 +306,7 @@ async def update_location_custom_form_field(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -323,7 +331,7 @@ async def get_location_access_lists(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
-                UserRole.AGENT,
+                UserRole.JANITOR,
             ],
         ),
     ),
@@ -336,10 +344,10 @@ async def get_location_access_lists(
 
 
 @router.get(
-    "/{location_id}/agents",
-    response_model=Page[AgentResponse],
+    "/{location_id}/janitors",
+    response_model=Page[JanitorResponse],
 )
-async def list_agents(
+async def list_janitors(
     params: Params = Depends(),
     location_id: int = None,
     search: Optional[str] = None,
@@ -349,13 +357,14 @@ async def list_agents(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
+                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         ),
     ),
-) -> Page[AgentResponse]:
-    """List agents assigned to a workspace."""
-    users = await service.list_agents(
+) -> Page[JanitorResponse]:
+    """List Janitors of a location."""
+    users = await service.list_janitors(
         user_id=user_id,
         location_id=location_id,
         search=search,

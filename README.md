@@ -54,8 +54,6 @@ Coredeck API is presented as an independent portfolio backend that demonstrates:
 - Docker-based local database setup.
 - Clear environment configuration without committed production secrets.
 
-See `docs/PORTFOLIO_TASKS.md` for the current rebrand and refactor roadmap.
-See `docs/GITHUB_WORKFLOW.md` for the GitHub commit and pull request workflow.
 
 ## Project Structure
 

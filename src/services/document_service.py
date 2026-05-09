@@ -1,4 +1,4 @@
-"""Document service module for the Coredeck API."""
+"""Document service module for the Sentinel Enterprise API."""
 
 # pylint: disable=no-member, singleton-comparison
 
