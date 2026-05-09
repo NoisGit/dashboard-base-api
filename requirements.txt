@@ -1,10 +1,8 @@
 argon2-cffi==25.1.0
 asyncmy==0.2.10
-azure-storage-blob==12.27.0
 cryptography==45.0.3
 fastapi==0.115.12
 fastapi-mcp==0.3.7
-firebase-admin==6.9.0
 gunicorn==23.0.0
 pydantic[email]==2.11.5
 pyotp==2.9.0
@@ -18,3 +16,5 @@ asyncpg==0.30.0
 alembic==1.17.2
 fastapi-pagination==0.15.1
 Jinja2==3.1.6
+pytest==8.4.2
+httpx==0.28.1
