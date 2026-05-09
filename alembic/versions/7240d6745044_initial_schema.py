@@ -27,7 +27,7 @@ def upgrade() -> None:
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
     sa.Column('qty_locations', sa.Integer(), nullable=False),
     sa.Column('qty_admins', sa.Integer(), nullable=False),
-    sa.Column('qty_janitors', sa.Integer(), nullable=False),
+    sa.Column('qty_operators', sa.Integer(), nullable=False),
     sa.Column('qty_daily_reads', sa.Integer(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
@@ -39,7 +39,7 @@ def upgrade() -> None:
     sa.Column('email', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
     sa.Column('status', sa.Boolean(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('role', sa.Enum('SUPERADMIN', 'ADMIN', 'SUBADMIN', 'JANITOR', 'CLIENT', name='userrole'), nullable=False),
+    sa.Column('role', sa.Enum('SUPERADMIN', 'ADMIN', 'SUBADMIN', 'OPERATOR', 'CLIENT', name='userrole'), nullable=False),
     sa.Column('plan_id', sa.Integer(), nullable=True),
     sa.Column('last_session', sa.DateTime(), nullable=True),
     sa.Column('reason_suspension', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),

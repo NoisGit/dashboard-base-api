@@ -1,4 +1,4 @@
-"""Location service module for the Sentinel Enterprise API."""
+"""Location service module for the Coredeck API."""
 
 # pylint: disable=no-member, singleton-comparison
 
@@ -35,7 +35,7 @@ from src.schemas import (
     LocationAssignUserRequest,
     LocationResponse,
     AccessListResponse,
-    JanitorResponse,
+    OperatorResponse,
     UserCreateRequest,
 )
 from src.schemas.location_custom_form_schemas import (
@@ -47,7 +47,7 @@ from src.schemas.location_custom_form_schemas import (
 from src.services import UserService, CompanyService, AzureService
 
 MAX_CUSTOM_FIELDS_PER_LOCATION = 4
-JANITOR_REQUIRED_CSV_HEADERS = {"id", "contrasena", "nombre"}
+OPERATOR_REQUIRED_CSV_HEADERS = {"id", "contrasena", "nombre"}
 
 
 class LocationService:
@@ -77,19 +77,19 @@ class LocationService:
         """Public helper to retrieve a location by ID."""
         return await self._get_location_by_id(location_id)
 
-    def _normalize_janitor_username(
+    def _normalize_operator_username(
         self,
         value: str,
     ) -> str:
         return value.strip().replace(".", "")
 
-    def _build_janitor_email(
+    def _build_operator_email(
         self,
         username: str,
     ) -> str:
-        return f"{username}@portero.porteria.com"
+        return f"{username}@operator.coredeck.local"
 
-    async def _read_janitor_csv_rows(
+    async def _read_operator_csv_rows(
         self,
         file: UploadFile,
     ) -> List[dict]:
@@ -129,7 +129,7 @@ class LocationService:
             )
 
         headers = {(header or "").strip().lower() for header in reader.fieldnames}
-        missing_headers = JANITOR_REQUIRED_CSV_HEADERS - headers
+        missing_headers = OPERATOR_REQUIRED_CSV_HEADERS - headers
 
         if missing_headers:
             raise HTTPException(
@@ -167,7 +167,7 @@ class LocationService:
                     detail=f"nombre is required at row {row_number}.",
                 )
 
-            username = self._normalize_janitor_username(row["id"]).lower()
+            username = self._normalize_operator_username(row["id"]).lower()
 
             if not username:
                 raise HTTPException(
@@ -192,7 +192,7 @@ class LocationService:
 
         return rows
 
-    async def _get_bulk_janitor_company_id(
+    async def _get_bulk_operator_company_id(
         self,
         location_id: int,
     ) -> int:
@@ -205,7 +205,7 @@ class LocationService:
         if not company_ids:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Location must be assigned to a company before importing janitors.",
+                detail="Workspace must be assigned to an organization before importing operators.",
             )
 
         if len(company_ids) > 1:
@@ -268,24 +268,24 @@ class LocationService:
         )
         await self.session.commit()
 
-    async def bulk_import_janitors(
+    async def bulk_import_operators(
         self,
         requester_id: int,
         location_id: int,
         file: UploadFile,
     ) -> None:
-        """Bulk import janitors from CSV."""
+        """Bulk import operators from CSV."""
         await self.check_user_permission_on_location(
             user_id=requester_id,
             location_id=location_id,
         )
 
-        rows = await self._read_janitor_csv_rows(file)
-        company_id = await self._get_bulk_janitor_company_id(location_id)
+        rows = await self._read_operator_csv_rows(file)
+        company_id = await self._get_bulk_operator_company_id(location_id)
 
         for row_number, row in enumerate(rows, start=2):
-            username = self._normalize_janitor_username(row["id"])
-            email = self._build_janitor_email(username).lower()
+            username = self._normalize_operator_username(row["id"])
+            email = self._build_operator_email(username).lower()
 
             existing_user = await self.user_service.get_user_by_email(email)
 
@@ -296,10 +296,10 @@ class LocationService:
                         detail=f"User with email {email} is inactive at row {row_number}.",
                     )
 
-                if existing_user.role != UserRole.JANITOR:
+                if existing_user.role != UserRole.OPERATOR:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"User with email {email} is not a janitor at row {row_number}.",
+                        detail=f"User with email {email} is not an operator at row {row_number}.",
                     )
 
                 await self._ensure_company_staff(
@@ -319,7 +319,7 @@ class LocationService:
                 full_name=row["nombre"],
                 email=email,
                 password=row["contrasena"],
-                role=UserRole.JANITOR,
+                role=UserRole.OPERATOR,
                 status=True,
             )
 
@@ -549,10 +549,10 @@ class LocationService:
                 detail="User not found.",
             )
 
-        if target_user.role != UserRole.JANITOR:
+        if target_user.role != UserRole.OPERATOR:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only janitors can be assigned to locations.",
+                detail="Only operator users can be assigned to workspaces.",
             )
 
         staff_stmt = select(CompanyStaff).where(
@@ -1017,14 +1017,14 @@ class LocationService:
             for accessList in res_access_list
         ]
 
-    async def list_janitors(
+    async def list_operators(
         self,
         user_id: int,
         location_id: int,
         search: Optional[str],
         params: Params,
-    ) -> Page[JanitorResponse]:
-        """Return Janitors of a location."""
+    ) -> Page[OperatorResponse]:
+        """Return operators assigned to a workspace."""
         user = await self.user_service.get_user_by_id(user_id)
         if not user or not user.is_active:
             raise HTTPException(
@@ -1034,7 +1034,7 @@ class LocationService:
 
         stmt = select(User) \
             .where(User.is_active == True) \
-            .where(User.role == UserRole.JANITOR)
+            .where(User.role == UserRole.OPERATOR)
 
         if search:
             like_pattern = f"%{search}%"
@@ -1072,7 +1072,7 @@ class LocationService:
             stmt,
             params,
             transformer=lambda items: [
-                JanitorResponse(
+                OperatorResponse(
                     id=user.id,
                     username=user.username,
                     full_name=user.full_name,

@@ -1,4 +1,4 @@
-"""Documents router module for Sentinel Enterprise API."""
+"""Documents router module for Coredeck API."""
 
 from typing import Optional
 

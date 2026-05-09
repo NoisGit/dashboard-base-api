@@ -1,4 +1,4 @@
-"""Support ticket router module for Sentinel Enterprise API"""
+"""Support ticket router module for Coredeck API"""
 
 from typing import Optional
 

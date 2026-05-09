@@ -1,4 +1,4 @@
-"""Service contacts router module for Sentinel Enterprise API."""
+"""Service contacts router module for Coredeck API."""
 
 from fastapi_pagination import Page, Params
 from fastapi import APIRouter, Depends, File, UploadFile, status

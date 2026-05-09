@@ -1,4 +1,4 @@
-"""Location logbook service module for the Sentinel Enterprise API."""
+"""Location logbook service module for the Coredeck API."""
 
 # pylint: disable=no-member, singleton-comparison
 

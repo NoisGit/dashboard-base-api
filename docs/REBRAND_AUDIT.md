@@ -10,7 +10,7 @@ The product identity direction is:
 Product name: Coredeck
 Frontend name: Coredeck Dashboard
 API name: Coredeck API
-Demo email: admin@nois.dev
+Demo email: demo@coredeck.local
 Demo password: 1234
 Frontend repository: dashboard-base
 Backend repository: dashboard-base-api
@@ -22,8 +22,7 @@ This API must become a generic admin/SaaS backend prepared for authentication, u
 
 ```text
 No previous brand references.
-No Nexa references.
-No ECME references.
+No previous collaborator or legacy product references.
 No old product logos.
 No old product colors as identity.
 No secrets committed to the repository.
@@ -34,7 +33,7 @@ No secrets committed to the repository.
 Repository:
 
 ```text
-NoisGit/dashboard-base-api
+personal-portfolio/dashboard-base-api
 ```
 
 The API already has a FastAPI structure with routers, services, models, auth utilities, database configuration, pagination, migrations and security-related dependencies.
@@ -50,7 +49,7 @@ The README must stay aligned with:
 ```text
 Coredeck API
 Coredeck Dashboard
-admin@nois.dev / 1234
+demo@coredeck.local / 1234
 ```
 
 ### 2. main.py metadata must use Coredeck API only
