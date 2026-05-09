@@ -6,7 +6,7 @@ business logic and database operations in the Coredeck API.
 """
 
 from .auth_service import AuthService
-from .azure_service import AzureService
+from .storage_service import StorageService
 from .user_service import UserService
 from .company_service import CompanyService
 from .location_service import LocationService
@@ -22,7 +22,7 @@ from .document_service import DocumentService
 
 __all__ = [
     "AuthService",
-    "AzureService",
+    "StorageService",
     "UserService",
     "CompanyService",
     "LocationService",
