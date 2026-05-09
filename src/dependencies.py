@@ -7,7 +7,7 @@ from src.database import get_session
 from src.services.access_log_service import AccessLogService
 from src.services.audit_log_service import AuditLogService
 from src.services.auth_service import AuthService
-from src.services.azure_service import AzureService
+from src.services.storage_service import StorageService
 from src.services.blacklist_service import BlacklistService
 from src.services.company_service import CompanyService
 from src.services.dashboard_service import DashboardService
@@ -24,9 +24,9 @@ from src.services.user_service import UserService
 from src.services.whitelist_service import WhitelistService
 
 
-def get_azure_service() -> AzureService:
-    """Dependency to get an AzureService instance."""
-    return AzureService()
+def get_storage_service() -> StorageService:
+    """Dependency to get a StorageService instance."""
+    return StorageService()
 
 
 def get_audit_log_service(
@@ -59,29 +59,29 @@ def get_user_service(
 def get_company_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
-    azure_service: AzureService = Depends(get_azure_service),
+    storage_service: StorageService = Depends(get_storage_service),
 ) -> CompanyService:
     """Dependency to get a CompanyService instance."""
-    return CompanyService(session, user_service, azure_service)
+    return CompanyService(session, user_service, storage_service)
 
 
 def get_location_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
     company_service: CompanyService = Depends(get_company_service),
-    azure_service: AzureService = Depends(get_azure_service),
+    storage_service: StorageService = Depends(get_storage_service),
 ) -> LocationService:
     """Dependency to get a LocationService instance."""
-    return LocationService(session, azure_service, user_service, company_service)
+    return LocationService(session, storage_service, user_service, company_service)
 
 
 def get_location_logbook_service(
     session: AsyncSession = Depends(get_session),
-    azure_service: AzureService = Depends(get_azure_service),
+    storage_service: StorageService = Depends(get_storage_service),
     location_service: LocationService = Depends(get_location_service),
 ) -> LocationLogbookService:
     """Dependency to get a LocationLogbookService instance."""
-    return LocationLogbookService(session, azure_service, location_service)
+    return LocationLogbookService(session, storage_service, location_service)
 
 
 def get_emergency_contact_service(
@@ -104,10 +104,10 @@ def get_service_contact_service(
 def get_support_ticket_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
-    azure_service: AzureService = Depends(get_azure_service),
+    storage_service: StorageService = Depends(get_storage_service),
 ) -> SupportTicketService:
     """Dependency to get a SupportTicketService instance."""
-    return SupportTicketService(session, user_service, azure_service)
+    return SupportTicketService(session, user_service, storage_service)
 
 
 def get_notification_service(
@@ -145,21 +145,21 @@ def get_system_service(
 
 def get_access_log_service(
     session: AsyncSession = Depends(get_session),
-    azure_service: AzureService = Depends(get_azure_service),
+    storage_service: StorageService = Depends(get_storage_service),
     user_service: UserService = Depends(get_user_service),
     location_service: LocationService = Depends(get_location_service),
 ) -> AccessLogService:
     """Dependency to get an AccessLogService instance."""
-    return AccessLogService(session, azure_service, user_service, location_service)
+    return AccessLogService(session, storage_service, user_service, location_service)
 
 
 def get_document_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
-    azure_service: AzureService = Depends(get_azure_service),
+    storage_service: StorageService = Depends(get_storage_service),
 ) -> DocumentService:
     """Dependency to get a DocumentService instance."""
-    return DocumentService(session, user_service, azure_service)
+    return DocumentService(session, user_service, storage_service)
 
 
 def get_dashboard_service(
