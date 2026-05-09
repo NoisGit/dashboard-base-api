@@ -8,7 +8,7 @@ Coredeck API.
 from .access_logs import router as access_logs_router
 from .audit_log import router as audit_log_router
 from .auth import router as auth_router
-from .azure import router as azure_router
+from .storage import router as storage_router
 from .documents import router as documents_router
 from .emergency_contacts import router as emergency_contacts_router
 from .users import router as users_router
@@ -27,7 +27,7 @@ __all__ = [
     "access_logs_router",
     "audit_log_router",
     "auth_router",
-    "azure_router",
+    "storage_router",
     "documents_router",
     "emergency_contacts_router",
     "users_router",
