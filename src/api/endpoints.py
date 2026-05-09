@@ -1,7 +1,7 @@
 """
 Core API endpoints module.
 
-This module contains the basic endpoints for the Sentinel Enterprise API,
+This module contains the basic endpoints for the Coredeck API,
 including health checks and protected routes.
 """
 import logging
@@ -15,20 +15,20 @@ logger = logging.getLogger(__name__)
 async def root():
     """Asynchronous endpoint that returns a welcome message, API version, and description."""
     return {
-        "message": "Welcome to Sentinel Enterprise API",
+        "message": "Welcome to Coredeck API",
         "version": "0.0.1",
-        "description": "API for managing enterprise properties"
+        "description": "Portfolio-ready admin API for Coredeck"
     }
 
 
 async def health_check():
-    """Performs a health check for the Sentinel Enterprise API service."""
+    """Performs a health check for the Coredeck API service."""
     try:
         db_healthy = await test_connection()
 
         return {
             "status": "healthy" if db_healthy else "unhealthy",
-            "service": "sentinel-enterprise-api",
+            "service": "coredeck-api",
             "version": "0.0.1",
             "database": "connected" if db_healthy else "disconnected"
         }
@@ -36,7 +36,7 @@ async def health_check():
         logger.error("Health check failed")
         return {
             "status": "unhealthy",
-            "service": "sentinel-enterprise-api",
+            "service": "coredeck-api",
             "error": str(e)
         }
 

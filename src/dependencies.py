@@ -1,4 +1,4 @@
-"""Dependency injection configuration for Sentinel Enterprise API."""
+"""Dependency injection configuration for Coredeck API."""
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession

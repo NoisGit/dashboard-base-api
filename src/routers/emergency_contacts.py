@@ -1,4 +1,4 @@
-"""Emergency contacts router module for Sentinel Enterprise API."""
+"""Emergency contacts router module for Coredeck API."""
 
 from fastapi_pagination import Page, Params
 from fastapi import APIRouter, Depends, status
@@ -62,7 +62,6 @@ async def create_emergency_contact(
     user_id=Depends(RoleChecker([
         UserRole.SUPERADMIN,
         UserRole.ADMIN,
-        UserRole.SUBADMIN,
     ])),
 ):
     """
@@ -84,7 +83,6 @@ async def update_emergency_contact(
     user_id=Depends(RoleChecker([
         UserRole.SUPERADMIN,
         UserRole.ADMIN,
-        UserRole.SUBADMIN,
     ])),
 ):
     """
@@ -103,7 +101,6 @@ async def delete_emergency_contact(
     user_id=Depends(RoleChecker([
         UserRole.SUPERADMIN,
         UserRole.ADMIN,
-        UserRole.SUBADMIN,
     ])),
 ):
     """

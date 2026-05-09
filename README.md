@@ -22,7 +22,7 @@ Current goals:
 Product: Coredeck
 Frontend: Coredeck Dashboard
 Backend: Coredeck API
-Demo email: admin@nois.dev
+Demo email: demo@coredeck.local
 Demo password: 1234
 Frontend repository: dashboard-base
 Backend repository: dashboard-base-api
@@ -41,6 +41,21 @@ Backend repository: dashboard-base-api
 - Audit Logs
 - Settings
 ```
+
+
+## Portfolio Focus
+
+Coredeck API is presented as an independent portfolio backend that demonstrates:
+
+- Modular FastAPI architecture with routers, schemas, services and models.
+- JWT authentication and role-aware access patterns.
+- Async database access with SQLModel/SQLAlchemy.
+- Migration-based schema evolution with Alembic.
+- Docker-based local database setup.
+- Clear environment configuration without committed production secrets.
+
+See `docs/PORTFOLIO_TASKS.md` for the current rebrand and refactor roadmap.
+See `docs/GITHUB_WORKFLOW.md` for the GitHub commit and pull request workflow.
 
 ## Project Structure
 
@@ -87,14 +102,14 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Create a `.env` file based on the future `.env.example` file.
+Create a `.env` file based on `.env.example`.
 
 Required environment variables:
 
 ```text
 DATABASE_URL
-JWT_SECRET_KEY
-JWT_ALGORITHM
+SECRET_KEY
+ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS
 BACKEND_CORS_ORIGINS
@@ -158,6 +173,6 @@ GET  /api/v1/audit-logs
 feature branches → develop → main
 ```
 
-## Author
+## Ownership
 
-Developed by NoisGit.
+Independent portfolio project prepared for a personal GitHub portfolio.

@@ -1,5 +1,5 @@
 """
-Location database model for the Sentinel Enterprise API.
+Location database model for the Coredeck API.
 
 Represents a physical or logical location managed by the system,
 including basic metadata and relationships with users, custom fields,

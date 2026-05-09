@@ -1,6 +1,6 @@
-"""User database model for the Sentinel Enterprise API.
+"""User database model for the Coredeck API.
 
-Represents a platform user (admin, janitor, superadmin, etc.) and its core relationships:
+Represents a platform user (admin, agent, superadmin, etc.) and its core relationships:
 - Has a role stored as varchar(10) (handled as an Enum in code)
 - Belongs to a Plan
 - Is linked to Companies via the company_staff join table
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 
 class User(SQLModel, table=True):
-    """User ORM model for the Sentinel Enterprise API."""
+    """User ORM model for the Coredeck API."""
 
     __tablename__ = "users"
 

@@ -7,7 +7,7 @@ from pydantic import BaseModel, EmailStr
 
 class SystemCountersResponse(BaseModel):
     users_admin: int
-    users_janitors: int
+    users_agents: int
     users_plan_demo: int
     total_entrances: int
     income_today: int
@@ -27,7 +27,7 @@ class AdminDetailResponse(BaseModel):
     plan: Optional[str]
     creation_date: datetime
     entrances_count: int
-    janitors_count: int
+    agents_count: int
 
 
 class MonthlyIncomeResponse(BaseModel):  # FOR TESTING PURPOSES ONLY

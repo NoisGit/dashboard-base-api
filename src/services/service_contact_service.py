@@ -1,4 +1,4 @@
-"""Service contact service module for the Sentinel Enterprise API."""
+"""Service contact service module for the Coredeck API."""
 
 import csv
 import io

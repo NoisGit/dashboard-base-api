@@ -1,4 +1,4 @@
-"""Emergency contact service module for the Sentinel Enterprise API."""
+"""Emergency contact service module for the Coredeck API."""
 
 from typing import List, Optional, cast
 

@@ -1,5 +1,5 @@
 """
-Secret token utilities for the Sentinel Enterprise API.
+Secret token utilities for the Coredeck API.
 
 This module provides secure token generation used for authenticated access
 flows that require URL-safe, non-guessable tokens.
