@@ -10,6 +10,12 @@ import sys
 from .auth_service import AuthService
 from .storage_service import StorageService
 from . import storage_service as _storage_service_module
+
+# Temporary import compatibility while large services finish migrating to StorageService.
+AzureService = StorageService
+_storage_service_module.AzureService = StorageService
+sys.modules[__name__ + ".azure_service"] = _storage_service_module
+
 from .user_service import UserService
 from .company_service import CompanyService
 from .location_service import LocationService
@@ -22,11 +28,6 @@ from .blacklist_service import BlacklistService
 from .system_service import SystemService
 from .location_logbook_service import LocationLogbookService
 from .document_service import DocumentService
-
-# Temporary import compatibility while large services finish migrating to StorageService.
-AzureService = StorageService
-_storage_service_module.AzureService = StorageService
-sys.modules[__name__ + ".azure_service"] = _storage_service_module
 
 __all__ = [
     "AuthService",
