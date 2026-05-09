@@ -24,17 +24,17 @@ class Settings(BaseSettings):
     database_url_env: str | None = Field(default=None, alias="DATABASE_URL")
 
     # SMTP settings
-    SMTP_SERVER: str
-    SMTP_PORT: int
-    SMTP_USER: str
-    SMTP_PASSWORD: str
-    SMTP_FROM_EMAIL: str
+    SMTP_SERVER: str = Field(default="smtp.example.com")
+    SMTP_PORT: int = Field(default=587)
+    SMTP_USER: str = Field(default="admin@nois.dev")
+    SMTP_PASSWORD: str = Field(default="")
+    SMTP_FROM_EMAIL: str = Field(default="Coredeck <admin@nois.dev>")
 
     # Logo URL setting
-    LOGO_URL: str
+    LOGO_URL: str = Field(default="http://localhost:5173/logo.svg")
 
     # Front URL Setting
-    FRONT_URL_BASE: str
+    FRONT_URL_BASE: str = Field(default="http://localhost:5173")
 
     # CORS settings
     backend_cors_origins: str = Field(
@@ -42,9 +42,10 @@ class Settings(BaseSettings):
         alias="BACKEND_CORS_ORIGINS",
     )
 
-    # Azure Storage settings
-    AZURE_STORAGE_ACCOUNT_NAME: str
-    AZURE_STORAGE_CONNECTION_STRING: str
+    # Supabase Storage settings
+    SUPABASE_URL: str | None = Field(default=None)
+    SUPABASE_SERVICE_ROLE_KEY: str | None = Field(default=None)
+    SUPABASE_STORAGE_BUCKET: str = Field(default="coredeck")
 
     # Secret key for JWT or other security purposes
     secret_key: str = Field(
@@ -60,7 +61,7 @@ class Settings(BaseSettings):
     )
 
     @property
-    def database_url(self) -> str:
+    def database_url(self) -> str | None:
         """database URL."""
         return self.database_url_env
 
