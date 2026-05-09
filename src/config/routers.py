@@ -8,7 +8,7 @@ from src.routers import (
     access_logs_router,
     audit_log_router,
     auth_router,
-    azure_router,
+    storage_router,
     documents_router,
     emergency_contacts_router,
     companies_router,
@@ -29,7 +29,7 @@ def include_routers(app):
     app.include_router(access_logs_router, prefix="/api/v1")
     app.include_router(audit_log_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
-    app.include_router(azure_router, prefix="/api/v1")
+    app.include_router(storage_router, prefix="/api/v1")
     app.include_router(documents_router, prefix="/api/v1")
     app.include_router(emergency_contacts_router, prefix="/api/v1")
     app.include_router(companies_router, prefix="/api/v1")
