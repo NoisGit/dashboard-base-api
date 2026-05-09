@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, desc
 from src.core.enums import UserRole
 
-
 from src.models import Company, CompanyStaff, User
 from src.schemas import (
     CompanyCreateRequest,
@@ -20,7 +19,7 @@ from src.schemas import (
     SubCompanyCreateRequest,
     EmptyResponse,
 )
-from src.services import UserService, AzureService
+from src.services import UserService, StorageService
 
 
 class CompanyService:
@@ -30,11 +29,11 @@ class CompanyService:
         self,
         session: AsyncSession,
         user_service: UserService,
-        azure_service: AzureService
+        storage_service: StorageService,
     ) -> None:
         self.session = session
         self.user_service = user_service or UserService(session)
-        self.azure_service = azure_service
+        self.storage_service = storage_service
 
     async def _get_company_by_id(self, company_id: int) -> Optional[CompanyResponse]:
         company = await self.session.get(Company, company_id)
@@ -50,7 +49,7 @@ class CompanyService:
             name=company.name,
             activity=company.activity,
             id_number=company.id_number,
-            logo=self.azure_service.generate_read_sas_url(
+            logo=self.storage_service.generate_read_url(
                 container_name="companies",
                 blob_name=company.logo,
             ) if company.logo else None,
@@ -77,7 +76,7 @@ class CompanyService:
                     name=company.name,
                     activity=company.activity,
                     id_number=company.id_number,
-                    logo=self.azure_service.generate_read_sas_url(
+                    logo=self.storage_service.generate_read_url(
                         container_name="companies",
                         blob_name=company.logo,
                     ) if company.logo else None,
