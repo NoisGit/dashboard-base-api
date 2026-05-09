@@ -1,4 +1,4 @@
-"""Whitelists router module for Sentinel Enterprise API."""
+"""Whitelists router module for Coredeck API."""
 
 from typing import Optional
 

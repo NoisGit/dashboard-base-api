@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_mcp import FastApiMCP, AuthConfig
 
 from src.auth.utils import get_current_user
+from src.config.config import settings
 from src.config.lifespan import lifespan
 from src.config.routers import include_routers
 from src.api.endpoints import root, health_check, protected_route
@@ -27,7 +28,7 @@ app = FastAPI(
 # Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

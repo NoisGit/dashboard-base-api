@@ -1,8 +1,8 @@
-"""Core utilities and enums for the Sentinel Enterprise API.
+"""Core utilities and enums for the Coredeck API.
 
 This package currently exposes:
 
-- UserRole: global user roles enumeration for the Enterprise dashboard.
+- UserRole: global user roles enumeration for the Coredeck dashboard.
 """
 
 from .enums import UserRole, AuditAction, TableName

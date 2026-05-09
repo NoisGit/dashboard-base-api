@@ -1,5 +1,5 @@
 """
-Service contact database model for the Sentinel Enterprise API.
+Service contact database model for the Coredeck API.
 
 Represents a service contact associated with a specific location
 (e.g. building, site). Each contact stores a name and phone number

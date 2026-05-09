@@ -1,4 +1,4 @@
-"""Locations router module for Sentinel Enterprise API."""
+"""Locations router module for Coredeck API."""
 
 from typing import Optional, List
 
@@ -16,7 +16,7 @@ from src.schemas import (
     LocationAssignCompanyRequest,
     LocationAssignUserRequest,
     AccessListResponse,
-    JanitorResponse,
+    OperatorResponse,
 )
 from src.schemas.location_custom_form_schemas import (
     LocationCustomFormResponse,
@@ -51,7 +51,7 @@ async def list_locations(
         ),
     ),
 ):
-    """List active locations (porterías) visible for the current user."""
+    """List active locations (workspaces) visible for the current user."""
     return await service.list_locations(
         user_id=user_id,
         params=params,
@@ -74,7 +74,7 @@ async def get_location_detail(
                 UserRole.ADMIN,
                 UserRole.SUBADMIN,
                 UserRole.CLIENT,
-                UserRole.JANITOR,
+                UserRole.OPERATOR,
             ],
         ),
     ),
@@ -103,7 +103,7 @@ async def create_location(
         ),
     ),
 ):
-    """Create a new location (portería)."""
+    """Create a new location (workspace)."""
     await service.create_location(
         user_id=user_id,
         payload=payload,
@@ -203,7 +203,7 @@ async def assign_user_to_location(
         ),
     ),
 ):
-    """Assign a user (janitor/portero) to a location."""
+    """Assign a user (operator) to a location."""
     await service.assign_user_to_location(
         requester_id=requester_id,
         location_id=location_id,
@@ -213,11 +213,11 @@ async def assign_user_to_location(
 
 
 @router.post(
-    "/{location_id}/bulk/janitors",
+    "/{location_id}/bulk/operators",
     response_model=EmptyResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def bulk_import_janitors(
+async def bulk_import_operators(
     location_id: int,
     file: UploadFile = File(...),
     service: LocationService = Depends(get_location_service),
@@ -231,8 +231,8 @@ async def bulk_import_janitors(
         ),
     ),
 ):
-    """Assign a user (janitor/portero) to a location."""
-    await service.bulk_import_janitors(
+    """Assign a user (operator) to a location."""
+    await service.bulk_import_operators(
         requester_id=requester_id,
         location_id=location_id,
         file=file,
@@ -331,7 +331,7 @@ async def get_location_access_lists(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
-                UserRole.JANITOR,
+                UserRole.OPERATOR,
             ],
         ),
     ),
@@ -344,10 +344,10 @@ async def get_location_access_lists(
 
 
 @router.get(
-    "/{location_id}/janitors",
-    response_model=Page[JanitorResponse],
+    "/{location_id}/operators",
+    response_model=Page[OperatorResponse],
 )
-async def list_janitors(
+async def list_operators(
     params: Params = Depends(),
     location_id: int = None,
     search: Optional[str] = None,
@@ -362,9 +362,9 @@ async def list_janitors(
             ],
         ),
     ),
-) -> Page[JanitorResponse]:
-    """List Janitors of a location."""
-    users = await service.list_janitors(
+) -> Page[OperatorResponse]:
+    """List operators assigned to a workspace."""
+    users = await service.list_operators(
         user_id=user_id,
         location_id=location_id,
         search=search,

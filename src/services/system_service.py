@@ -26,7 +26,7 @@ class SystemService:
         # User Counts by Role and Plan
         stmt_users = select(
             func.count().filter(User.role == UserRole.ADMIN).label('count_admin'),
-            func.count().filter(User.role == UserRole.JANITOR).label('count_janitor'),
+            func.count().filter(User.role == UserRole.OPERATOR).label('count_operator'),
             func.count().filter(User.plan_id == 1).label('count_demo')
         )
         res_users_raw = await self.session.execute(stmt_users)
@@ -44,7 +44,7 @@ class SystemService:
 
         return SystemCountersResponse(
             users_admin=res_users.count_admin,
-            users_janitors=res_users.count_janitor,
+            users_operators=res_users.count_operator,
             users_plan_demo=res_users.count_demo,
             total_entrances=res_locations,
             income_today=res_access,
@@ -67,8 +67,8 @@ class SystemService:
 
     async def get_detail_admins(self) -> DetailAdminsResponse:
         """Get System Admin Details"""
-        Janitor = aliased(User)
-        JanitorStaff = aliased(CompanyStaff)
+        Operator = aliased(User)
+        OperatorStaff = aliased(CompanyStaff)
         # Admin Details
         stmt = (
             select(
@@ -80,19 +80,19 @@ class SystemService:
                 User.created_at.label("creation_date"),
                 func.coalesce(func.count(func.distinct(UserLocationAccess.id)), 0).label(
                     "entrances_count"),
-                func.coalesce(func.count(func.distinct(Janitor.id)), 0).label(
-                    "janitors_count")
+                func.coalesce(func.count(func.distinct(Operator.id)), 0).label(
+                    "operators_count")
             )
             .outerjoin(Plan, User.plan_id == Plan.id)
             .outerjoin(CompanyStaff, User.id == CompanyStaff.user_id)
             .outerjoin(Company, CompanyStaff.company_id == Company.id)
             .outerjoin(UserLocationAccess, User.id == UserLocationAccess.user_id)
-            .outerjoin(JanitorStaff, Company.id == JanitorStaff.company_id)
+            .outerjoin(OperatorStaff, Company.id == OperatorStaff.company_id)
             .outerjoin(
-                Janitor,
+                Operator,
                 and_(
-                    JanitorStaff.user_id == Janitor.id,
-                    Janitor.role == UserRole.JANITOR
+                    OperatorStaff.user_id == Operator.id,
+                    Operator.role == UserRole.OPERATOR
                 )
             )
             .where(User.role == UserRole.ADMIN)

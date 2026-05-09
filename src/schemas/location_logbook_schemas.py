@@ -1,4 +1,4 @@
-"""Location logbook schemas for Sentinel Enterprise API."""
+"""Location logbook schemas for Coredeck API."""
 
 from datetime import datetime
 from enum import Enum

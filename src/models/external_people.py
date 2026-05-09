@@ -1,5 +1,5 @@
 """
-External people database model for the Sentinel Enterprise API.
+External people database model for the Coredeck API.
 
 Represents external visitors/providers that can appear in access lists
 and access logs. Each record may be linked to multiple access list

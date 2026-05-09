@@ -1,4 +1,4 @@
-"""Access log service module for Sentinel Enterprise API."""
+"""Access log service module for Coredeck API."""
 from datetime import datetime, date
 from typing import Optional, List
 
@@ -320,7 +320,7 @@ class AccessLogService:
     ) -> AccessLogResponse:
         """
         Create a new access log entry (person entering).
-        Only JANITOR role should call this.
+        Only an operator role should call this.
         """
 
         await self.location_service.check_user_permission_on_location(
@@ -409,7 +409,7 @@ class AccessLogService:
     ) -> AccessLogResponse:
         """
         Register exit for an existing access log.
-        Only JANITOR role should call this.
+        Only an operator role should call this.
         """
         result = await self.session.execute(
             select(AccessLog)

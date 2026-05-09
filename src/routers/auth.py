@@ -1,4 +1,4 @@
-"""Auth router module for Sentinel Enterprise API."""
+"""Auth router module for Coredeck API."""
 
 from fastapi import APIRouter, Depends, status
 
@@ -7,7 +7,7 @@ from src.auth.utils import get_user_id_from_token
 from src.dependencies import get_auth_service
 from src.schemas import (
     UserLoginRequest,
-    JanitorLoginRequest,
+    OperatorLoginRequest,
     AuthTokenResponse,
     RefreshTokenRequest,
     AccessTokenResponse,
@@ -29,13 +29,13 @@ async def login_user(
     return user_token
 
 
-@router.post("/janitor-login", response_model=AuthTokenResponse)
-async def login_janitor(
-    user_data: JanitorLoginRequest,
+@router.post("/operator-login", response_model=AuthTokenResponse)
+async def login_operator(
+    user_data: OperatorLoginRequest,
     service: AuthService = Depends(get_auth_service)
 ):
-    """Janitor login endpoint"""
-    user_token = await service.login_janitor(user_data)
+    """Operator login endpoint"""
+    user_token = await service.login_operator(user_data)
     return user_token
 
 
