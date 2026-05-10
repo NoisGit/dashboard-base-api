@@ -87,9 +87,10 @@ def get_location_logbook_service(
 def get_emergency_contact_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
+    location_service: LocationScopeService = Depends(get_location_service),
 ) -> EmergencyContactService:
     """Dependency to get an EmergencyContactService instance."""
-    return EmergencyContactService(session, user_service)
+    return EmergencyContactService(session, user_service, location_service)
 
 
 def get_service_contact_service(
