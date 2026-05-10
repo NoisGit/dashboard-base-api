@@ -22,7 +22,7 @@ from src.schemas import (
     DocumentUpdateRequest,
     EmptyResponse,
 )
-from src.services.azure_service import AzureService
+from src.services.storage_service import StorageService
 from src.services.user_service import UserService
 
 
@@ -37,11 +37,11 @@ class DocumentService:
         self,
         session: AsyncSession,
         user_service: UserService,
-        azure_service: AzureService,
+        storage_service: StorageService,
     ) -> None:
         self.session = session
         self.user_service = user_service
-        self.azure_service = azure_service
+        self.storage_service = storage_service
 
     async def _get_document_by_id(
         self,
@@ -143,7 +143,7 @@ class DocumentService:
                 )
 
     def _to_document_response(self, doc: Document) -> DocumentResponse:
-        url = self.azure_service.generate_read_sas_url(
+        url = self.storage_service.generate_read_url(
             container_name="documents",
             blob_name=doc.blob_name,
         )
@@ -265,7 +265,7 @@ class DocumentService:
             document=document,
         )
 
-        url = self.azure_service.generate_read_sas_url(
+        url = self.storage_service.generate_read_url(
             container_name="documents",
             blob_name=document.blob_name,
         )
@@ -353,7 +353,6 @@ class DocumentService:
 
         normalized_comment = self._normalize_optional_str(payload.comment)
         if payload.comment is not None:
-            # if FE sent ""/"string" => normalized_comment becomes None (clears comment)
             document.comment = normalized_comment
 
         normalized_blob_name = self._normalize_optional_str(payload.blob_name)
