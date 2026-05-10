@@ -1,0 +1,44 @@
+name: Fix service contact route parameter
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fix parameter name
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/routers/service_contacts.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('service_contact_id: int,', 'contact_id: int,')
+          text = text.replace('service.delete_service_contact(user_id, service_contact_id)', 'service.delete_service_contact(user_id, contact_id)')
+          path.write_text(text, encoding='utf-8')
+
+          workflow = Path('.github/workflows/fix-service-contact-param.yml')
+          if workflow.exists():
+              workflow.unlink()
+          PY
+
+      - name: Commit fix
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add src/routers/service_contacts.py .github/workflows/fix-service-contact-param.yml
+            git commit -m "Fix service contact route parameter"
+            git push
+          fi
