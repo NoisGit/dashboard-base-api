@@ -26,7 +26,7 @@ from src.schemas import (
     PoliceLinkResponse,
     PoliceViewResponse,
 )
-from src.services.azure_service import AzureService
+from src.services.storage_service import StorageService
 from src.services.location_service import LocationService
 
 
@@ -36,11 +36,11 @@ class LocationLogbookService:
     def __init__(
         self,
         session: AsyncSession,
-        azure_service: AzureService,
+        storage_service: StorageService,
         location_service: LocationService,
     ):
         self.session = session
-        self.azure_service = azure_service
+        self.storage_service = storage_service
         self.location_service = location_service
 
     async def _get_settings_by_location_id(
@@ -187,7 +187,7 @@ class LocationLogbookService:
                     location_id=entry.location_id,
                     created_by=entry.created_by,
                     description=entry.description,
-                    media_url=self.azure_service.generate_read_sas_url(
+                    media_url=self.storage_service.generate_read_url(
                         container_name="location-logbook",
                         blob_name=entry.media_name,
                     )
@@ -295,7 +295,7 @@ class LocationLogbookService:
                 location_id=entry.location_id,
                 created_by=entry.created_by,
                 description=entry.description,
-                media_url=self.azure_service.generate_read_sas_url(
+                media_url=self.storage_service.generate_read_url(
                     container_name="location-logbook",
                     blob_name=entry.media_name,
                 )

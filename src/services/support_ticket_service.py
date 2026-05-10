@@ -22,7 +22,7 @@ from src.schemas import (
     SupportTicketCommentUpdateRequest,
     SupportTicketCommentResponse,
 )
-from src.services import UserService, AzureService
+from src.services import UserService, StorageService
 
 
 class SupportTicketService:
@@ -32,11 +32,11 @@ class SupportTicketService:
         self,
         session: AsyncSession,
         user_service: UserService,
-        azure_service: AzureService,
+        storage_service: StorageService,
     ):
         self.session = session
         self.user_service = user_service
-        self.azure_service = azure_service
+        self.storage_service = storage_service
 
     async def _get_support_ticket_by_id(
         self,
@@ -99,7 +99,7 @@ class SupportTicketService:
                     id=ticket.id,
                     title=ticket.title,
                     description=ticket.description,
-                    media_name=self.azure_service.generate_read_sas_url(
+                    media_name=self.storage_service.generate_read_url(
                         container_name="support-tickets",
                         blob_name=ticket.media_name,
                     ) if ticket.media_name else None,
@@ -128,7 +128,7 @@ class SupportTicketService:
             id=ticket.id,
             title=ticket.title,
             description=ticket.description,
-            media_name=self.azure_service.generate_read_sas_url(
+            media_name=self.storage_service.generate_read_url(
                 container_name="support-tickets",
                 blob_name=ticket.media_name,
             ) if ticket.media_name else None,
@@ -159,7 +159,7 @@ class SupportTicketService:
             id=ticket.id,
             title=ticket.title,
             description=ticket.description,
-            media_name=self.azure_service.generate_read_sas_url(
+            media_name=self.storage_service.generate_read_url(
                 container_name="support-tickets",
                 blob_name=ticket.media_name,
             ) if ticket.media_name else None,
@@ -192,7 +192,7 @@ class SupportTicketService:
             id=ticket.id,
             title=ticket.title,
             description=ticket.description,
-            media_name=self.azure_service.generate_read_sas_url(
+            media_name=self.storage_service.generate_read_url(
                 container_name="support-tickets",
                 blob_name=ticket.media_name,
             ) if ticket.media_name else None,

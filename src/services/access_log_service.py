@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select, desc, or_
 
-from src.services.azure_service import AzureService
+from src.services.storage_service import StorageService
 from src.services.user_service import UserService
 from src.services.location_service import LocationService
 
@@ -39,12 +39,12 @@ class AccessLogService:
     def __init__(
         self,
         session: AsyncSession,
-        azure_service: AzureService,
+        storage_service: StorageService,
         user_service: UserService,
         location_service: LocationService,
     ):
         self.session = session
-        self.azure_service = azure_service
+        self.storage_service = storage_service
         self.user_service = user_service
         self.location_service = location_service
 
@@ -658,7 +658,7 @@ class AccessLogService:
 
     def _convert_image_to_response(self, image_name: str) -> str:
         """Convert AccessLogImage model to schema."""
-        return self.azure_service.generate_read_sas_url(
+        return self.storage_service.generate_read_url(
             container_name="access-logs",
             blob_name=image_name
         )

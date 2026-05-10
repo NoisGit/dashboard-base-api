@@ -79,7 +79,7 @@ class StorageService:
             object_name = f"{container_name}/{object_name}"
         return self._object_url(object_name)
 
-    def generate_sas_upload_url(
+    def generate_upload_url(
         self,
         container_name: str,
         file_extension: str,
@@ -88,7 +88,7 @@ class StorageService:
         """Compatibility method for upload URL generation."""
         return self.generate_upload_url(container_name, file_extension, content_type)
 
-    def generate_sas_update_url(
+    def generate_update_url(
         self,
         old_blob_url: str,
         file_extension: str,
@@ -97,11 +97,11 @@ class StorageService:
         """Compatibility method for update URL generation."""
         return self.generate_update_url(old_blob_url, file_extension, content_type)
 
-    def generate_delete_sas_url(self, blob_url: str) -> dict:
+    def generate_delete_url(self, blob_url: str) -> dict:
         """Compatibility method for delete URL generation."""
         return self.generate_delete_url(blob_url)
 
-    def generate_read_sas_url(self, container_name: str, blob_name: str) -> str:
+    def generate_read_url(self, container_name: str, blob_name: str) -> str:
         """Compatibility method for read URL generation."""
         return self.generate_read_url(container_name, blob_name)
 

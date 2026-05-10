@@ -2,10 +2,10 @@
 
 from .error import (
     InvalidContainerError,
-    AzureServiceError
+    StorageServiceError
 )
 
 __all__ = [
     "InvalidContainerError",
-    "AzureServiceError",
+    "StorageServiceError",
 ]

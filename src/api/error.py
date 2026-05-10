@@ -10,11 +10,11 @@ class StorageServiceError(RuntimeError):
 
 
 # Backward-compatible alias while legacy imports migrate to StorageServiceError.
-AzureServiceError = StorageServiceError
+StorageServiceError = StorageServiceError
 
 
 __all__ = [
     "InvalidContainerError",
     "StorageServiceError",
-    "AzureServiceError",
+    "StorageServiceError",
 ]
