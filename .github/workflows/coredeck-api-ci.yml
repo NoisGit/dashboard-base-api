@@ -13,6 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      DATABASE_URL: postgresql+asyncpg://coredeck:coredeck@localhost:5432/coredeck_test
+      BACKEND_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      ENV: test
+      DEBUG: false
 
     steps:
       - name: Checkout repository
@@ -30,3 +35,6 @@ jobs:
 
       - name: Compile source
         run: python -m compileall src
+
+      - name: Run tests
+        run: pytest
