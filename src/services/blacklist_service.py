@@ -12,6 +12,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import desc, or_, select
 
+from src.core.enums import UserRole
 from src.models import (
     AccessList,
     CompanyLocationAccess,
@@ -464,6 +465,7 @@ class BlacklistService:
             await self.block_person(
                 user_id=user_id,
                 location_id=location_id,
+                company_id=None,
                 payload=payload,
             )
 
