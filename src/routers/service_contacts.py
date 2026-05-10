@@ -127,7 +127,7 @@ async def update_service_contact(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_service_contact(
-    service_contact_id: int,
+    contact_id: int,
     service: ServiceContactService = Depends(get_service_contact_service),
     user_id: int = Depends(
         RoleChecker(
@@ -142,4 +142,4 @@ async def delete_service_contact(
     """
     Delete an service contact.
     """
-    await service.delete_service_contact(user_id, service_contact_id)
+    await service.delete_service_contact(user_id, contact_id)
