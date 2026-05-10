@@ -44,45 +44,45 @@ class StorageService:
         self._validate_container(container_name)
         object_name = self._build_object_name(container_name, file_extension)
         return {
-            "blob_url": self._object_url(object_name),
-            "blob_name": object_name,
+            "object_url": self._object_url(object_name),
+            "object_name": object_name,
         }
 
     def generate_update_url(
         self,
-        old_blob_url: str,
+        old_object_url: str,
         file_extension: str,
         content_type: str,
     ) -> dict:
         """Generate replacement object metadata for a Supabase Storage object."""
-        container_name, _ = self.extract_blob_info_from_url(old_blob_url)
+        container_name, _ = self.extract_object_info_from_url(old_object_url)
         upload_payload = self.generate_upload_url(
             container_name=container_name,
             file_extension=file_extension,
             content_type=content_type,
         )
         return {
-            "delete_url": old_blob_url,
-            "new_blob_name": upload_payload["blob_name"],
-            "new_blob_url": upload_payload["blob_url"],
+            "delete_url": old_object_url,
+            "new_object_name": upload_payload["object_name"],
+            "new_object_url": upload_payload["object_url"],
         }
 
-    def generate_delete_url(self, blob_url: str) -> dict:
+    def generate_delete_url(self, object_url: str) -> dict:
         """Return the Supabase object URL that should be deleted."""
-        return {"blob_url": blob_url}
+        return {"object_url": object_url}
 
-    def generate_read_url(self, container_name: str, blob_name: str) -> str:
+    def generate_read_url(self, container_name: str, object_name: str) -> str:
         """Generate a Supabase public read URL for an existing object."""
         self._validate_container(container_name)
-        object_name = blob_name.strip("/")
-        if not object_name.startswith(f"{container_name}/"):
-            object_name = f"{container_name}/{object_name}"
-        return self._object_url(object_name)
+        normalized_object_name = object_name.strip("/")
+        if not normalized_object_name.startswith(f"{container_name}/"):
+            normalized_object_name = f"{container_name}/{normalized_object_name}"
+        return self._object_url(normalized_object_name)
 
-    def extract_blob_info_from_url(self, blob_url: str) -> tuple[str, str]:
+    def extract_object_info_from_url(self, object_url: str) -> tuple[str, str]:
         """Extract the Coredeck container and object name from a storage URL."""
         try:
-            parsed_url = urlparse(blob_url)
+            parsed_url = urlparse(object_url)
             marker = f"/storage/v1/object/public/{self.bucket}/"
             if marker in parsed_url.path:
                 object_name = parsed_url.path.split(marker, 1)[1]
