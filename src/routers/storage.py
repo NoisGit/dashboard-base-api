@@ -52,7 +52,7 @@ async def generate_update_url(
     """Generate replacement metadata for a storage object."""
     try:
         result = service.generate_update_url(
-            old_blob_url=request.old_blob_url,
+            old_object_url=request.old_object_url,
             file_extension=request.file_extension,
             content_type=request.content_type,
         )
@@ -76,7 +76,7 @@ async def generate_delete_url(
 ):
     """Return delete metadata for a storage object."""
     try:
-        result = service.generate_delete_url(blob_url=request.blob_url)
+        result = service.generate_delete_url(object_url=request.object_url)
         return StorageDeleteResponse(**result)
     except InvalidContainerError:
         raise
