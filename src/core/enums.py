@@ -7,7 +7,6 @@ class UserRole(str, Enum):
     """Global user roles enumeration for the Coredeck dashboard."""
     SUPERADMIN = "SUPERADMIN"
     ADMIN = "ADMIN"
-    SUBADMIN = "SUBADMIN"
     OPERATOR = "OPERATOR"
     CLIENT = "CLIENT"
 
