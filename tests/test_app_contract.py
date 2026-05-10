@@ -1,6 +1,12 @@
 """Coredeck API contract tests."""
 
 import asyncio
+import os
+
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+asyncpg://coredeck:coredeck@localhost:5432/coredeck_test",
+)
 
 from src.api.endpoints import root
 from src.config.config import settings
