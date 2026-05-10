@@ -15,7 +15,7 @@ from src.services.document_service import DocumentService
 from src.services.email_service import EmailService
 from src.services.emergency_contact_service import EmergencyContactService
 from src.services.location_logbook_service import LocationLogbookService
-from src.services.location_service import LocationService
+from src.services.location_scope_service import LocationScopeService
 from src.services.notification_service import NotificationService
 from src.services.service_contact_service import ServiceContactService
 from src.services.support_ticket_service import SupportTicketService
@@ -70,15 +70,15 @@ def get_location_service(
     user_service: UserService = Depends(get_user_service),
     company_service: CompanyService = Depends(get_company_service),
     storage_service: StorageService = Depends(get_storage_service),
-) -> LocationService:
-    """Dependency to get a LocationService instance."""
-    return LocationService(session, storage_service, user_service, company_service)
+) -> LocationScopeService:
+    """Dependency to get a LocationScopeService instance."""
+    return LocationScopeService(session, storage_service, user_service, company_service)
 
 
 def get_location_logbook_service(
     session: AsyncSession = Depends(get_session),
     storage_service: StorageService = Depends(get_storage_service),
-    location_service: LocationService = Depends(get_location_service),
+    location_service: LocationScopeService = Depends(get_location_service),
 ) -> LocationLogbookService:
     """Dependency to get a LocationLogbookService instance."""
     return LocationLogbookService(session, storage_service, location_service)
@@ -95,7 +95,7 @@ def get_emergency_contact_service(
 def get_service_contact_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
-    location_service: LocationService = Depends(get_location_service),
+    location_service: LocationScopeService = Depends(get_location_service),
 ) -> ServiceContactService:
     """Dependency to get a ServiceContactService instance."""
     return ServiceContactService(session, user_service, location_service)
@@ -121,7 +121,7 @@ def get_notification_service(
 def get_whitelist_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
-    location_service: LocationService = Depends(get_location_service),
+    location_service: LocationScopeService = Depends(get_location_service),
 ) -> WhitelistService:
     """Dependency to get a WhitelistService instance."""
     return WhitelistService(session, user_service, location_service)
@@ -130,7 +130,7 @@ def get_whitelist_service(
 def get_blacklist_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
-    location_service: LocationService = Depends(get_location_service),
+    location_service: LocationScopeService = Depends(get_location_service),
 ) -> BlacklistService:
     """Dependency to get a BlacklistService instance."""
     return BlacklistService(session, user_service, location_service)
@@ -147,7 +147,7 @@ def get_access_log_service(
     session: AsyncSession = Depends(get_session),
     storage_service: StorageService = Depends(get_storage_service),
     user_service: UserService = Depends(get_user_service),
-    location_service: LocationService = Depends(get_location_service),
+    location_service: LocationScopeService = Depends(get_location_service),
 ) -> AccessLogService:
     """Dependency to get an AccessLogService instance."""
     return AccessLogService(session, storage_service, user_service, location_service)
@@ -165,7 +165,7 @@ def get_document_service(
 def get_dashboard_service(
     session: AsyncSession = Depends(get_session),
     user_service: UserService = Depends(get_user_service),
-    location_service: LocationService = Depends(get_location_service),
+    location_service: LocationScopeService = Depends(get_location_service),
 ) -> DashboardService:
     """Dependency to get a DashboardService instance."""
     return DashboardService(session, user_service, location_service)
