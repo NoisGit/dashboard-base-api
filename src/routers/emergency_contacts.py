@@ -62,7 +62,6 @@ async def create_emergency_contact(
     user_id=Depends(RoleChecker([
         UserRole.SUPERADMIN,
         UserRole.ADMIN,
-        UserRole.SUBADMIN,
     ])),
 ):
     """
@@ -84,7 +83,6 @@ async def update_emergency_contact(
     user_id=Depends(RoleChecker([
         UserRole.SUPERADMIN,
         UserRole.ADMIN,
-        UserRole.SUBADMIN,
     ])),
 ):
     """
@@ -103,7 +101,6 @@ async def delete_emergency_contact(
     user_id=Depends(RoleChecker([
         UserRole.SUPERADMIN,
         UserRole.ADMIN,
-        UserRole.SUBADMIN,
     ])),
 ):
     """
