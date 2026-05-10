@@ -5,17 +5,8 @@ This module centralizes the export of core service classes used for
 business logic and database operations in the Coredeck API.
 """
 
-import sys
-
 from .auth_service import AuthService
 from .storage_service import StorageService
-from . import storage_service as _storage_service_module
-
-# Temporary import compatibility while large services finish migrating to StorageService.
-AzureService = StorageService
-_storage_service_module.AzureService = StorageService
-sys.modules[__name__ + ".azure_service"] = _storage_service_module
-
 from .user_service import UserService
 from .company_service import CompanyService
 from .location_service import LocationService
@@ -32,7 +23,6 @@ from .document_service import DocumentService
 __all__ = [
     "AuthService",
     "StorageService",
-    "AzureService",
     "UserService",
     "CompanyService",
     "LocationService",
