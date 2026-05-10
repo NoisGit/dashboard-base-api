@@ -255,7 +255,7 @@ class CompanyService:
         payload: UserCreateRequest,
     ) -> None:
         """Create a new user."""
-        check_user = await self.get_user_by_email(payload.email)
+        check_user = await self.user_service.get_user_by_email(payload.email)
         if check_user:
             await self.assign_user_to_company(
                 requester_id=requester_id,
