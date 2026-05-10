@@ -1,0 +1,924 @@
+name: Apply location cleanup
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply cleanup patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_required(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise RuntimeError(f"Missing block: {label}")
+              return text.replace(old, new)
+
+          def replace_method(text: str, name: str, new_method: str) -> str:
+              marker = f"\n    async def {name}("
+              start = text.find(marker)
+              if start == -1:
+                  raise RuntimeError(f"Method not found: {name}")
+              next_start = text.find("\n    async def ", start + len(marker))
+              if next_start == -1:
+                  next_start = len(text)
+              return text[:start] + "\n" + new_method.rstrip() + "\n" + text[next_start:]
+
+          # LocationService: direct imports and global scope helpers.
+          path = Path('src/services/location_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'from src.services import UserService, CompanyService, StorageService',
+              'from src.services.user_service import UserService\nfrom src.services.company_service import CompanyService\nfrom src.services.storage_service import StorageService',
+          )
+          if 'async def resolve_company_scope_for_location' not in text:
+              helpers = '''    async def get_company_id_for_user(
+        self,
+        user_id: int,
+        company_id: Optional[int] = None,
+    ) -> int:
+        """Resolve company scope for a user."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role == UserRole.SUPERADMIN:
+            if company_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="company_id is required.",
+                )
+            return company_id
+
+        my_company_id = await self.company_service.get_company_id_by_user_id(user_id)
+        if not my_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no company assigned.",
+            )
+
+        if company_id is not None and company_id != my_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed for this company.",
+            )
+
+        return my_company_id
+
+    async def validate_location_for_company(
+        self,
+        user_id: int,
+        company_id: int,
+        location_id: Optional[int],
+    ) -> None:
+        """Validate location access and company ownership."""
+        if location_id is None:
+            return
+
+        await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        stmt = select(CompanyLocationAccess).where(
+            CompanyLocationAccess.company_id == company_id,
+            CompanyLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalars().first()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="company_id does not match location_id.",
+            )
+
+    async def resolve_company_scope_for_location(
+        self,
+        user_id: int,
+        company_id: Optional[int] = None,
+        location_id: Optional[int] = None,
+    ) -> int:
+        """Resolve company scope and validate location access."""
+        if company_id is not None:
+            resolved_company_id = await self.get_company_id_for_user(
+                user_id=user_id,
+                company_id=company_id,
+            )
+            await self.validate_location_for_company(
+                user_id=user_id,
+                company_id=resolved_company_id,
+                location_id=location_id,
+            )
+            return resolved_company_id
+
+        if location_id is None:
+            return await self.get_company_id_for_user(
+                user_id=user_id,
+                company_id=company_id,
+            )
+
+        await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role != UserRole.SUPERADMIN:
+            my_company_id = await self.company_service.get_company_id_by_user_id(user_id)
+            if not my_company_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User has no company assigned.",
+                )
+            return my_company_id
+
+        stmt = select(CompanyLocationAccess.company_id).where(
+            CompanyLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        company_ids = list({row[0] for row in result.all()})
+
+        if not company_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Location must be assigned to a company.",
+            )
+
+        if len(company_ids) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="company_id is required when location has multiple companies.",
+            )
+
+        return company_ids[0]
+
+'''
+              insert_marker = '    async def check_user_permission_on_location('
+              text = replace_required(text, insert_marker, helpers + insert_marker, 'location scope helpers')
+          path.write_text(text, encoding='utf-8')
+
+          # AccessLogService: use LocationService for company/location scope.
+          path = Path('src/services/access_log_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('    CompanyLocationAccess,\n', '')
+          text = replace_method(text, '_get_company_id_by_location', '''    async def _get_company_id_by_location(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> int:
+        return await self.location_service.resolve_company_scope_for_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+''')
+          path.write_text(text, encoding='utf-8')
+
+          # WhitelistService: delegate company/location scope to LocationService.
+          path = Path('src/services/whitelist_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('from src.core.enums import UserRole\n', '')
+          text = text.replace('    CompanyLocationAccess,\n', '')
+          text = replace_method(text, '_get_company_id', '''    async def _get_company_id(
+        self,
+        user_id: int,
+        company_id: Optional[int],
+    ) -> int:
+        return await self.location_service.get_company_id_for_user(
+            user_id=user_id,
+            company_id=company_id,
+        )
+''')
+          text = replace_method(text, '_validate_location_for_company', '''    async def _validate_location_for_company(
+        self,
+        user_id: int,
+        company_id: int,
+        location_id: Optional[int],
+    ) -> None:
+        await self.location_service.validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
+            location_id=location_id,
+        )
+''')
+          path.write_text(text, encoding='utf-8')
+
+          # BlacklistService: delegate company/location scope to LocationService and fix bulk call.
+          path = Path('src/services/blacklist_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('    CompanyLocationAccess,\n', '')
+          text = replace_method(text, '_get_company_id', '''    async def _get_company_id(
+        self,
+        user_id: int,
+        company_id: Optional[int],
+    ) -> int:
+        return await self.location_service.get_company_id_for_user(
+            user_id=user_id,
+            company_id=company_id,
+        )
+''')
+          text = replace_method(text, '_validate_location_for_company', '''    async def _validate_location_for_company(
+        self,
+        user_id: int,
+        company_id: int,
+        location_id: Optional[int],
+    ) -> None:
+        await self.location_service.validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
+            location_id=location_id,
+        )
+''')
+          text = text.replace(
+              '                user_id=user_id,\n                location_id=location_id,\n                payload=payload,',
+              '                user_id=user_id,\n                location_id=location_id,\n                company_id=None,\n                payload=payload,',
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # CompanyService: direct imports.
+          path = Path('src/services/company_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'from src.services import UserService, StorageService',
+              'from src.services.user_service import UserService\nfrom src.services.storage_service import StorageService',
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # ServiceContactService: direct imports and LocationService validation.
+          path = Path('src/services/service_contact_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'from src.core.enums import UserRole\nfrom src.services import UserService\nfrom src.services import LocationService',
+              'from src.services.user_service import UserService\nfrom src.services.location_service import LocationService',
+          )
+          text = replace_method(text, 'list_service_contacts', '''    async def list_service_contacts(
+        self,
+        location_id: int,
+        user_id: int,
+        params: Params,
+    ) -> Page[ServiceContactResponse]:
+        """
+        List service contacts for a location.
+        and location-specific numbers.
+        """
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        stmt = select(ServiceContact).where(
+            ServiceContact.location_id == location_id,
+        ).order_by(
+            desc(ServiceContact.created_at),
+        )
+
+        return await paginate(
+            self.session,
+            stmt,
+            params,
+            transformer=lambda items: [
+                ServiceContactResponse(
+                    id=service_contact.id,
+                    location_id=service_contact.location_id,
+                    service_name=service_contact.service_name,
+                    person_name=service_contact.person_name,
+                    email=service_contact.email,
+                    phone=service_contact.phone,
+                    created_by=service_contact.created_by,
+                    created_at=service_contact.created_at,
+                )
+                for service_contact in cast(List[ServiceContact], items)
+            ]
+        )
+''')
+          text = replace_method(text, 'create_service_contact', '''    async def create_service_contact(
+        self,
+        user_id: int,
+        payload: ServiceContactCreateRequest
+    ):
+        """
+        Create a new service contact.
+        Applies consistency rules and authorization checks.
+        """
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=payload.location_id,
+        )
+
+        new_contact = ServiceContact(
+            service_name=payload.service_name,
+            person_name=payload.person_name,
+            email=payload.email,
+            phone=payload.phone,
+            location_id=payload.location_id,
+            created_by=user_id,
+        )
+
+        self.session.add(new_contact)
+        await self.session.commit()
+        await self.session.refresh(new_contact)
+''')
+          text = replace_method(text, 'bulk_import_service_contacts', '''    async def bulk_import_service_contacts(
+        self,
+        user_id: int,
+        location_id: int,
+        file: UploadFile,
+    ) -> None:
+        """
+        Create a new service contact.
+        Applies consistency rules and authorization checks.
+        """
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        rows = await self._read_service_contact_csv(file)
+
+        for row in rows:
+            stmt = select(ServiceContact).where(
+                ServiceContact.location_id == location_id,
+                ServiceContact.service_name == row["nombre del servicio"],
+                ServiceContact.person_name == row["nombre del proveedor"],
+                ServiceContact.email == row["email"],
+                ServiceContact.phone == row["teléfono"],
+            )
+            result = await self.session.execute(stmt)
+            existing_contact = result.scalars().first()
+
+            if existing_contact:
+                continue
+
+            self.session.add(
+                ServiceContact(
+                    service_name=row["nombre del servicio"],
+                    person_name=row["nombre del proveedor"],
+                    email=row["email"],
+                    phone=row["teléfono"],
+                    location_id=location_id,
+                    created_by=user_id,
+                )
+            )
+
+        await self.session.commit()
+''')
+          text = replace_method(text, 'update_service_contact', '''    async def update_service_contact(
+        self,
+        user_id: int,
+        service_contact_id: int,
+        payload: ServiceContactUpdateRequest
+    ):
+        """
+        Update an existing service contact.
+        Applies consistency rules and authorization checks.
+        """
+        service_contact = await self.get_service_contact_by_id(service_contact_id)
+
+        if not service_contact:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service contact with id {service_contact_id} not found.",
+            )
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=service_contact.location_id,
+        )
+
+        contact_model = payload.model_dump(exclude_none=True)
+        for key, value in contact_model.items():
+            setattr(service_contact, key, value)
+
+        await self.session.commit()
+        await self.session.refresh(service_contact)
+''')
+          text = replace_method(text, 'delete_service_contact', '''    async def delete_service_contact(
+        self,
+        user_id: int,
+        service_contact_id: int,
+    ) -> None:
+        """
+        Delete an existing service contact.
+        Applies consistency rules and authorization checks.
+        """
+        service_contact = await self.get_service_contact_by_id(service_contact_id)
+
+        if not service_contact:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service contact with id {service_contact_id} not found.",
+            )
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=service_contact.location_id,
+        )
+
+        await self.session.delete(service_contact)
+        await self.session.commit()
+''')
+          path.write_text(text, encoding='utf-8')
+
+          # EmergencyContactService: use LocationService for location-scoped contacts.
+          Path('src/services/emergency_contact_service.py').write_text('''"""Emergency contact service module for the Coredeck API."""
+
+from typing import List, Optional, cast
+
+from fastapi import HTTPException, status
+from fastapi_pagination import Page, Params
+from fastapi_pagination.ext.sqlmodel import paginate
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select, or_, desc
+
+from src.core.enums import UserRole
+from src.models import EmergencyContact
+from src.schemas import (
+    EmergencyContactCreateRequest,
+    EmergencyContactUpdateRequest,
+    EmergencyContactResponse,
+)
+from src.services.location_service import LocationService
+from src.services.user_service import UserService
+
+
+class EmergencyContactService:
+    """Service for emergency contact operations."""
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        user_service: UserService,
+        location_service: LocationService,
+    ):
+        self.session = session
+        self.user_service = user_service
+        self.location_service = location_service
+
+    async def get_emergency_contact_by_id(
+        self,
+        contact_id: int,
+    ) -> Optional[EmergencyContact]:
+        """Get emergency contact by ID."""
+        stmt = select(EmergencyContact).where(EmergencyContact.id == contact_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def _ensure_can_access_contact(
+        self,
+        user_id: int,
+        contact: EmergencyContact,
+    ) -> None:
+        """Validate location access for a contact."""
+        if contact.is_default or contact.location_id is None:
+            return
+
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=contact.location_id,
+        )
+
+    async def list_emergency_contacts(
+        self,
+        user_id: int,
+        location_id: int,
+        params: Params,
+    ) -> Page[EmergencyContactResponse]:
+        """
+        List emergency contacts for a location.
+        Returns both default country numbers (is_default=TRUE)
+        and location-specific numbers.
+        """
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        stmt = select(EmergencyContact).where(
+            or_(
+                EmergencyContact.is_default == True,  # pylint: disable=singleton-comparison
+                EmergencyContact.location_id == location_id,
+            )
+        ).order_by(
+            desc(EmergencyContact.is_default),
+            desc(EmergencyContact.created_at),
+        )
+
+        return await paginate(
+            self.session,
+            stmt,
+            params,
+            transformer=lambda items: [
+                EmergencyContactResponse(
+                    id=contact.id,
+                    name=contact.name,
+                    phone=contact.phone,
+                    location_id=contact.location_id,
+                    is_default=contact.is_default,
+                    created_by=contact.created_by,
+                    created_at=contact.created_at,
+                )
+                for contact in cast(List[EmergencyContact], items)
+            ]
+        )
+
+    async def get_emergency_contact_detail(
+        self,
+        user_id: int,
+        contact_id: int,
+    ) -> EmergencyContactResponse:
+        """Get a single emergency contact by ID."""
+        contact = await self.get_emergency_contact_by_id(contact_id)
+
+        if not contact:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Emergency contact with id {contact_id} not found.",
+            )
+
+        await self._ensure_can_access_contact(user_id, contact)
+
+        return EmergencyContactResponse(
+            id=contact.id,
+            name=contact.name,
+            phone=contact.phone,
+            location_id=contact.location_id,
+            is_default=contact.is_default,
+            created_by=contact.created_by,
+            created_at=contact.created_at,
+        )
+
+    async def create_emergency_contact(
+        self,
+        user_id: int,
+        payload: EmergencyContactCreateRequest
+    ):
+        """
+        Create a new emergency contact.
+        Applies consistency rules and authorization checks.
+        """
+        user = await self.user_service.get_user_by_id(user_id)
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if payload.is_default:
+            if user.role != UserRole.SUPERADMIN:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only SUPERADMIN can create default emergency contacts.",
+                )
+            if payload.location_id is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Default emergency contacts cannot be associated with a location.",
+                )
+        elif payload.location_id is not None:
+            await self.location_service.check_user_permission_on_location(
+                user_id=user_id,
+                location_id=payload.location_id,
+            )
+
+        new_contact = EmergencyContact(
+            name=payload.name,
+            phone=payload.phone,
+            location_id=payload.location_id,
+            is_default=payload.is_default,
+            created_by=user_id,
+        )
+
+        self.session.add(new_contact)
+        await self.session.commit()
+        await self.session.refresh(new_contact)
+
+    async def update_emergency_contact(
+        self,
+        user_id: int,
+        contact_id: int,
+        payload: EmergencyContactUpdateRequest,
+    ):
+        """
+        Update an existing emergency contact.
+        Applies consistency rules and authorization checks.
+        """
+        user = await self.user_service.get_user_by_id(user_id)
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        contact = await self.get_emergency_contact_by_id(contact_id)
+
+        if not contact:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Emergency contact with id {contact_id} not found.",
+            )
+
+        if contact.is_default and user.role != UserRole.SUPERADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only SUPERADMIN can modify default emergency contacts.",
+            )
+
+        await self._ensure_can_access_contact(user_id, contact)
+
+        update_data = payload.model_dump(exclude_none=True)
+        next_location_id = update_data.get("location_id", contact.location_id)
+        next_is_default = update_data.get("is_default", contact.is_default)
+
+        if next_is_default and next_location_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Default emergency contacts cannot be associated with a location.",
+            )
+
+        if next_location_id is not None and not next_is_default:
+            await self.location_service.check_user_permission_on_location(
+                user_id=user_id,
+                location_id=next_location_id,
+            )
+
+        for key, value in update_data.items():
+            setattr(contact, key, value)
+
+        await self.session.commit()
+        await self.session.refresh(contact)
+
+    async def delete_emergency_contact(
+        self,
+        user_id: int,
+        contact_id: int,
+    ):
+        """
+        Delete an emergency contact.
+        Only SUPERADMIN can delete default numbers.
+        """
+        contact = await self.get_emergency_contact_by_id(contact_id)
+
+        if not contact:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Emergency contact with id {contact_id} not found.",
+            )
+
+        user = await self.user_service.get_user_by_id(user_id)
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if contact.is_default and user.role != UserRole.SUPERADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only SUPERADMIN can delete default emergency contacts.",
+            )
+
+        await self._ensure_can_access_contact(user_id, contact)
+
+        await self.session.delete(contact)
+        await self.session.commit()
+
+
+__all__ = ["EmergencyContactService"]
+''', encoding='utf-8')
+
+          # Emergency contacts router: pass user_id into service methods.
+          Path('src/routers/emergency_contacts.py').write_text('''"""Emergency contacts router module for Coredeck API."""
+
+from fastapi_pagination import Page, Params
+from fastapi import APIRouter, Depends, status
+
+from src.auth.permissions import RoleChecker
+from src.core.enums import UserRole
+from src.dependencies import get_emergency_contact_service
+from src.schemas import (
+    EmptyResponse,
+    EmergencyContactCreateRequest,
+    EmergencyContactUpdateRequest,
+    EmergencyContactResponse,
+)
+from src.services.emergency_contact_service import EmergencyContactService
+
+router = APIRouter(prefix="/emergency-contacts", tags=["emergency-contacts"])
+
+
+@router.get(
+    "/",
+    response_model=Page[EmergencyContactResponse],
+)
+async def list_emergency_contacts(
+    location_id: int,
+    params: Params = Depends(),
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    user_id: int = Depends(RoleChecker([
+        UserRole.SUPERADMIN,
+        UserRole.ADMIN,
+        UserRole.CLIENT,
+        UserRole.OPERATOR,
+    ])),
+):
+    """
+    List emergency contacts for a location.
+    """
+    emergency_contacts = await service.list_emergency_contacts(
+        user_id,
+        location_id,
+        params,
+    )
+    return emergency_contacts
+
+
+@router.get(
+    "/{contact_id}",
+    response_model=EmergencyContactResponse,
+)
+async def get_emergency_contact_detail(
+    contact_id: int,
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    user_id: int = Depends(RoleChecker([
+        UserRole.SUPERADMIN,
+        UserRole.ADMIN,
+        UserRole.CLIENT,
+        UserRole.OPERATOR,
+    ])),
+):
+    """
+    Get a single emergency contact by ID.
+    """
+    contact = await service.get_emergency_contact_detail(
+        user_id=user_id,
+        contact_id=contact_id,
+    )
+    return contact
+
+
+@router.post(
+    "/",
+    response_model=EmptyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_emergency_contact(
+    payload: EmergencyContactCreateRequest,
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    user_id=Depends(RoleChecker([
+        UserRole.SUPERADMIN,
+        UserRole.ADMIN,
+    ])),
+):
+    """
+    Create a new emergency contact.
+    """
+
+    await service.create_emergency_contact(user_id, payload)
+    return EmptyResponse()
+
+
+@router.put(
+    "/{contact_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def update_emergency_contact(
+    contact_id: int,
+    payload: EmergencyContactUpdateRequest,
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    user_id=Depends(RoleChecker([
+        UserRole.SUPERADMIN,
+        UserRole.ADMIN,
+    ])),
+):
+    """
+    Update an existing emergency contact.
+    """
+    await service.update_emergency_contact(user_id, contact_id, payload)
+
+
+@router.delete(
+    "/{contact_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_emergency_contact(
+    contact_id: int,
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    user_id=Depends(RoleChecker([
+        UserRole.SUPERADMIN,
+        UserRole.ADMIN,
+    ])),
+):
+    """
+    Delete an emergency contact.
+    """
+    await service.delete_emergency_contact(user_id, contact_id)
+''', encoding='utf-8')
+
+          # Dependencies: inject LocationService into EmergencyContactService.
+          path = Path('src/dependencies.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '''def get_emergency_contact_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+) -> EmergencyContactService:
+    """Dependency to get an EmergencyContactService instance."""
+    return EmergencyContactService(session, user_service)
+''',
+              '''def get_emergency_contact_service(
+    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
+    location_service: LocationService = Depends(get_location_service),
+) -> EmergencyContactService:
+    """Dependency to get an EmergencyContactService instance."""
+    return EmergencyContactService(session, user_service, location_service)
+'''
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # Contract tests for cleanup and global location validation.
+          Path('tests/test_location_cleanup_contract.py').write_text('''"""Location cleanup contract tests."""
+
+from pathlib import Path
+
+from src.services.location_service import LocationService
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_location_service_exposes_global_scope_helpers():
+    """Validate global location scope helpers exist."""
+    assert hasattr(LocationService, "get_company_id_for_user")
+    assert hasattr(LocationService, "validate_location_for_company")
+    assert hasattr(LocationService, "resolve_company_scope_for_location")
+
+
+def test_legacy_provider_references_are_removed():
+    """Validate removed providers do not return to source code."""
+    forbidden = (
+        "firebase_admin",
+        "AzureService",
+        "azure_service",
+        "UserRole.SUBADMIN",
+    )
+    for path in (ROOT / "src").rglob("*.py"):
+        content = path.read_text(encoding="utf-8")
+        for item in forbidden:
+            assert item not in content, f"{item} found in {path}"
+
+
+def test_location_scoped_services_use_location_service_validation():
+    """Validate location-scoped services use LocationService."""
+    files = [
+        ROOT / "src/services/access_log_service.py",
+        ROOT / "src/services/blacklist_service.py",
+        ROOT / "src/services/whitelist_service.py",
+        ROOT / "src/services/service_contact_service.py",
+        ROOT / "src/services/emergency_contact_service.py",
+    ]
+    for path in files:
+        content = path.read_text(encoding="utf-8")
+        assert "location_service" in content
+        assert "check_user_permission_on_location" in content or "validate_location_for_company" in content
+''', encoding='utf-8')
+
+          workflow = Path('.github/workflows/apply-location-cleanup.yml')
+          if workflow.exists():
+              workflow.unlink()
+          PY
+
+      - name: Commit cleanup
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add src tests .github/workflows/apply-location-cleanup.yml
+            git commit -m "Centralize location validation cleanup"
+            git push
+          fi
