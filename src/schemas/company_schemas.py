@@ -63,6 +63,7 @@ class CompanyUserAssignmentResponse(BaseModel):
 
 __all__ = [
     "CompanyCreateRequest",
+    "SubCompanyCreateRequest",
     "CompanyUpdateRequest",
     "CompanyResponse",
     "CompanyAssignUserRequest",
