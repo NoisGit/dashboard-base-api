@@ -3,7 +3,6 @@
 from fastapi_pagination import Page, Params
 from fastapi import APIRouter, Depends, status
 
-from src.auth.utils import get_current_user
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_emergency_contact_service
@@ -26,12 +25,21 @@ async def list_emergency_contacts(
     location_id: int,
     params: Params = Depends(),
     service: EmergencyContactService = Depends(get_emergency_contact_service),
-    _=Depends(get_current_user),
+    user_id: int = Depends(RoleChecker([
+        UserRole.SUPERADMIN,
+        UserRole.ADMIN,
+        UserRole.CLIENT,
+        UserRole.OPERATOR,
+    ])),
 ):
     """
     List emergency contacts for a location.
     """
-    emergency_contacts = await service.list_emergency_contacts(location_id, params)
+    emergency_contacts = await service.list_emergency_contacts(
+        user_id=user_id,
+        location_id=location_id,
+        params=params,
+    )
     return emergency_contacts
 
 
@@ -42,12 +50,20 @@ async def list_emergency_contacts(
 async def get_emergency_contact_detail(
     contact_id: int,
     service: EmergencyContactService = Depends(get_emergency_contact_service),
-    _=Depends(get_current_user),
+    user_id: int = Depends(RoleChecker([
+        UserRole.SUPERADMIN,
+        UserRole.ADMIN,
+        UserRole.CLIENT,
+        UserRole.OPERATOR,
+    ])),
 ):
     """
     Get a single emergency contact by ID.
     """
-    contact = await service.get_emergency_contact_detail(contact_id=contact_id)
+    contact = await service.get_emergency_contact_detail(
+        user_id=user_id,
+        contact_id=contact_id,
+    )
     return contact
 
 
