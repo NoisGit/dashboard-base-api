@@ -1,0 +1,280 @@
+name: Apply LocationService scope refactor
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply refactor
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_method(text: str, name: str, new_method: str) -> str:
+              marker = f"\n    async def {name}("
+              start = text.find(marker)
+              if start == -1:
+                  raise RuntimeError(f"Method not found: {name}")
+              next_start = text.find("\n    async def ", start + len(marker))
+              if next_start == -1:
+                  next_start = len(text)
+              return text[:start] + "\n" + new_method.rstrip() + "\n" + text[next_start:]
+
+          # LocationService: global scope helpers and object_name storage call.
+          path = Path('src/services/location_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('from src.services import UserService, CompanyService, StorageService', 'from src.services.user_service import UserService\nfrom src.services.company_service import CompanyService\nfrom src.services.storage_service import StorageService')
+          text = text.replace('blob_name=location.logo', 'object_name=location.logo')
+
+          if 'async def get_company_id_for_user(' not in text:
+              helpers = '''    async def get_company_id_for_user(
+        self,
+        user_id: int,
+        company_id: Optional[int] = None,
+    ) -> int:
+        """Resolve company scope for a user."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role == UserRole.SUPERADMIN:
+            if company_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="company_id is required.",
+                )
+            return company_id
+
+        my_company_id = await self.company_service.get_company_id_by_user_id(user_id)
+        if not my_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no company assigned.",
+            )
+
+        if company_id is not None and company_id != my_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed for this company.",
+            )
+
+        return my_company_id
+
+    async def validate_location_for_company(
+        self,
+        user_id: int,
+        company_id: int,
+        location_id: Optional[int],
+    ) -> None:
+        """Validate location access and company ownership."""
+        if location_id is None:
+            return
+
+        await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        stmt = select(CompanyLocationAccess).where(
+            CompanyLocationAccess.company_id == company_id,
+            CompanyLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalars().first()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="company_id does not match location_id.",
+            )
+
+    async def resolve_company_scope_for_location(
+        self,
+        user_id: int,
+        company_id: Optional[int] = None,
+        location_id: Optional[int] = None,
+    ) -> int:
+        """Resolve company scope and validate location access."""
+        if company_id is not None:
+            resolved_company_id = await self.get_company_id_for_user(
+                user_id=user_id,
+                company_id=company_id,
+            )
+            await self.validate_location_for_company(
+                user_id=user_id,
+                company_id=resolved_company_id,
+                location_id=location_id,
+            )
+            return resolved_company_id
+
+        if location_id is None:
+            return await self.get_company_id_for_user(
+                user_id=user_id,
+                company_id=company_id,
+            )
+
+        await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role != UserRole.SUPERADMIN:
+            my_company_id = await self.company_service.get_company_id_by_user_id(user_id)
+            if not my_company_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User has no company assigned.",
+                )
+            return my_company_id
+
+        stmt = select(CompanyLocationAccess.company_id).where(
+            CompanyLocationAccess.location_id == location_id,
+        )
+        result = await self.session.execute(stmt)
+        company_ids = list({row[0] for row in result.all()})
+
+        if not company_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Location must be assigned to a company.",
+            )
+
+        if len(company_ids) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="company_id is required when location has multiple companies.",
+            )
+
+        return company_ids[0]
+
+'''
+              marker = '    async def check_user_permission_on_location('
+              if marker not in text:
+                  raise RuntimeError('check_user_permission_on_location marker not found')
+              text = text.replace(marker, helpers + marker)
+          path.write_text(text, encoding='utf-8')
+
+          # WhitelistService: delegate company/location scope to LocationService.
+          path = Path('src/services/whitelist_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('from src.core.enums import UserRole\n', '')
+          text = text.replace('    CompanyLocationAccess,\n', '')
+          text = replace_method(text, '_get_company_id', '''    async def _get_company_id(
+        self,
+        user_id: int,
+        company_id: Optional[int],
+    ) -> int:
+        return await self.location_service.get_company_id_for_user(
+            user_id=user_id,
+            company_id=company_id,
+        )
+''')
+          text = replace_method(text, '_validate_location_for_company', '''    async def _validate_location_for_company(
+        self,
+        user_id: int,
+        company_id: int,
+        location_id: Optional[int],
+    ) -> None:
+        await self.location_service.validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
+            location_id=location_id,
+        )
+''')
+          path.write_text(text, encoding='utf-8')
+
+          # BlacklistService: delegate company/location scope to LocationService.
+          path = Path('src/services/blacklist_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('from src.core.enums import UserRole\n', '')
+          text = text.replace('    CompanyLocationAccess,\n', '')
+          text = replace_method(text, '_get_company_id', '''    async def _get_company_id(
+        self,
+        user_id: int,
+        company_id: Optional[int],
+    ) -> int:
+        return await self.location_service.get_company_id_for_user(
+            user_id=user_id,
+            company_id=company_id,
+        )
+''')
+          text = replace_method(text, '_validate_location_for_company', '''    async def _validate_location_for_company(
+        self,
+        user_id: int,
+        company_id: int,
+        location_id: Optional[int],
+    ) -> None:
+        await self.location_service.validate_location_for_company(
+            user_id=user_id,
+            company_id=company_id,
+            location_id=location_id,
+        )
+''')
+          path.write_text(text, encoding='utf-8')
+
+          # AccessLogService: use LocationService for company scope by location.
+          path = Path('src/services/access_log_service.py')
+          text = path.read_text(encoding='utf-8')
+          if 'async def _get_company_id_by_location(' in text:
+              text = replace_method(text, '_get_company_id_by_location', '''    async def _get_company_id_by_location(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> int:
+        return await self.location_service.resolve_company_scope_for_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
+''')
+          text = text.replace('    CompanyLocationAccess,\n', '')
+          path.write_text(text, encoding='utf-8')
+
+          # Contract test for global scope helpers.
+          Path('tests/test_location_service_contract.py').write_text('''"""Location service contract tests."""
+
+from src.services.location_service import LocationService
+
+
+def test_location_service_exposes_scope_helpers():
+    """Validate centralized location scope helpers exist."""
+    assert hasattr(LocationService, "get_company_id_for_user")
+    assert hasattr(LocationService, "validate_location_for_company")
+    assert hasattr(LocationService, "resolve_company_scope_for_location")
+''', encoding='utf-8')
+
+          workflow = Path('.github/workflows/apply-location-service-scope-refactor.yml')
+          if workflow.exists():
+              workflow.unlink()
+          PY
+
+      - name: Commit refactor
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add src tests .github/workflows/apply-location-service-scope-refactor.yml
+            git commit -m "Centralize location scope validation"
+            git push
+          fi
