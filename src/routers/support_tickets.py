@@ -60,7 +60,6 @@ async def list_my_support_tickets(
         RoleChecker(
             [
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -90,7 +89,6 @@ async def get_support_ticket_detail(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -115,7 +113,6 @@ async def create_support_ticket(
         RoleChecker(
             [
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -141,7 +138,6 @@ async def update_support_ticket(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -166,7 +162,6 @@ async def delete_support_ticket(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -189,7 +184,6 @@ async def list_support_ticket_comments(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -214,7 +208,6 @@ async def get_support_ticket_comment_detail(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -241,7 +234,6 @@ async def create_support_ticket_comment(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -269,7 +261,6 @@ async def update_support_ticket_comment(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -297,7 +288,6 @@ async def delete_support_ticket_comment(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
