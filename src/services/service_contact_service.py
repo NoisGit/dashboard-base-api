@@ -4,15 +4,14 @@ import csv
 import io
 from typing import List, cast
 
+from fastapi import HTTPException, UploadFile, status
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import paginate
-from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, desc
 
-from src.core.enums import UserRole
-from src.services import UserService
-from src.services import LocationService
+from src.services.user_service import UserService
+from src.services.location_service import LocationService
 from src.models import ServiceContact
 from src.schemas import (
     ServiceContactResponse,
@@ -46,10 +45,20 @@ class ServiceContactService:
         service_contact_id: int,
     ) -> ServiceContact:
         """Get service contact by ID."""
-        stmt = select(ServiceContact) \
-            .where(ServiceContact.id == service_contact_id)
+        stmt = select(ServiceContact).where(ServiceContact.id == service_contact_id)
         result = await self.session.execute(stmt)
         return result.scalars().first()
+
+    async def _ensure_can_access_location(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> None:
+        """Validate location access."""
+        await self.location_service.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
     async def _read_service_contact_csv(
         self,
@@ -148,20 +157,8 @@ class ServiceContactService:
         user_id: int,
         params: Params,
     ) -> Page[ServiceContactResponse]:
-        """
-        List service contacts for a location.
-        and location-specific numbers.
-        """
-        user_has_permission = await self.location_service.check_user_permission_on_location(
-            user_id=user_id,
-            location_id=location_id,
-        )
-
-        if not user_has_permission:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to view contacts for this location.",
-            )
+        """List service contacts for a location."""
+        await self._ensure_can_access_location(user_id, location_id)
 
         stmt = select(ServiceContact).where(
             ServiceContact.location_id == location_id,
@@ -193,34 +190,9 @@ class ServiceContactService:
         user_id: int,
         payload: ServiceContactCreateRequest
     ):
-        """
-        Create a new service contact.
-        Applies consistency rules and authorization checks.
-        """
+        """Create a new service contact."""
+        await self._ensure_can_access_location(user_id, payload.location_id)
 
-        user = await self.user_service.get_user_by_id(user_id)
-
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        location = await self.location_service.get_location_by_id(payload.location_id)
-        if not location:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
-
-        if user.role != UserRole.SUPERADMIN:
-            if location.created_by != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You do not have permission to create a contact in this location.",
-                )
-
-        # Create the service contact
         new_contact = ServiceContact(
             service_name=payload.service_name,
             person_name=payload.person_name,
@@ -240,30 +212,8 @@ class ServiceContactService:
         location_id: int,
         file: UploadFile,
     ) -> None:
-        """
-        Create a new service contact.
-        Applies consistency rules and authorization checks.
-        """
-
-        user = await self.user_service.get_user_by_id(user_id)
-
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        location = await self.location_service.get_location_by_id(location_id)
-        if not location:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
-
-        await self.location_service.check_user_permission_on_location(
-            user_id=user_id,
-            location_id=location_id,
-        )
+        """Bulk import service contacts."""
+        await self._ensure_can_access_location(user_id, location_id)
 
         rows = await self._read_service_contact_csv(file)
 
@@ -300,19 +250,7 @@ class ServiceContactService:
         service_contact_id: int,
         payload: ServiceContactUpdateRequest
     ):
-        """
-        Update an existing service contact.
-        Applies consistency rules and authorization checks.
-        """
-
-        user = await self.user_service.get_user_by_id(user_id)
-
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
+        """Update an existing service contact."""
         service_contact = await self.get_service_contact_by_id(service_contact_id)
 
         if not service_contact:
@@ -321,12 +259,7 @@ class ServiceContactService:
                 detail=f"Service contact with id {service_contact_id} not found.",
             )
 
-        if user.role != UserRole.SUPERADMIN:
-            if service_contact.created_by != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You do not have permission to edit this contact.",
-                )
+        await self._ensure_can_access_location(user_id, service_contact.location_id)
 
         contact_model = payload.model_dump(exclude_none=True)
         for key, value in contact_model.items():
@@ -340,19 +273,7 @@ class ServiceContactService:
         user_id: int,
         service_contact_id: int,
     ) -> None:
-        """
-        Delete an existing service contact.
-        Applies consistency rules and authorization checks.
-        """
-
-        user = await self.user_service.get_user_by_id(user_id)
-
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
+        """Delete an existing service contact."""
         service_contact = await self.get_service_contact_by_id(service_contact_id)
 
         if not service_contact:
@@ -361,12 +282,7 @@ class ServiceContactService:
                 detail=f"Service contact with id {service_contact_id} not found.",
             )
 
-        if user.role != UserRole.SUPERADMIN:
-            if service_contact.created_by != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You do not have permission to delete this contact.",
-                )
+        await self._ensure_can_access_location(user_id, service_contact.location_id)
 
         await self.session.delete(service_contact)
         await self.session.commit()
