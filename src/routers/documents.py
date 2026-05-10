@@ -61,7 +61,6 @@ async def list_my_company_documents(
         RoleChecker(
             [
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -87,7 +86,6 @@ async def get_document_detail(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -112,7 +110,6 @@ async def download_document(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
