@@ -5,7 +5,7 @@ Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.12.13/x64/li
 Collecting pip
   Downloading pip-26.1.1-py3-none-any.whl.metadata (4.6 kB)
 Downloading pip-26.1.1-py3-none-any.whl (1.8 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 17.0 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 18.1 MB/s  0:00:00
 Installing collected packages: pip
   Attempting uninstall: pip
     Found existing installation: pip 26.0.1
@@ -100,9 +100,9 @@ Collecting dnspython>=2.0.0 (from email-validator>=2.0.0->pydantic[email]==2.11.
   Downloading dnspython-2.8.0-py3-none-any.whl.metadata (5.7 kB)
 Downloading argon2_cffi-25.1.0-py3-none-any.whl (14 kB)
 Downloading asyncmy-0.2.10-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (5.6 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.6/5.6 MB 111.6 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.6/5.6 MB 124.8 MB/s  0:00:00
 Downloading cryptography-45.0.3-cp311-abi3-manylinux_2_34_x86_64.whl (4.5 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 207.7 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 201.6 MB/s  0:00:00
 Downloading fastapi-0.115.12-py3-none-any.whl (95 kB)
 Downloading pydantic-2.11.5-py3-none-any.whl (444 kB)
 Downloading gunicorn-23.0.0-py3-none-any.whl (85 kB)
@@ -111,19 +111,19 @@ Downloading python_dotenv-1.1.0-py3-none-any.whl (20 kB)
 Downloading python_multipart-0.0.20-py3-none-any.whl (24 kB)
 Downloading PyJWT-2.10.1-py3-none-any.whl (22 kB)
 Downloading sqlalchemy-2.0.41-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.3 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.3/3.3 MB 283.5 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.3/3.3 MB 274.2 MB/s  0:00:00
 Downloading sqlmodel-0.0.24-py3-none-any.whl (28 kB)
 Downloading uvicorn-0.34.3-py3-none-any.whl (62 kB)
 Downloading pydantic_settings-2.12.0-py3-none-any.whl (51 kB)
 Downloading asyncpg-0.30.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.6 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.6/3.6 MB 123.2 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.6/3.6 MB 245.9 MB/s  0:00:00
 Downloading alembic-1.17.2-py3-none-any.whl (248 kB)
 Downloading fastapi_pagination-0.15.1-py3-none-any.whl (56 kB)
 Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
 Downloading pytest-8.4.2-py3-none-any.whl (365 kB)
 Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
 Downloading pydantic_core-2.33.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.0 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 218.8 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 232.1 MB/s  0:00:00
 Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
 Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
 Downloading starlette-0.46.2-py3-none-any.whl (72 kB)
@@ -134,14 +134,14 @@ Downloading click-8.3.3-py3-none-any.whl (110 kB)
 Downloading email_validator-2.3.0-py3-none-any.whl (35 kB)
 Downloading dnspython-2.8.0-py3-none-any.whl (331 kB)
 Downloading greenlet-3.5.0-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (611 kB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 611.4/611.4 kB 111.9 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 611.4/611.4 kB 118.3 MB/s  0:00:00
 Downloading h11-0.16.0-py3-none-any.whl (37 kB)
 Downloading idna-3.13-py3-none-any.whl (68 kB)
 Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
 Downloading markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
 Downloading packaging-26.2-py3-none-any.whl (100 kB)
 Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 208.4 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 214.8 MB/s  0:00:00
 Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
 Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
 Downloading argon2_cffi_bindings-25.1.0-cp39-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl (87 kB)
@@ -262,31 +262,11 @@ Listing 'src/templates'...
 Listing 'src/templates/email'...
 Listing 'src/templates/logbook'...
 ## pytest
+.....                                                                    [100%]
+=============================== warnings summary ===============================
+src/routers/access_logs.py:216
+  /home/runner/work/dashboard-base-api/dashboard-base-api/src/routers/access_logs.py:216: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    status_filter: Optional[str] = Query(
 
-==================================== ERRORS ====================================
-_________________ ERROR collecting tests/test_app_contract.py __________________
-ImportError while importing test module '/home/runner/work/dashboard-base-api/dashboard-base-api/tests/test_app_contract.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/importlib/__init__.py:90: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-tests/test_app_contract.py:14: in <module>
-    from src.main import app
-src/main.py:12: in <module>
-    from src.config.routers import include_routers
-src/config/routers.py:7: in <module>
-    from src.routers import (
-src/routers/__init__.py:8: in <module>
-    from .access_logs import router as access_logs_router
-src/routers/access_logs.py:12: in <module>
-    from src.dependencies import get_access_log_service
-src/dependencies.py:19: in <module>
-    from src.services.notification_service import NotificationService
-src/services/notification_service.py:8: in <module>
-    from firebase_admin import messaging
-E   ModuleNotFoundError: No module named 'firebase_admin'
-=========================== short test summary info ============================
-ERROR tests/test_app_contract.py
-!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
-1 error in 1.28s
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+5 passed, 1 warning in 1.36s
