@@ -1,11 +1,6 @@
 """User-related Pydantic schemas for the Coredeck API."""
 
-from datetime import datetime
-from typing import Optional
-
 from pydantic import BaseModel, EmailStr
-
-from .base_schemas import BaseResponse
 
 
 class AuthRecoveryPasswordRequest(BaseModel):
