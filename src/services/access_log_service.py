@@ -17,7 +17,6 @@ from src.models import (
     AccessList,
     AccessLog,
     AccessLogImage,
-    CompanyLocationAccess,
     ExternalPeople,
     TypeAccessList,
 )
@@ -65,35 +64,10 @@ class AccessLogService:
         user_id: int,
         location_id: int,
     ) -> int:
-        user = await self.user_service.get_user_by_id(user_id)
-
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
-
-        company_id = await self.location_service.company_service.get_company_id_by_user_id(user_id)
-        if not company_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User has no company assigned.",
-            )
-
-        stmt = select(CompanyLocationAccess).where(
-            CompanyLocationAccess.company_id == company_id,
-            CompanyLocationAccess.location_id == location_id,
+        return await self.location_service.resolve_company_scope_for_location(
+            user_id=user_id,
+            location_id=location_id,
         )
-        result = await self.session.execute(stmt)
-        company_location_access = result.scalars().first()
-
-        if not company_location_access:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User has no access to this location",
-            )
-
-        return company_id
 
     async def _get_external_people_by_id_number(
         self,
@@ -660,7 +634,7 @@ class AccessLogService:
         """Convert AccessLogImage model to schema."""
         return self.storage_service.generate_read_url(
             container_name="access-logs",
-            blob_name=image_name
+            object_name=image_name
         )
 
     def _convert_to_response(self, access_log: AccessLog) -> AccessLogResponse:
