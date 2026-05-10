@@ -12,10 +12,8 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import desc, or_, select
 
-from src.core.enums import UserRole
 from src.models import (
     AccessList,
-    CompanyLocationAccess,
     ExternalPeople,
     TypeAccessList,
 )
@@ -132,37 +130,10 @@ class BlacklistService:
         user_id: int,
         company_id: Optional[int],
     ) -> int:
-        user = await self.user_service.get_user_by_id(user_id)
-        if not user or not getattr(user, "is_active", True):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        if user.role == UserRole.SUPERADMIN:
-            if not company_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="company_id is required.",
-                )
-            return company_id
-
-        my_company_id = await self.location_service.company_service.get_company_id_by_user_id(
-            user_id
+        return await self.location_service.get_company_id_for_user(
+            user_id=user_id,
+            company_id=company_id,
         )
-        if not my_company_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User has no company assigned.",
-            )
-
-        if company_id is not None and company_id != my_company_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not allowed for this company.",
-            )
-
-        return my_company_id
 
     async def _validate_location_for_company(
         self,
@@ -170,26 +141,11 @@ class BlacklistService:
         company_id: int,
         location_id: Optional[int],
     ) -> None:
-        if location_id is None:
-            return
-
-        await self.location_service.check_user_permission_on_location(
+        await self.location_service.validate_location_for_company(
             user_id=user_id,
+            company_id=company_id,
             location_id=location_id,
         )
-
-        stmt = select(CompanyLocationAccess).where(
-            CompanyLocationAccess.company_id == company_id,
-            CompanyLocationAccess.location_id == location_id,
-        )
-        result = await self.session.execute(stmt)
-        row = result.scalars().first()
-
-        if not row:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="company_id does not match location_id.",
-            )
 
     async def _get_existing_blacklist_entry(
         self,
