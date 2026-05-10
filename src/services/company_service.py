@@ -19,7 +19,8 @@ from src.schemas import (
     SubCompanyCreateRequest,
     EmptyResponse,
 )
-from src.services import UserService, StorageService
+from src.services.user_service import UserService
+from src.services.storage_service import StorageService
 
 
 class CompanyService:
@@ -51,7 +52,7 @@ class CompanyService:
             id_number=company.id_number,
             logo=self.storage_service.generate_read_url(
                 container_name="companies",
-                blob_name=company.logo,
+                object_name=company.logo,
             ) if company.logo else None,
             type_document=company.type_document,
             is_active=company.is_active,
@@ -78,7 +79,7 @@ class CompanyService:
                     id_number=company.id_number,
                     logo=self.storage_service.generate_read_url(
                         container_name="companies",
-                        blob_name=company.logo,
+                        object_name=company.logo,
                     ) if company.logo else None,
                     type_document=company.type_document,
                     is_active=company.is_active,
@@ -254,7 +255,7 @@ class CompanyService:
         payload: UserCreateRequest,
     ) -> None:
         """Create a new user."""
-        check_user = await UserService.get_user_by_email(self, payload.email)
+        check_user = await self.get_user_by_email(payload.email)
         if check_user:
             await self.assign_user_to_company(
                 requester_id=requester_id,
@@ -263,9 +264,9 @@ class CompanyService:
             )
             return None
 
-        await UserService._ensure_username_unique(self, payload.username)
+        await self.user_service._ensure_username_unique(payload.username)
 
-        password_hash = UserService._hash_password(self, payload.password)
+        password_hash = self.user_service._hash_password(payload.password)
 
         user = User(
             username=payload.username,
