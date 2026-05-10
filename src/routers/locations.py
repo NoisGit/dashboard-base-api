@@ -45,7 +45,6 @@ async def list_locations(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         ),
@@ -72,7 +71,6 @@ async def get_location_detail(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
                 UserRole.CLIENT,
                 UserRole.OPERATOR,
             ],
@@ -124,7 +122,6 @@ async def update_location(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -198,7 +195,6 @@ async def assign_user_to_location(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -226,7 +222,6 @@ async def bulk_import_operators(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -252,7 +247,6 @@ async def get_location_custom_form(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -278,7 +272,6 @@ async def create_location_custom_form_fields(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -306,7 +299,6 @@ async def update_location_custom_form_field(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
             ],
         ),
     ),
@@ -357,7 +349,6 @@ async def list_operators(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
                 UserRole.CLIENT,
             ],
         ),
