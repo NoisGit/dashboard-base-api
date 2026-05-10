@@ -3,7 +3,7 @@ Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.12.13/x64/li
 Collecting pip
   Downloading pip-26.1.1-py3-none-any.whl.metadata (4.6 kB)
 Downloading pip-26.1.1-py3-none-any.whl (1.8 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 111.2 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 18.2 MB/s  0:00:00
 Installing collected packages: pip
   Attempting uninstall: pip
     Found existing installation: pip 26.0.1
@@ -15,14 +15,12 @@ Collecting ruff
 Collecting vulture
   Downloading vulture-2.16-py3-none-any.whl.metadata (15 kB)
 Downloading ruff-0.15.12-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (11.3 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.3/11.3 MB 163.2 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.3/11.3 MB 41.3 MB/s  0:00:00
 Downloading vulture-2.16-py3-none-any.whl (26 kB)
 Installing collected packages: vulture, ruff
 
 Successfully installed ruff-0.15.12 vulture-2.16
-src/schemas/dashboard_schemas.py:4:20: F401 [*] `typing.Optional` imported but unused
 src/services/blacklist_service.py:141:25: F821 Undefined name `UserRole`
-Found 2 errors.
-[*] 1 fixable with the `--fix` option.
+Found 1 error.
 
 ## vulture high confidence candidates
