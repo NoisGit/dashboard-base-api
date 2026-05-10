@@ -35,7 +35,6 @@ async def get_active_entries(
         RoleChecker(
             [
                 UserRole.OPERATOR,
-                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]
@@ -60,7 +59,6 @@ async def get_today_exits(
         RoleChecker(
             [
                 UserRole.OPERATOR,
-                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]
@@ -147,7 +145,6 @@ async def register_exit_dashboard(
     user_id: int = Depends(
         RoleChecker(
             [
-                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]
@@ -180,7 +177,6 @@ async def register_exit_bulk_dashboard(
     user_id: int = Depends(
         RoleChecker(
             [
-                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]
@@ -240,7 +236,6 @@ async def get_logs_dashboard(  # pylint: disable=too-many-arguments, too-many-po
         RoleChecker(
             [
                 UserRole.CLIENT,
-                UserRole.SUBADMIN,
                 UserRole.ADMIN,
                 UserRole.SUPERADMIN,
             ]
