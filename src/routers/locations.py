@@ -340,8 +340,8 @@ async def get_location_access_lists(
     response_model=Page[OperatorResponse],
 )
 async def list_operators(
+    location_id: int,
     params: Params = Depends(),
-    location_id: int = None,
     search: Optional[str] = None,
     service: LocationService = Depends(get_location_service),
     user_id: int = Depends(
