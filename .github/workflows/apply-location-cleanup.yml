@@ -37,7 +37,6 @@ jobs:
                   next_start = len(text)
               return text[:start] + "\n" + new_method.rstrip() + "\n" + text[next_start:]
 
-          # LocationService: direct imports and global scope helpers.
           path = Path('src/services/location_service.py')
           text = path.read_text(encoding='utf-8')
           text = text.replace(
@@ -180,7 +179,6 @@ jobs:
               text = replace_required(text, insert_marker, helpers + insert_marker, 'location scope helpers')
           path.write_text(text, encoding='utf-8')
 
-          # AccessLogService: use LocationService for company/location scope.
           path = Path('src/services/access_log_service.py')
           text = path.read_text(encoding='utf-8')
           text = text.replace('    CompanyLocationAccess,\n', '')
@@ -196,7 +194,6 @@ jobs:
 ''')
           path.write_text(text, encoding='utf-8')
 
-          # WhitelistService: delegate company/location scope to LocationService.
           path = Path('src/services/whitelist_service.py')
           text = path.read_text(encoding='utf-8')
           text = text.replace('from src.core.enums import UserRole\n', '')
@@ -225,7 +222,6 @@ jobs:
 ''')
           path.write_text(text, encoding='utf-8')
 
-          # BlacklistService: delegate company/location scope to LocationService and fix bulk call.
           path = Path('src/services/blacklist_service.py')
           text = path.read_text(encoding='utf-8')
           text = text.replace('    CompanyLocationAccess,\n', '')
@@ -257,7 +253,6 @@ jobs:
           )
           path.write_text(text, encoding='utf-8')
 
-          # CompanyService: direct imports.
           path = Path('src/services/company_service.py')
           text = path.read_text(encoding='utf-8')
           text = text.replace(
@@ -266,7 +261,6 @@ jobs:
           )
           path.write_text(text, encoding='utf-8')
 
-          # ServiceContactService: direct imports and LocationService validation.
           path = Path('src/services/service_contact_service.py')
           text = path.read_text(encoding='utf-8')
           text = text.replace(
@@ -441,7 +435,6 @@ jobs:
 ''')
           path.write_text(text, encoding='utf-8')
 
-          # EmergencyContactService: use LocationService for location-scoped contacts.
           Path('src/services/emergency_contact_service.py').write_text('''"""Emergency contact service module for the Coredeck API."""
 
 from typing import List, Optional, cast
@@ -711,7 +704,6 @@ class EmergencyContactService:
 __all__ = ["EmergencyContactService"]
 ''', encoding='utf-8')
 
-          # Emergency contacts router: pass user_id into service methods.
           Path('src/routers/emergency_contacts.py').write_text('''"""Emergency contacts router module for Coredeck API."""
 
 from fastapi_pagination import Page, Params
@@ -839,7 +831,6 @@ async def delete_emergency_contact(
     await service.delete_emergency_contact(user_id, contact_id)
 ''', encoding='utf-8')
 
-          # Dependencies: inject LocationService into EmergencyContactService.
           path = Path('src/dependencies.py')
           text = path.read_text(encoding='utf-8')
           text = text.replace(
@@ -861,7 +852,6 @@ async def delete_emergency_contact(
           )
           path.write_text(text, encoding='utf-8')
 
-          # Contract tests for cleanup and global location validation.
           Path('tests/test_location_cleanup_contract.py').write_text('''"""Location cleanup contract tests."""
 
 from pathlib import Path
