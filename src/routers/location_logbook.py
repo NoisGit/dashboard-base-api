@@ -43,7 +43,6 @@ async def get_location_logbook_settings(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
                 UserRole.OPERATOR,
                 UserRole.CLIENT,
             ],
@@ -120,7 +119,6 @@ async def list_location_logbook_entries(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.SUBADMIN,
                 UserRole.OPERATOR,
                 UserRole.CLIENT,
             ],
