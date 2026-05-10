@@ -12,32 +12,32 @@ class StorageUploadRequest(BaseModel):
 
 class StorageUpdateRequest(BaseModel):
     """Schema for update request data."""
-    old_blob_url: str
+    old_object_url: str
     file_extension: str
     content_type: str
 
 
 class StorageDeleteRequest(BaseModel):
     """Schema for delete request data."""
-    blob_url: str
+    object_url: str
 
 
 class StorageResponse(BaseModel):
     """Schema for response data."""
-    blob_url: str
-    blob_name: str
+    object_url: str
+    object_name: str
 
 
 class StorageUpdateResponse(BaseModel):
     """Schema for response data."""
     delete_url: str
-    new_blob_name: str
-    new_blob_url: str
+    new_object_name: str
+    new_object_url: str
 
 
 class StorageDeleteResponse(BaseModel):
     """Schema for response data."""
-    blob_url: str
+    object_url: str
 
 
 __all__ = [
