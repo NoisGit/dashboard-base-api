@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
 
-from src.auth.utils import get_user_data_from_token, get_user_id_from_token
+from src.auth.utils import get_user_id_from_token
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
 from src.dependencies import get_user_service
@@ -68,7 +68,14 @@ async def list_users(
 async def get_user_detail(
     user_id: int,
     service: UserService = Depends(get_user_service),
-    _=Depends(get_user_data_from_token),
+    _=Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
 ) -> UserResponse:
     """Get user by ID."""
     user = await service.get_user_detail(
