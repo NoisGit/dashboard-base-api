@@ -3,8 +3,9 @@ from datetime import date
 from sqlmodel import select
 from sqlalchemy import func, desc, and_, cast, Date, case, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.services import UserService, LocationService
 
+from src.services.user_service import UserService
+from src.services.location_service import LocationService
 from src.models import AccessLog, AccessList, TypeAccessList, ExternalPeople
 
 from src.schemas import (
