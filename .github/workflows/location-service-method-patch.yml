@@ -1,0 +1,51 @@
+name: Location Service Method Patch
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch location service methods
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/services/location_service.py')
+          text = path.read_text(encoding='utf-8')
+
+          text = text.replace(
+              '''    async def update_location(\n        self,\n        location_id: int,\n        payload: LocationUpdateRequest,\n    ):\n        """Update a location."""\n        location = await self._get_location_by_id(location_id)\n        if not location or not location.is_active:\n            raise HTTPException(\n                status_code=status.HTTP_404_NOT_FOUND,\n                detail="Location not found.",\n            )''',
+              '''    async def update_location(\n        self,\n        user_id: int,\n        location_id: int,\n        payload: LocationUpdateRequest,\n    ):\n        """Update a location."""\n        location = await self.check_user_permission_on_location(\n            user_id=user_id,\n            location_id=location_id,\n        )''',
+          )
+
+          text = text.replace(
+              '''    async def soft_delete_location(\n        self,\n        location_id: int,\n    ):\n        """Soft delete a location."""\n        location = await self._get_location_by_id(location_id)\n        if not location or not location.is_active:\n            raise HTTPException(\n                status_code=status.HTTP_404_NOT_FOUND,\n                detail="Location not found.",\n            )''',
+              '''    async def soft_delete_location(\n        self,\n        user_id: int,\n        location_id: int,\n    ):\n        """Soft delete a location."""\n        location = await self.check_user_permission_on_location(\n            user_id=user_id,\n            location_id=location_id,\n        )''',
+          )
+
+          workflow = Path('.github/workflows/location-service-method-patch.yml')
+          if workflow.exists():
+              workflow.unlink()
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add src/services/location_service.py .github/workflows/location-service-method-patch.yml
+            git commit -m "Move location mutation validation into service"
+            git push
+          fi
