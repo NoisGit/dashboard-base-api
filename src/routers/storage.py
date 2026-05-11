@@ -2,7 +2,8 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.auth.utils import get_current_user
+from src.auth.permissions import RoleChecker
+from src.core.enums import UserRole
 from src.dependencies import get_storage_service
 from src.schemas.storage_schemas import (
     StorageUploadRequest,
@@ -17,12 +18,19 @@ from src.api.error import InvalidContainerError, StorageServiceError
 
 router = APIRouter(prefix="/storage", tags=["storage"])
 
+storage_roles = [
+    UserRole.SUPERADMIN,
+    UserRole.ADMIN,
+    UserRole.CLIENT,
+    UserRole.OPERATOR,
+]
+
 
 @router.post("/generate_upload_url", response_model=StorageResponse)
 async def generate_upload_url(
     request: StorageUploadRequest,
     service: StorageService = Depends(get_storage_service),
-    _=Depends(get_current_user),
+    _=Depends(RoleChecker(storage_roles)),
 ):
     """Generate an upload URL for a storage object."""
     try:
@@ -47,7 +55,7 @@ async def generate_upload_url(
 async def generate_update_url(
     request: StorageUpdateRequest,
     service: StorageService = Depends(get_storage_service),
-    _=Depends(get_current_user),
+    _=Depends(RoleChecker(storage_roles)),
 ):
     """Generate replacement metadata for a storage object."""
     try:
@@ -72,7 +80,7 @@ async def generate_update_url(
 async def generate_delete_url(
     request: StorageDeleteRequest,
     service: StorageService = Depends(get_storage_service),
-    _=Depends(get_current_user),
+    _=Depends(RoleChecker(storage_roles)),
 ):
     """Return delete metadata for a storage object."""
     try:
