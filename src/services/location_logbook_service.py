@@ -189,7 +189,7 @@ class LocationLogbookService:
                     description=entry.description,
                     media_url=self.storage_service.generate_read_url(
                         container_name="location-logbook",
-                        blob_name=entry.media_name,
+                        object_name=entry.media_name,
                     )
                     if entry.media_name
                     else None,
@@ -297,7 +297,7 @@ class LocationLogbookService:
                 description=entry.description,
                 media_url=self.storage_service.generate_read_url(
                     container_name="location-logbook",
-                    blob_name=entry.media_name,
+                    object_name=entry.media_name,
                 )
                 if entry.media_name
                 else None,
