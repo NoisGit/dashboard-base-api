@@ -3,6 +3,7 @@
 import asyncio
 import os
 
+os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://coredeck:coredeck@localhost:5432/coredeck_test",
