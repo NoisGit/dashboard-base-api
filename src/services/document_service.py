@@ -145,7 +145,7 @@ class DocumentService:
     def _to_document_response(self, doc: Document) -> DocumentResponse:
         url = self.storage_service.generate_read_url(
             container_name="documents",
-            blob_name=doc.blob_name,
+            object_name=doc.blob_name,
         )
 
         return DocumentResponse(
@@ -267,7 +267,7 @@ class DocumentService:
 
         url = self.storage_service.generate_read_url(
             container_name="documents",
-            blob_name=document.blob_name,
+            object_name=document.blob_name,
         )
 
         return DocumentDownloadResponse(url=url)
