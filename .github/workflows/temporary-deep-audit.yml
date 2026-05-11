@@ -1,0 +1,109 @@
+name: Temporary Deep Audit
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run repository audit
+        shell: bash
+        run: |
+          mkdir -p ci_diagnostics
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || true
+          pip install ruff vulture || true
+
+          {
+            echo '## compileall'
+            python -m compileall src tests || true
+            echo ''
+
+            echo '## ruff critical checks'
+            ruff check src tests --select F401,F821,F841,F811 --output-format=concise || true
+            echo ''
+
+            echo '## vulture high confidence'
+            vulture src tests --min-confidence 85 || true
+            echo ''
+
+            echo '## forbidden residues'
+            python - <<'PY'
+          from pathlib import Path
+
+          terms = [
+              'LocationScopeService',
+              'resolve_company_scope_for_location',
+              'validate_location_for_company',
+              'get_company_id_for_user',
+              'blob_name=',
+              'blob_url=',
+              'old_blob_url',
+              'new_blob_url',
+              'new_blob_name',
+              'firebase_admin',
+              'firebase_service_account_key',
+              'azure_storage_connection_string',
+              'BlobServiceClient',
+              'blob_service',
+              'blob_service_client',
+              'azure.storage',
+              'azure-storage',
+          ]
+
+          roots = [Path('src'), Path('tests')]
+          found = False
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in root.rglob('*.py'):
+                  content = path.read_text(encoding='utf-8')
+                  for term in terms:
+                      if term in content:
+                          print(f'{path}: found {term}')
+                          found = True
+          if not found:
+              print('No forbidden residues found.')
+          PY
+            echo ''
+
+            echo '## services using location validation'
+            python - <<'PY'
+          from pathlib import Path
+
+          for path in sorted(Path('src/services').glob('*service.py')):
+              content = path.read_text(encoding='utf-8')
+              if 'location_id' in content:
+                  has_global = 'check_user_permission_on_location' in content
+                  print(f'{path}: location_id=yes global_validation={has_global}')
+          PY
+          } > ci_diagnostics/deep_audit_report.txt 2>&1
+
+      - name: Remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/temporary-deep-audit.yml
+
+      - name: Commit audit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ci_diagnostics/deep_audit_report.txt .github/workflows/temporary-deep-audit.yml
+          git commit -m "Add temporary deep audit report" || true
+          git push || true
