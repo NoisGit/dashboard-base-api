@@ -17,6 +17,7 @@ from src.models import (
     AccessList,
     AccessLog,
     AccessLogImage,
+    CompanyLocationAccess,
     ExternalPeople,
     TypeAccessList,
 )
@@ -61,13 +62,21 @@ class AccessLogService:
 
     async def _get_company_id_by_location(
         self,
-        user_id: int,
         location_id: int,
     ) -> int:
-        return await self.location_service.resolve_company_scope_for_location(
-            user_id=user_id,
-            location_id=location_id,
+        stmt = select(CompanyLocationAccess.company_id).where(
+            CompanyLocationAccess.location_id == location_id,
         )
+        result = await self.session.execute(stmt)
+        row = result.first()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Location must be assigned to a company.",
+            )
+
+        return row[0]
 
     async def _get_external_people_by_id_number(
         self,
@@ -193,7 +202,6 @@ class AccessLogService:
 
         id_number = (id_number or "").strip()
         company_id = await self._get_company_id_by_location(
-            user_id=user_id,
             location_id=location_id,
         )
         external_people = await self._get_external_people_by_id_number(id_number)
