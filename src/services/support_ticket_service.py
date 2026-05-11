@@ -22,7 +22,8 @@ from src.schemas import (
     SupportTicketCommentUpdateRequest,
     SupportTicketCommentResponse,
 )
-from src.services import UserService, StorageService
+from src.services.storage_service import StorageService
+from src.services.user_service import UserService
 
 
 class SupportTicketService:
@@ -101,7 +102,7 @@ class SupportTicketService:
                     description=ticket.description,
                     media_name=self.storage_service.generate_read_url(
                         container_name="support-tickets",
-                        blob_name=ticket.media_name,
+                        object_name=ticket.media_name,
                     ) if ticket.media_name else None,
                     status=ticket.status,
                     created_by=ticket.created_by,
@@ -130,7 +131,7 @@ class SupportTicketService:
             description=ticket.description,
             media_name=self.storage_service.generate_read_url(
                 container_name="support-tickets",
-                blob_name=ticket.media_name,
+                object_name=ticket.media_name,
             ) if ticket.media_name else None,
             status=ticket.status,
             created_by=ticket.created_by,
@@ -161,7 +162,7 @@ class SupportTicketService:
             description=ticket.description,
             media_name=self.storage_service.generate_read_url(
                 container_name="support-tickets",
-                blob_name=ticket.media_name,
+                object_name=ticket.media_name,
             ) if ticket.media_name else None,
             status=ticket.status,
             created_by=ticket.created_by,
@@ -194,7 +195,7 @@ class SupportTicketService:
             description=ticket.description,
             media_name=self.storage_service.generate_read_url(
                 container_name="support-tickets",
-                blob_name=ticket.media_name,
+                object_name=ticket.media_name,
             ) if ticket.media_name else None,
             status=ticket.status,
             created_by=ticket.created_by,
@@ -413,11 +414,11 @@ class SupportTicketService:
 
         if is_superadmin:
             return ticket
-        else:
-            if ticket.created_by == user_id:
-                return ticket
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not allowed.",
-                )
+
+        if ticket.created_by == user_id:
+            return ticket
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed.",
+        )
