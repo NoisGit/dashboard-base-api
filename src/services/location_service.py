@@ -442,16 +442,15 @@ class LocationService:
 
     async def update_location(
         self,
+        user_id: int,
         location_id: int,
         payload: LocationUpdateRequest,
     ):
         """Update a location."""
-        location = await self._get_location_by_id(location_id)
-        if not location or not location.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
+        location = await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
         update_data = payload.model_dump(exclude_none=True)
         for key, value in update_data.items():
@@ -462,15 +461,14 @@ class LocationService:
 
     async def soft_delete_location(
         self,
+        user_id: int,
         location_id: int,
     ):
         """Soft delete a location."""
-        location = await self._get_location_by_id(location_id)
-        if not location or not location.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
-            )
+        location = await self.check_user_permission_on_location(
+            user_id=user_id,
+            location_id=location_id,
+        )
 
         location.is_active = False
         self.session.add(location)
