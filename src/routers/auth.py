@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter, Depends, status
 
-from src.auth import get_current_user
 from src.auth.utils import get_user_id_from_token
 from src.dependencies import get_auth_service, get_user_service
 from src.schemas import (
@@ -54,7 +53,6 @@ async def get_current_user_profile(
 async def refresh_token(
     refresh_data: RefreshTokenRequest,
     service: AuthService = Depends(get_auth_service),
-    _=Depends(get_current_user)
 ):
     """Refresh access token using a valid refresh token"""
     user_token = await service.refresh_token(refresh_data)
@@ -65,7 +63,6 @@ async def refresh_token(
 async def refresh_access_token_only(
     refresh_data: RefreshTokenRequest,
     service: AuthService = Depends(get_auth_service),
-    _=Depends(get_current_user)
 ):
     """Refresh access token only using a valid refresh token"""
     user_access_token = await service.refresh_access_token_only(refresh_data)
