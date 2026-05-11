@@ -12,7 +12,6 @@ from src.schemas import (
     CompanyUpdateRequest,
     CompanyResponse,
     CompanyAssignUserRequest,
-    CompanyUserAssignmentResponse,
     UserCreateRequest,
     SubCompanyCreateRequest
 )
@@ -57,7 +56,6 @@ async def get_company_detail(
             [
                 UserRole.SUPERADMIN,
                 UserRole.ADMIN,
-                UserRole.CLIENT,
             ],
         ),
     ),
@@ -145,9 +143,7 @@ async def update_company(
 async def delete_company(
     company_id: int,
     service: CompanyService = Depends(get_company_service),
-    _=Depends(
-        RoleChecker([UserRole.SUPERADMIN]),
-    ),
+    _=Depends(RoleChecker([UserRole.SUPERADMIN])),
 ):
     """Soft delete a company by setting is_active = False."""
     await service.soft_delete_company(
@@ -157,7 +153,7 @@ async def delete_company(
 
 @router.post(
     "/{company_id}/users",
-    response_model=CompanyUserAssignmentResponse,
+    response_model=EmptyResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def assign_user_to_company(
@@ -172,13 +168,14 @@ async def assign_user_to_company(
             ],
         ),
     ),
-) -> CompanyUserAssignmentResponse:
+) -> EmptyResponse:
     """Assign an existing user to a company."""
     await service.assign_user_to_company(
         requester_id=user_id,
         company_id=company_id,
         user_id=payload.user_id,
     )
+    return EmptyResponse()
 
 
 @router.post(
