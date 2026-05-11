@@ -127,8 +127,11 @@ async def update_location(
     ),
 ):
     """Update an existing location."""
-    await service.update_location(
+    await service.check_user_permission_on_location(
         user_id=user_id,
+        location_id=location_id,
+    )
+    await service.update_location(
         location_id=location_id,
         payload=payload,
     )
@@ -151,8 +154,11 @@ async def delete_location(
     ),
 ):
     """Soft delete a location (is_active = False)."""
-    await service.soft_delete_location(
+    await service.check_user_permission_on_location(
         user_id=user_id,
+        location_id=location_id,
+    )
+    await service.soft_delete_location(
         location_id=location_id,
     )
 
