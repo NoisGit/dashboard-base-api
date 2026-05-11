@@ -133,7 +133,7 @@ async def update_support_ticket(
     ticket_id: int,
     payload: SupportTicketUpdateRequest,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    _=Depends(
+    user_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -144,6 +144,7 @@ async def update_support_ticket(
 ) -> SupportTicketResponse:
     """Update an existing support ticket"""
     ticket = await service.update_support_ticket(
+        user_id=user_id,
         ticket_id=ticket_id,
         payload=payload,
     )
@@ -157,7 +158,7 @@ async def update_support_ticket(
 async def delete_support_ticket(
     ticket_id: int,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    _=Depends(
+    user_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -168,6 +169,7 @@ async def delete_support_ticket(
 ):
     """Soft delete a support ticket"""
     await service.soft_delete_support_ticket(
+        user_id=user_id,
         ticket_id=ticket_id,
     )
 
@@ -179,7 +181,7 @@ async def delete_support_ticket(
 async def list_support_ticket_comments(
     ticket_id: int,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    _=Depends(
+    user_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -190,6 +192,7 @@ async def list_support_ticket_comments(
 ) -> list[SupportTicketCommentResponse]:
     """List support ticket comments"""
     comments = await service.list_support_ticket_comments(
+        user_id=user_id,
         ticket_id=ticket_id,
     )
     return comments
@@ -203,7 +206,7 @@ async def get_support_ticket_comment_detail(
     ticket_id: int,
     comment_id: int,
     service: SupportTicketService = Depends(get_support_ticket_service),
-    _=Depends(
+    user_id: int = Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -214,6 +217,7 @@ async def get_support_ticket_comment_detail(
 ) -> SupportTicketCommentResponse:
     """Get support ticket comment by ID"""
     comment = await service.get_support_ticket_comment_detail(
+        user_id=user_id,
         ticket_id=ticket_id,
         comment_id=comment_id,
     )
