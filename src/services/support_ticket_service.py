@@ -69,6 +69,30 @@ class SupportTicketService:
             )
         return user
 
+    def _to_ticket_response(self, ticket: SupportTicket) -> SupportTicketResponse:
+        return SupportTicketResponse(
+            id=ticket.id,
+            title=ticket.title,
+            description=ticket.description,
+            media_name=self.storage_service.generate_read_url(
+                container_name="support-tickets",
+                object_name=ticket.media_name,
+            ) if ticket.media_name else None,
+            status=ticket.status,
+            created_by=ticket.created_by,
+            created_at=ticket.created_at,
+        )
+
+    def _to_comment_response(self, comment: SupportResponse) -> SupportTicketCommentResponse:
+        return SupportTicketCommentResponse(
+            id=comment.id,
+            ticket_id=comment.ticket_id,
+            content=comment.comment,
+            created_by=comment.created_by,
+            created_at=comment.created_at,
+            edited_at=comment.edited_at,
+        )
+
     async def list_support_tickets(
         self,
         params: Params,
@@ -96,18 +120,7 @@ class SupportTicketService:
             stmt,
             params,
             transformer=lambda items: [
-                SupportTicketResponse(
-                    id=ticket.id,
-                    title=ticket.title,
-                    description=ticket.description,
-                    media_name=self.storage_service.generate_read_url(
-                        container_name="support-tickets",
-                        object_name=ticket.media_name,
-                    ) if ticket.media_name else None,
-                    status=ticket.status,
-                    created_by=ticket.created_by,
-                    created_at=ticket.created_at,
-                )
+                self._to_ticket_response(ticket)
                 for ticket in cast(List[SupportTicket], items)
             ],
         )
@@ -119,24 +132,7 @@ class SupportTicketService:
     ) -> SupportTicketResponse:
         """Get a single support ticket by ID"""
         ticket = await self.check_user_permission_on_ticket(user_id, ticket_id)
-        if not ticket:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Support ticket not found",
-            )
-
-        return SupportTicketResponse(
-            id=ticket.id,
-            title=ticket.title,
-            description=ticket.description,
-            media_name=self.storage_service.generate_read_url(
-                container_name="support-tickets",
-                object_name=ticket.media_name,
-            ) if ticket.media_name else None,
-            status=ticket.status,
-            created_by=ticket.created_by,
-            created_at=ticket.created_at,
-        )
+        return self._to_ticket_response(ticket)
 
     async def create_support_ticket(
         self,
@@ -156,27 +152,18 @@ class SupportTicketService:
         await self.session.commit()
         await self.session.refresh(ticket)
 
-        return SupportTicketResponse(
-            id=ticket.id,
-            title=ticket.title,
-            description=ticket.description,
-            media_name=self.storage_service.generate_read_url(
-                container_name="support-tickets",
-                object_name=ticket.media_name,
-            ) if ticket.media_name else None,
-            status=ticket.status,
-            created_by=ticket.created_by,
-            created_at=ticket.created_at,
-        )
+        return self._to_ticket_response(ticket)
 
     async def update_support_ticket(
         self,
+        user_id: int,
         ticket_id: int,
         payload: SupportTicketUpdateRequest,
     ) -> SupportTicketResponse:
         """Update an existing support ticket"""
-        ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket or ticket.status == SupportTicketStatus.CANCELED:
+        ticket = await self.check_user_permission_on_ticket(user_id, ticket_id)
+
+        if ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Support ticket not found",
@@ -189,26 +176,17 @@ class SupportTicketService:
         await self.session.commit()
         await self.session.refresh(ticket)
 
-        return SupportTicketResponse(
-            id=ticket.id,
-            title=ticket.title,
-            description=ticket.description,
-            media_name=self.storage_service.generate_read_url(
-                container_name="support-tickets",
-                object_name=ticket.media_name,
-            ) if ticket.media_name else None,
-            status=ticket.status,
-            created_by=ticket.created_by,
-            created_at=ticket.created_at,
-        )
+        return self._to_ticket_response(ticket)
 
     async def soft_delete_support_ticket(
         self,
+        user_id: int,
         ticket_id: int,
     ):
         """Soft delete a support ticket by setting status = CANCELED"""
-        ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket or ticket.status == SupportTicketStatus.CANCELED:
+        ticket = await self.check_user_permission_on_ticket(user_id, ticket_id)
+
+        if ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Support ticket not found",
@@ -219,15 +197,11 @@ class SupportTicketService:
 
     async def list_support_ticket_comments(
         self,
+        user_id: int,
         ticket_id: int,
     ) -> List[SupportTicketCommentResponse]:
         """List support ticket comments"""
-        ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Support ticket not found",
-            )
+        await self.check_user_permission_on_ticket(user_id, ticket_id)
 
         stmt = (
             select(SupportResponse)
@@ -237,30 +211,16 @@ class SupportTicketService:
         result = await self.session.execute(stmt)
         comments = cast(List[SupportResponse], result.scalars().all())
 
-        return [
-            SupportTicketCommentResponse(
-                id=comment.id,
-                ticket_id=comment.ticket_id,
-                content=comment.comment,
-                created_by=comment.created_by,
-                created_at=comment.created_at,
-                edited_at=comment.edited_at,
-            )
-            for comment in comments
-        ]
+        return [self._to_comment_response(comment) for comment in comments]
 
     async def get_support_ticket_comment_detail(
         self,
+        user_id: int,
         ticket_id: int,
         comment_id: int,
     ) -> SupportTicketCommentResponse:
         """Get support ticket comment by ID"""
-        ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Support ticket not found",
-            )
+        await self.check_user_permission_on_ticket(user_id, ticket_id)
 
         comment = await self._get_support_ticket_comment_by_id(ticket_id, comment_id)
         if not comment:
@@ -269,14 +229,7 @@ class SupportTicketService:
                 detail="Support ticket comment not found",
             )
 
-        return SupportTicketCommentResponse(
-            id=comment.id,
-            ticket_id=comment.ticket_id,
-            content=comment.comment,
-            created_by=comment.created_by,
-            created_at=comment.created_at,
-            edited_at=comment.edited_at,
-        )
+        return self._to_comment_response(comment)
 
     async def create_support_ticket_comment(
         self,
@@ -285,8 +238,9 @@ class SupportTicketService:
         payload: SupportTicketCommentCreateRequest,
     ) -> SupportTicketCommentResponse:
         """Create support ticket comment"""
-        ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket or ticket.status == SupportTicketStatus.CANCELED:
+        ticket = await self.check_user_permission_on_ticket(user_id, ticket_id)
+
+        if ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Support ticket not found",
@@ -302,14 +256,7 @@ class SupportTicketService:
         await self.session.commit()
         await self.session.refresh(comment)
 
-        return SupportTicketCommentResponse(
-            id=comment.id,
-            ticket_id=comment.ticket_id,
-            content=comment.comment,
-            created_by=comment.created_by,
-            created_at=comment.created_at,
-            edited_at=comment.edited_at,
-        )
+        return self._to_comment_response(comment)
 
     async def update_support_ticket_comment(
         self,
@@ -320,9 +267,9 @@ class SupportTicketService:
     ) -> SupportTicketCommentResponse:
         """Update support ticket comment"""
         user = await self._get_user_or_404(user_id)
+        ticket = await self.check_user_permission_on_ticket(user_id, ticket_id)
 
-        ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket or ticket.status == SupportTicketStatus.CANCELED:
+        if ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Support ticket not found",
@@ -349,14 +296,7 @@ class SupportTicketService:
         await self.session.commit()
         await self.session.refresh(comment)
 
-        return SupportTicketCommentResponse(
-            id=comment.id,
-            ticket_id=comment.ticket_id,
-            content=comment.comment,
-            created_by=comment.created_by,
-            created_at=comment.created_at,
-            edited_at=comment.edited_at,
-        )
+        return self._to_comment_response(comment)
 
     async def delete_support_ticket_comment(
         self,
@@ -366,9 +306,9 @@ class SupportTicketService:
     ):
         """Delete support ticket comment"""
         user = await self._get_user_or_404(user_id)
+        ticket = await self.check_user_permission_on_ticket(user_id, ticket_id)
 
-        ticket = await self._get_support_ticket_by_id(ticket_id)
-        if not ticket or ticket.status == SupportTicketStatus.CANCELED:
+        if ticket.status == SupportTicketStatus.CANCELED:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Support ticket not found",
@@ -410,9 +350,7 @@ class SupportTicketService:
                 detail="User not found.",
             )
 
-        is_superadmin = user.role == UserRole.SUPERADMIN
-
-        if is_superadmin:
+        if user.role == UserRole.SUPERADMIN:
             return ticket
 
         if ticket.created_by == user_id:
