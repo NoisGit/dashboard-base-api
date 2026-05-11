@@ -44,7 +44,9 @@ from src.schemas.location_custom_form_schemas import (
     LocationCustomFieldUpdateRequest,
     LocationCustomFieldResponse,
 )
-from src.services import UserService, CompanyService, StorageService
+from src.services.user_service import UserService
+from src.services.company_service import CompanyService
+from src.services.storage_service import StorageService
 
 MAX_CUSTOM_FIELDS_PER_LOCATION = 4
 OPERATOR_REQUIRED_CSV_HEADERS = {"id", "contrasena", "nombre"}
@@ -394,7 +396,7 @@ class LocationService:
                     country=location.country,
                     logo=self.storage_service.generate_read_url(
                         container_name="locations",
-                        blob_name=location.logo,
+                        object_name=location.logo,
                     ) if location.logo else None,
                     company_ids=[
                         access.company_id
