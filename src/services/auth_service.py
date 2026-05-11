@@ -2,18 +2,17 @@
 
 from datetime import datetime, timedelta
 from typing import Optional
+import secrets
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
 from src.auth import create_token_pair, create_access_token
 from src.auth.utils import get_user_id_from_refresh_token
-from src.services.email_service import EmailService
 from src.config.config import settings
-import secrets
-
 from src.core.enums import UserRole
 from src.models import User
 from src.schemas import (
@@ -25,6 +24,7 @@ from src.schemas import (
     AuthRecoveryPasswordRequest,
     AuthResetPasswordRequest,
 )
+from src.services.email_service import EmailService
 
 ph = PasswordHasher()
 
@@ -40,6 +40,28 @@ class AuthService:
 
     def _hash_password(self, plain_password: str) -> str:
         return ph.hash(plain_password)
+
+    def _verify_password(self, password_hash: str, plain_password: str) -> None:
+        try:
+            ph.verify(password_hash, plain_password)
+        except VerifyMismatchError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            ) from exc
+
+    async def _rehash_password_if_needed(
+        self,
+        user: User,
+        plain_password: str,
+    ) -> None:
+        if not ph.check_needs_rehash(user.password_hash):
+            return
+
+        user.password_hash = ph.hash(plain_password)
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
 
     async def _ensure_email_unique(
         self,
@@ -110,28 +132,15 @@ class AuthService:
                 detail="Invalid credentials"
             )
 
-        # Verify password match with Argon2 Hash
-        try:
-            ph.verify(user.password_hash, user_data.password)
-        # if password does not match
-        except VerifyMismatchError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials"
-            )
+        self._verify_password(user.password_hash, user_data.password)
 
-        # Block suspended users
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User is suspended",
             )
 
-        # Rehash password if needed
-        if ph.check_needs_rehash(user.password_hash):
-            user.password_hash = ph.hash(user_data.password)
-            await self.update_user_password(user.id, user.password_hash)
-
+        await self._rehash_password_if_needed(user, user_data.password)
         await self.update_user_last_login(user.id)
 
         token_pair = create_token_pair(user.id, user.role)
@@ -151,15 +160,7 @@ class AuthService:
                 detail="Invalid credentials"
             )
 
-        # Verify password match with Argon2 Hash
-        try:
-            ph.verify(user.password_hash, user_data.password)
-        # if password does not match
-        except VerifyMismatchError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials"
-            )
+        self._verify_password(user.password_hash, user_data.password)
 
         if user.role != UserRole.OPERATOR:
             raise HTTPException(
@@ -167,18 +168,13 @@ class AuthService:
                 detail="Unauthorized access",
             )
 
-        # Block suspended users
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User is suspended",
             )
 
-        # Rehash password if needed
-        if ph.check_needs_rehash(user.password_hash):
-            user.password_hash = ph.hash(user_data.password)
-            await self.update_user_password(user.id, user.password_hash)
-
+        await self._rehash_password_if_needed(user, user_data.password)
         await self.update_user_last_login(user.id)
 
         token_pair = create_token_pair(user.id, user.role)
@@ -188,17 +184,30 @@ class AuthService:
 
         return user_token_response
 
-    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> AuthTokenResponse:
-        """Refresh access token using a valid refresh token"""
-        user_id = get_user_id_from_refresh_token(refresh_data.refresh_token)
-
+    async def _get_user_from_refresh_token(
+        self,
+        refresh_token: str,
+    ) -> User:
+        user_id = get_user_id_from_refresh_token(refresh_token)
         user = await self.get_user_by_id(user_id)
 
-        if not user:
+        if not user or not user.is_active:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token"
             )
+
+        if user.refresh_token != refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token"
+            )
+
+        return user
+
+    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> AuthTokenResponse:
+        """Refresh access token using a valid refresh token"""
+        user = await self._get_user_from_refresh_token(refresh_data.refresh_token)
 
         token_pair = create_token_pair(user.id, user.role)
         user_token_response = AuthTokenResponse(**token_pair)
@@ -212,15 +221,7 @@ class AuthService:
         refresh_data: RefreshTokenRequest
     ) -> AccessTokenResponse:
         """Refresh access token only using a valid refresh token"""
-        user_id = get_user_id_from_refresh_token(refresh_data.refresh_token)
-
-        user = await self.get_user_by_id(user_id)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
+        user = await self._get_user_from_refresh_token(refresh_data.refresh_token)
 
         access_token = create_access_token(user.id, user.role)
         user_access_token = AccessTokenResponse(access_token=access_token)
@@ -284,12 +285,8 @@ class AuthService:
                 detail="User not found"
             )
 
-        # Expiration Timestamp for reset token
         current_timestamp = datetime.now()
-        reset_token_expiry = current_timestamp + \
-            timedelta(minutes=15)  # 15 minutes for expiry
-
-        # Generate a secure random token
+        reset_token_expiry = current_timestamp + timedelta(minutes=15)
         reset_token = secrets.token_urlsafe(32)
 
         user.reset_token = reset_token
