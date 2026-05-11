@@ -12,8 +12,10 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import desc, or_, select
 
+from src.core.enums import UserRole
 from src.models import (
     AccessList,
+    CompanyStaff,
     ExternalPeople,
     TypeAccessList,
 )
@@ -130,20 +132,45 @@ class BlacklistService:
         user_id: int,
         company_id: Optional[int],
     ) -> int:
-        return await self.location_service.get_company_id_for_user(
-            user_id=user_id,
-            company_id=company_id,
-        )
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
 
-    async def _validate_location_for_company(
+        if user.role == UserRole.SUPERADMIN:
+            if company_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="company_id is required.",
+                )
+            return company_id
+
+        stmt = select(CompanyStaff.company_id).where(
+            CompanyStaff.user_id == user_id,
+        )
+        result = await self.session.execute(stmt)
+        row = result.first()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no company assigned.",
+            )
+
+        return row[0]
+
+    async def _validate_location(
         self,
         user_id: int,
-        company_id: int,
         location_id: Optional[int],
     ) -> None:
-        await self.location_service.validate_location_for_company(
+        if location_id is None:
+            return
+
+        await self.location_service.check_user_permission_on_location(
             user_id=user_id,
-            company_id=company_id,
             location_id=location_id,
         )
 
@@ -292,9 +319,8 @@ class BlacklistService:
             user_id=user_id,
             company_id=company_id,
         )
-        await self._validate_location_for_company(
+        await self._validate_location(
             user_id=user_id,
-            company_id=company_id,
             location_id=location_id,
         )
 
@@ -405,10 +431,7 @@ class BlacklistService:
         file: UploadFile,
     ) -> None:
         """Create or update blacklist entry."""
-        await self.location_service.check_user_permission_on_location(
-            user_id=user_id,
-            location_id=location_id,
-        )
+        await self._validate_location(user_id, location_id)
 
         rows = await self._read_blacklist_csv(file)
 
@@ -438,9 +461,8 @@ class BlacklistService:
             user_id=user_id,
             company_id=company_id,
         )
-        await self._validate_location_for_company(
+        await self._validate_location(
             user_id=user_id,
-            company_id=company_id,
             location_id=location_id,
         )
 
@@ -519,9 +541,8 @@ class BlacklistService:
             user_id=user_id,
             company_id=company_id,
         )
-        await self._validate_location_for_company(
+        await self._validate_location(
             user_id=user_id,
-            company_id=company_id,
             location_id=location_id,
         )
 
