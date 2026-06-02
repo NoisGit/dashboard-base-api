@@ -1,7 +1,7 @@
 """
-Coredeck API - Main FastAPI application module.
+Locentr API - Main FastAPI application module.
 
-This module initializes and configures the FastAPI application for the Coredeck
+This module initializes and configures the FastAPI application for the Locentr
 platform.
 """
 from fastapi import FastAPI
@@ -14,8 +14,8 @@ from src.api.endpoints import root, health_check, protected_route
 
 # Create the FastAPI application
 app = FastAPI(
-    title="Coredeck API",
-    description="Backend API for Coredeck, a portfolio-ready admin platform.",
+    title="Locentr API",
+    description="Backend API for Locentr, a portfolio-ready operations platform.",
     version="0.0.5",
     lifespan=lifespan,
     swagger_ui_parameters={
