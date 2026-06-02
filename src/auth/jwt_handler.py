@@ -3,28 +3,20 @@
 This module provides functions for creating and managing JWT access and refresh tokens,
 including token generation, validation, and refresh operations.
 """
-import os
 from datetime import datetime, timedelta, timezone
+
 import jwt
-from dotenv import load_dotenv
 from fastapi import HTTPException
+
+from src.config.config import settings
 from src.core.enums import UserRole
-
-
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAY = int(
-    os.getenv("ACCESS_TOKEN_EXPIRE_DAY") or 1)
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS") or 30)
 
 
 def create_token_pair(user_id: int, role: UserRole) -> dict:
     """Generates a pair of JWT tokens (access and refresh) for a given user ID."""
     return {
         "access_token": create_access_token(user_id, role),
-        "refresh_token": create_refresh_token(user_id, role)
+        "refresh_token": create_refresh_token(user_id, role),
     }
 
 
@@ -33,10 +25,11 @@ def create_access_token(user_id: int, role: UserRole) -> str:
     to_encode = {
         "user_id": user_id,
         "role": role.value,
-        "exp": datetime.now(timezone.utc) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAY),
-        "type": "access"
+        "exp": datetime.now(timezone.utc)
+        + timedelta(minutes=settings.access_token_expire_minutes),
+        "type": "access",
     }
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
 def create_refresh_token(user_id: int, role: UserRole) -> str:
@@ -44,17 +37,21 @@ def create_refresh_token(user_id: int, role: UserRole) -> str:
     to_encode = {
         "user_id": user_id,
         "role": role.value,
-        "exp": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
-        "type": "refresh"
+        "exp": datetime.now(timezone.utc)
+        + timedelta(days=settings.refresh_token_expire_days),
+        "type": "refresh",
     }
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
 def refresh_access_token(refresh_token: str) -> str:
     """Refreshes the access token using a valid refresh token."""
     try:
-        payload = jwt.decode(refresh_token, SECRET_KEY,
-                             algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            refresh_token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+        )
 
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
@@ -64,8 +61,6 @@ def refresh_access_token(refresh_token: str) -> str:
 
         return create_access_token(user_id, role)
     except jwt.ExpiredSignatureError as e:
-        raise HTTPException(
-            status_code=401, detail="Refresh token expired") from e
+        raise HTTPException(status_code=401, detail="Refresh token expired") from e
     except jwt.InvalidTokenError as e:
-        raise HTTPException(
-            status_code=401, detail="Invalid refresh token") from e
+        raise HTTPException(status_code=401, detail="Invalid refresh token") from e
