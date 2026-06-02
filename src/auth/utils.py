@@ -3,26 +3,20 @@
 This module provides utility functions for token validation, user extraction,
 and authentication-related operations used throughout the application.
 """
-import os
 from typing import Any, Dict, Tuple
 
 import jwt
-from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
+from src.config.config import settings
 from src.core.enums import UserRole
 from .dependencies import auth_scheme
-
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = "HS256"
 
 
 def _decode_token(token: str) -> Dict[str, Any]:
     try:
-        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
     except jwt.ExpiredSignatureError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -73,7 +67,7 @@ def get_user_id_from_token(
 def get_user_id_from_refresh_token(refresh_token: str) -> int:
     """Extract the user ID from a refresh token and validate it."""
     try:
-        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(refresh_token, settings.secret_key, algorithms=[settings.algorithm])
 
         if payload.get("type") != "refresh":
             raise HTTPException(
