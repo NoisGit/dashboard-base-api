@@ -4,8 +4,10 @@ Defines the Settings class used to load and centralize environment
 configuration (database, secrets, runtime environment, etc.).
 """
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEV_SECRET_KEY = "dev_only_secret_key_change_me"
 
 
 class Settings(BaseSettings):
@@ -47,11 +49,17 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str | None = Field(default=None)
     SUPABASE_STORAGE_BUCKET: str = Field(default="coredeck")
 
-    # Secret key for JWT or other security purposes
+    # Auth settings
     secret_key: str = Field(
-        default="change_this_secret_key",
+        default=DEV_SECRET_KEY,
         alias="SECRET_KEY",
     )
+    algorithm: str = Field(default="HS256", alias="ALGORITHM")
+    access_token_expire_minutes: int = Field(
+        default=30,
+        alias="ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
+    refresh_token_expire_days: int = Field(default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
     # pydantic-settings configuration
     model_config = SettingsConfigDict(
@@ -59,6 +67,25 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",  # ignore extra vars in .env instead of failing
     )
+
+    @model_validator(mode="after")
+    def validate_secure_defaults(self):
+        """Prevent unsafe defaults in deployed environments."""
+        normalized_env = self.env.lower().strip()
+        is_production = normalized_env in {"prod", "production"}
+
+        if not self.secret_key.strip():
+            if is_production:
+                raise ValueError("SECRET_KEY is required in production")
+            self.secret_key = DEV_SECRET_KEY
+
+        if is_production and self.secret_key == DEV_SECRET_KEY:
+            raise ValueError("SECRET_KEY must be changed in production")
+
+        if is_production and not self.database_url:
+            raise ValueError("DATABASE_URL is required in production")
+
+        return self
 
     @property
     def database_url(self) -> str | None:
