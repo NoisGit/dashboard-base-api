@@ -1,80 +1,131 @@
 # Coredeck API
 
-Coredeck API is the backend service for Coredeck Dashboard.
+Coredeck API is the FastAPI backend for a portfolio SaaS operations dashboard.
 
-It is built with FastAPI, SQLModel, SQLAlchemy async, Pydantic, JWT authentication and role-based access patterns.
+> Product name note: **Coredeck** is the current working name. Final branding is still open, but the current technical architecture is based on companies, subcompanies and locations.
 
 ## Project Status
 
-This API is in active cleanup and rebuild mode.
+This repository is in active cleanup and rebuild mode.
 
 Current goals:
 
-- Remove all previous product identity.
 - Keep the backend aligned with `dashboard-base`.
-- Provide secure authentication for the frontend.
+- Remove obsolete template/product references.
 - Expose typed and predictable API modules.
-- Prepare the project for portfolio usage and future deployment.
+- Keep secrets and deployment configuration out of source control.
+- Prepare a clean portfolio-ready SaaS backend.
 
-## Product Identity
+## Product Direction
 
-```text
-Product: Coredeck
-Frontend: Coredeck Dashboard
-Backend: Coredeck API
-Demo email: demo@coredeck.local
-Demo password: 1234
-Frontend repository: dashboard-base
-Backend repository: dashboard-base-api
-```
+Coredeck is being shaped as a multi-company, multi-location SaaS dashboard for operational management.
 
-## Planned Modules
+The current domain model is:
 
 ```text
-- Auth
-- Users
-- Organizations
-- Workspaces
-- Projects
-- Support Tickets
-- Dashboard Metrics
-- Audit Logs
-- Settings
+Company
+├── Subcompanies
+├── Users
+├── Locations
+│   ├── Operators
+│   ├── Access lists
+│   ├── Access logs
+│   ├── Custom forms
+│   ├── Emergency contacts
+│   ├── Service contacts
+│   └── Location logbook
+├── Documents
+├── Support tickets
+├── Notifications
+└── Audit log
 ```
 
+### Important domain decision
 
-## Portfolio Focus
+`Workspaces` are **not** an active backend module.
 
-Coredeck API is presented as an independent portfolio backend that demonstrates:
-
-- Modular FastAPI architecture with routers, schemas, services and models.
-- JWT authentication and role-aware access patterns.
-- Async database access with SQLModel/SQLAlchemy.
-- Migration-based schema evolution with Alembic.
-- Docker-based local database setup.
-- Clear environment configuration without committed production secrets.
-
-See `docs/PORTFOLIO_TASKS.md` for the current rebrand and refactor roadmap.
-See `docs/GITHUB_WORKFLOW.md` for the GitHub commit and pull request workflow.
-
-## Project Structure
+The previous workspace idea is consolidated into `Locations`. New frontend and backend work should use:
 
 ```text
-dashboard-base-api
-├── src
-│   ├── main.py
-│   ├── api
-│   ├── auth
-│   ├── config
-│   ├── core
-│   ├── database
-│   ├── models
-│   ├── routers
-│   ├── schemas
-│   └── services
-├── requirements.txt
-└── README.md
+Frontend: Locations
+Backend:  /api/v1/locations
 ```
+
+Do not add a new `/workspaces` API unless the product architecture is explicitly changed later.
+
+## Roles
+
+Current roles are defined as string enum values:
+
+```text
+SUPERADMIN
+ADMIN
+OPERATOR
+CLIENT
+```
+
+General intent:
+
+| Role | Purpose |
+|---|---|
+| SUPERADMIN | Platform-level administration. |
+| ADMIN | Company/subcompany/location administration. |
+| OPERATOR | Operational access to assigned locations. |
+| CLIENT | Read or limited access to company/location data. |
+
+Permissions must still be enforced at service/object level, not only at router level.
+
+## Current API Modules
+
+Routers are registered under `/api/v1`.
+
+| Module | Route group | Status | Notes |
+|---|---|---|---|
+| Auth | `/auth` | Active | Login, operator login, refresh, me, logout, password recovery. |
+| Users | `/users` | Active | User CRUD, filters, suspend, password change. |
+| Companies | `/companies` | Active | Companies, subcompanies and user assignment. |
+| Locations | `/locations` | Active | Main operational unit. Replaces the old workspace concept. |
+| Access Logs | `/access-logs` | Active | Entry/exit and dashboard access activity. |
+| Whitelists | `/whitelists` | Active | Allowed access list entries. |
+| Blacklists | `/blacklists` | Active | Denied access list entries. |
+| Documents | `/documents` | Active | Metadata for company/location files. |
+| Storage | `/storage` | Infrastructure | File/storage support layer. |
+| Support Tickets | `/support-tickets` | Active | Support workflow with statuses and comments. |
+| Notifications | `/notifications` | Needs fix | Router exists; registration and REST methods must be aligned. |
+| Audit Log | `/audit-log` | Active | Security and system activity history. |
+| Dashboard | `/dashboard` | Active | Location-aware dashboard stats. |
+| System | `/system` | Internal | Platform/system stats for SUPERADMIN. |
+| Emergency Contacts | `/emergency-contacts` | Optional | Location-scoped contacts. |
+| Service Contacts | `/service-contacts` | Optional | Location-scoped service providers. |
+| Location Logbook | `/location-logbook` | Optional | Location-scoped operational logbook. |
+
+## Removed or Postponed Concepts
+
+These concepts should not guide current implementation:
+
+```text
+Organizations
+Workspaces
+Projects
+Settings as a standalone product module
+Legacy mailbox/email templates
+Old Portería/Azure/product references
+```
+
+If any of these return later, they need a new architecture decision and API contract first.
+
+## Tech Stack
+
+| Area | Technology |
+|---|---|
+| API | FastAPI |
+| Data Models | SQLModel / SQLAlchemy async |
+| Validation | Pydantic |
+| Auth | JWT |
+| Pagination | fastapi-pagination |
+| Migrations | Alembic |
+| Database | PostgreSQL-compatible SQLAlchemy URL |
+| Storage | Provider-neutral public storage URL and bucket config |
 
 ## Local Setup
 
@@ -102,18 +153,25 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Create a `.env` file based on the future `.env.example` file.
+Create a `.env` file from `.env.example` when available.
 
-Required environment variables:
+Required or commonly used environment variables:
 
-```text
-DATABASE_URL
-JWT_SECRET_KEY
-JWT_ALGORITHM
-ACCESS_TOKEN_EXPIRE_MINUTES
-REFRESH_TOKEN_EXPIRE_DAYS
-BACKEND_CORS_ORIGINS
+```env
+ENV=dev
+DEBUG=true
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/coredeck
+SECRET_KEY=change-me
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+FRONT_URL_BASE=http://localhost:5173
+STORAGE_PUBLIC_BASE_URL=http://localhost:54321/storage/v1/object/public/coredeck
+STORAGE_BUCKET_NAME=coredeck
 ```
+
+Production must provide safe values for `SECRET_KEY` and `DATABASE_URL`.
 
 Run the API:
 
@@ -129,43 +187,82 @@ http://127.0.0.1:8000/docs
 
 ## Frontend Integration
 
-The frontend repository should consume this API from:
+Frontend repository:
 
 ```text
-http://localhost:8000/api/v1
+https://github.com/NoisGit/dashboard-base
 ```
 
-Expected frontend environment variable:
+The frontend should point to the backend host. Frontend services already include `/api/v1` in their endpoint URLs.
+
+Local frontend environment:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+VITE_ENABLE_MOCK=false
+```
+
+Example service URL produced by the frontend:
 
 ```text
-VITE_API_BASE_URL
+http://localhost:8000/api/v1/locations/
 ```
 
-## Planned API Contract
+## Current Frontend Contract Direction
+
+Use these route groups as the active backend contract:
 
 ```text
 POST /api/v1/auth/login
-POST /api/v1/auth/logout
-POST /api/v1/auth/refresh
+POST /api/v1/auth/operator-login
 GET  /api/v1/auth/me
-GET  /api/v1/users
-GET  /api/v1/organizations
-GET  /api/v1/workspaces
-GET  /api/v1/projects
-GET  /api/v1/support-tickets
-GET  /api/v1/dashboard/metrics
-GET  /api/v1/audit-logs
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
+
+GET  /api/v1/users/
+POST /api/v1/users/
+GET  /api/v1/users/{user_id}
+PUT  /api/v1/users/{user_id}
+
+GET  /api/v1/companies/
+POST /api/v1/companies/
+POST /api/v1/companies/subcompany
+POST /api/v1/companies/{company_id}/users
+POST /api/v1/companies/{company_id}/create-users
+
+GET  /api/v1/locations/
+POST /api/v1/locations/
+GET  /api/v1/locations/{location_id}
+PUT  /api/v1/locations/{location_id}
+DELETE /api/v1/locations/{location_id}
+
+GET  /api/v1/dashboard/location/{location_id}
+GET  /api/v1/support-tickets/
+GET  /api/v1/audit-log/
 ```
+
+For a complete source of truth, use FastAPI OpenAPI docs from the running API.
 
 ## Security Roadmap
 
-- Password hashing with Argon2.
-- Access and refresh token flow.
-- Role-based route protection.
+Already aligned or in progress:
+
+- Centralized settings for secrets and token expiration.
+- Required production secret/database configuration.
+- JWT authentication and refresh flow.
+- Role-aware route protection.
 - Environment-based CORS.
-- Safe error responses.
-- Audit logs for sensitive actions.
-- No secrets committed to the repository.
+- No committed `.env` files or real production secrets.
+
+Future deep hardening is tracked separately in issue #25:
+
+- SQL injection audit.
+- Allow-list validation for dynamic fields.
+- Object-level authorization review.
+- Rate limiting.
+- Security headers.
+- Dependency scanning.
+- Tests with malicious payloads.
 
 ## Repository Workflow
 
