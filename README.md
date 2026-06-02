@@ -1,8 +1,8 @@
-# Coredeck API
+# Locentr API
 
-Coredeck API is the FastAPI backend for a portfolio SaaS operations dashboard.
+Locentr API is the FastAPI backend for a portfolio SaaS operations dashboard.
 
-> Product name note: **Coredeck** is the current working name. Final branding is still open, but the current technical architecture is based on companies, subcompanies and locations.
+Locentr is centered around companies, subcompanies, locations, access management, documents, support tickets, notifications and audit logs.
 
 ## Project Status
 
@@ -18,7 +18,7 @@ Current goals:
 
 ## Product Direction
 
-Coredeck is being shaped as a multi-company, multi-location SaaS dashboard for operational management.
+Locentr is a multi-company, multi-location operations dashboard.
 
 The current domain model is:
 
@@ -160,15 +160,15 @@ Required or commonly used environment variables:
 ```env
 ENV=dev
 DEBUG=true
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/coredeck
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/locentr
 SECRET_KEY=change-me
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 FRONT_URL_BASE=http://localhost:5173
-STORAGE_PUBLIC_BASE_URL=http://localhost:54321/storage/v1/object/public/coredeck
-STORAGE_BUCKET_NAME=coredeck
+STORAGE_PUBLIC_BASE_URL=http://localhost:54321/storage/v1/object/public/locentr
+STORAGE_BUCKET_NAME=locentr
 ```
 
 Production must provide safe values for `SECRET_KEY` and `DATABASE_URL`.
