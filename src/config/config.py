@@ -44,10 +44,17 @@ class Settings(BaseSettings):
         alias="BACKEND_CORS_ORIGINS",
     )
 
-    # Supabase Storage settings
+    # Storage settings
+    storage_public_base_url: str | None = Field(
+        default=None,
+        alias="STORAGE_PUBLIC_BASE_URL",
+    )
+    storage_bucket_name: str = Field(default="coredeck", alias="STORAGE_BUCKET_NAME")
+
+    # Supabase compatibility settings
     SUPABASE_URL: str | None = Field(default=None)
     SUPABASE_SERVICE_ROLE_KEY: str | None = Field(default=None)
-    SUPABASE_STORAGE_BUCKET: str = Field(default="coredeck")
+    SUPABASE_STORAGE_BUCKET: str | None = Field(default=None)
 
     # Auth settings
     secret_key: str = Field(
@@ -100,6 +107,20 @@ class Settings(BaseSettings):
             for origin in self.backend_cors_origins.split(",")
             if origin.strip()
         ]
+
+    @property
+    def storage_bucket(self) -> str:
+        """Storage bucket name."""
+        return (self.SUPABASE_STORAGE_BUCKET or self.storage_bucket_name).strip("/")
+
+    @property
+    def storage_base_url(self) -> str:
+        """Public storage base URL."""
+        if self.storage_public_base_url:
+            return self.storage_public_base_url.rstrip("/")
+
+        supabase_url = (self.SUPABASE_URL or "http://localhost:54321").rstrip("/")
+        return f"{supabase_url}/storage/v1/object/public/{self.storage_bucket}"
 
 
 settings = Settings()
