@@ -1,4 +1,4 @@
-"""Application configuration module for the Coredeck API.
+"""Application configuration module for the Locentr API.
 
 Defines the Settings class used to load and centralize environment
 configuration (database, secrets, runtime environment, etc.).
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = Field(default=587)
     SMTP_USER: str = Field(default="admin@nois.dev")
     SMTP_PASSWORD: str = Field(default="")
-    SMTP_FROM_EMAIL: str = Field(default="Coredeck <admin@nois.dev>")
+    SMTP_FROM_EMAIL: str = Field(default="Locentr <admin@nois.dev>")
 
     # Logo URL setting
     LOGO_URL: str = Field(default="http://localhost:5173/logo.svg")
@@ -49,7 +49,7 @@ class Settings(BaseSettings):
         default=None,
         alias="STORAGE_PUBLIC_BASE_URL",
     )
-    storage_bucket_name: str = Field(default="coredeck", alias="STORAGE_BUCKET_NAME")
+    storage_bucket_name: str = Field(default="locentr", alias="STORAGE_BUCKET_NAME")
 
     # Supabase compatibility settings
     SUPABASE_URL: str | None = Field(default=None)
