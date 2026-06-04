@@ -10,7 +10,7 @@ This repository is in active cleanup and rebuild mode.
 
 Current goals:
 
-- Keep the backend aligned with `dashboard-base`.
+- Keep the backend aligned with `locentr-dashboard`.
 - Remove obsolete template/product references.
 - Expose typed and predictable API modules.
 - Keep secrets and deployment configuration out of source control.
@@ -190,7 +190,7 @@ http://127.0.0.1:8000/docs
 Frontend repository:
 
 ```text
-https://github.com/NoisGit/dashboard-base
+https://github.com/NoisGit/locentr-dashboard
 ```
 
 The frontend should point to the backend host. Frontend services already include `/api/v1` in their endpoint URLs.
