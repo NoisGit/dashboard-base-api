@@ -1,4 +1,4 @@
-"""Locations router module for Coredeck API."""
+"""Locations router module for Locentr API."""
 
 from typing import Optional, List
 
@@ -50,7 +50,7 @@ async def list_locations(
         ),
     ),
 ):
-    """List active locations (workspaces) visible for the current user."""
+    """List active locations visible for the current user."""
     return await service.list_locations(
         user_id=user_id,
         params=params,
@@ -101,7 +101,7 @@ async def create_location(
         ),
     ),
 ):
-    """Create a new location (workspace)."""
+    """Create a new location."""
     await service.create_location(
         user_id=user_id,
         payload=payload,
@@ -150,7 +150,7 @@ async def delete_location(
         ),
     ),
 ):
-    """Soft delete a location (is_active = False)."""
+    """Soft delete a location."""
     await service.soft_delete_location(
         user_id=user_id,
         location_id=location_id,
@@ -201,7 +201,7 @@ async def assign_user_to_location(
         ),
     ),
 ):
-    """Assign a user (operator) to a location."""
+    """Assign a user to a location."""
     await service.assign_user_to_location(
         requester_id=requester_id,
         location_id=location_id,
@@ -228,7 +228,7 @@ async def bulk_import_operators(
         ),
     ),
 ):
-    """Assign a user (operator) to a location."""
+    """Bulk assign operators to a location."""
     await service.bulk_import_operators(
         requester_id=requester_id,
         location_id=location_id,
@@ -330,7 +330,7 @@ async def get_location_access_lists(
         ),
     ),
 ):
-    """Get Access List for a location."""
+    """Get access lists for a location."""
     return await service.get_location_access_lists(
         user_id=user_id,
         location_id=location_id,
@@ -356,7 +356,7 @@ async def list_operators(
         ),
     ),
 ) -> Page[OperatorResponse]:
-    """List operators assigned to a workspace."""
+    """List operators assigned to a location."""
     users = await service.list_operators(
         user_id=user_id,
         location_id=location_id,
