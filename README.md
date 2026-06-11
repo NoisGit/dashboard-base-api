@@ -266,6 +266,7 @@ For a complete source of truth, use FastAPI OpenAPI docs from the running API.
 - Upload type and size allowlists.
 
 See `docs/SECURITY.md` for application and infrastructure responsibilities.
+See `docs/SAAS_READINESS.md` for demo blockers and the plans/trial roadmap.
 
 ## Documentation
 

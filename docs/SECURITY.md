@@ -3,6 +3,7 @@
 The backend follows an OWASP-oriented baseline:
 
 - Argon2 password hashing and JWT access/refresh token type checks.
+- Unique refresh-token IDs, rotation and SHA-256 digests at rest.
 - Password recovery responses do not reveal whether an account exists.
 - Reset and police-access secrets are stored as SHA-256 digests.
 - Central object authorization for company and location resources.
@@ -14,6 +15,23 @@ The backend follows an OWASP-oriented baseline:
 - Request body limits, authentication rate limits, request IDs, and secure headers.
 - CORS origins supplied through environment configuration.
 - Production startup rejects development secrets and missing database configuration.
+- Alembic is the only database schema creation and upgrade path.
+
+## Known Storage Limitation
+
+The current storage adapter builds public object URLs. Authorization is checked
+before document metadata and download URLs are returned, but a public object
+URL can be shared outside the API after it is known.
+
+Before storing customer-confidential documents or media:
+
+- Use a private bucket.
+- Generate short-lived signed upload and read URLs.
+- Validate object ownership before every signed URL is issued.
+- Perform deletes through a trusted server-side storage credential.
+
+Until that work is complete, storage is suitable only for synthetic portfolio
+demo assets.
 
 ## Deployment Controls
 
