@@ -32,7 +32,7 @@ alembic upgrade head
 After setting the environment variables, run:
 
 ```bash
-python scripts/seed_demo.py
+python -m scripts.seed_demo
 ```
 
 The script is idempotent:

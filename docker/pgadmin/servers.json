@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Locentr PostgreSQL",
+      "Group": "Servers",
+      "Host": "locentr-db",
+      "Port": 5432,
+      "MaintenanceDB": "locentr_db",
+      "Username": "locentr_admin",
+      "SSLMode": "prefer"
+    }
+  }
+}

@@ -140,3 +140,5 @@ cache/
 # Docker volumes (Postgres / pgAdmin data)
 postgres/
 pgadmin/
+!docker/pgadmin/
+!docker/pgadmin/servers.json

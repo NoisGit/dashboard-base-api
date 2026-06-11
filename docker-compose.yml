@@ -10,18 +10,35 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-locentr_local_password}
       POSTGRES_DB: ${POSTGRES_DB:-locentr_db}
     volumes:
-      - ./postgres:/var/lib/postgresql/data
+      - locentr_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-locentr_admin} -d ${POSTGRES_DB:-locentr_db}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   locentr-pgadmin:
     image: dpage/pgadmin4
     container_name: locentr_pgadmin
     restart: always
     depends_on:
-      - locentr-db
+      locentr-db:
+        condition: service_healthy
     ports:
       - "${PGADMIN_PORT:-8080}:80"
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-change-me-local}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@nois.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-locentr_pgadmin_local}
     volumes:
-      - ./pgadmin:/var/lib/pgadmin
+      - locentr_pgadmin_data:/var/lib/pgadmin
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+
+volumes:
+  locentr_postgres_data:
+    name: locentr_postgres_data
+  locentr_pgadmin_data:
+    name: locentr_pgadmin_data
