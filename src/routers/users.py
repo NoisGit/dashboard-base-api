@@ -1,4 +1,4 @@
-"""User router module for Coredeck API."""
+"""User router module for Locentr API."""
 
 from typing import Optional
 
@@ -42,7 +42,7 @@ async def list_users(
     company_id: Optional[int] = None,
     search: Optional[str] = None,
     service: UserService = Depends(get_user_service),
-    _=Depends(
+    requester_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -53,6 +53,7 @@ async def list_users(
 ) -> Page[UserResponse]:
     """List active users with filters and pagination."""
     users = await service.list_users(
+        requester_id=requester_id,
         role=role,
         company_id=company_id,
         search=search,
@@ -68,7 +69,7 @@ async def list_users(
 async def get_user_detail(
     user_id: int,
     service: UserService = Depends(get_user_service),
-    _=Depends(
+    requester_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -79,6 +80,7 @@ async def get_user_detail(
 ) -> UserResponse:
     """Get user by ID."""
     user = await service.get_user_detail(
+        requester_id=requester_id,
         user_id=user_id,
     )
     return user
@@ -92,7 +94,7 @@ async def get_user_detail(
 async def create_user(
     payload: UserCreateRequest,
     service: UserService = Depends(get_user_service),
-    _=Depends(
+    requester_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -104,6 +106,7 @@ async def create_user(
     """Create a new user."""
     user = await service.create_user(
         payload=payload,
+        requester_id=requester_id,
     )
     return user
 
@@ -116,7 +119,7 @@ async def update_user(
     user_id: int,
     payload: UserUpdateRequest,
     service: UserService = Depends(get_user_service),
-    _=Depends(
+    requester_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -127,6 +130,7 @@ async def update_user(
 ) -> UserResponse:
     """Update user by ID."""
     user = await service.update_user(
+        requester_id=requester_id,
         user_id=user_id,
         payload=payload,
     )

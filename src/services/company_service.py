@@ -1,7 +1,6 @@
-"""Company service module for the Coredeck API."""
+"""Company service module for the Locentr API."""
 
 from typing import List, Optional, cast
-from datetime import datetime
 
 from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -10,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, desc
 from src.core.enums import UserRole
 
-from src.models import Company, CompanyStaff, User
+from src.models import Company, CompanyStaff
 from src.schemas import (
     CompanyCreateRequest,
     CompanyUpdateRequest,
@@ -36,36 +35,75 @@ class CompanyService:
         self.user_service = user_service or UserService(session)
         self.storage_service = storage_service
 
-    async def _get_company_by_id(self, company_id: int) -> Optional[CompanyResponse]:
-        company = await self.session.get(Company, company_id)
+    async def get_company_scope_ids(self, requester_id: int) -> list[int]:
+        """Return company IDs visible to the requester."""
+        user = await self.user_service.get_user_by_id(requester_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+        if user.role == UserRole.SUPERADMIN:
+            return []
 
+        company_id = await self.get_company_id_by_user_id(requester_id)
+        if company_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User has no company assigned.",
+            )
+
+        stmt = select(Company.id).where(Company.id == company_id)
+        if user.role == UserRole.ADMIN:
+            stmt = select(Company.id).where(
+                (Company.id == company_id)
+                | (Company.parent_company_id == company_id)
+            )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def require_company_access(
+        self,
+        requester_id: int,
+        company_id: int,
+    ) -> Company:
+        """Return a company only when it belongs to the requester's tenant."""
+        requester = await self.user_service.get_user_by_id(requester_id)
+        if not requester or not requester.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        company = await self.session.get(Company, company_id)
         if not company or not company.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Company not found.",
             )
 
-        return CompanyResponse(
-            id=company.id,
-            name=company.name,
-            activity=company.activity,
-            id_number=company.id_number,
-            logo=self.storage_service.generate_read_url(
-                container_name="companies",
-                object_name=company.logo,
-            ) if company.logo else None,
-            type_document=company.type_document,
-            is_active=company.is_active,
-            created_by=company.created_by,
-            created_at=company.created_at,
-        )
+        if requester.role != UserRole.SUPERADMIN:
+            scope_ids = await self.get_company_scope_ids(requester_id)
+            if company_id not in scope_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not allowed for this company.",
+                )
+        return company
 
-    async def list_companies(self, params: Params) -> Page[CompanyResponse]:
+    async def list_companies(
+        self,
+        requester_id: int,
+        params: Params,
+    ) -> Page[CompanyResponse]:
         """List active companies."""
 
         stmt = select(Company).where(
             Company.is_active == True  # pylint: disable=singleton-comparison
         )
+        scope_ids = await self.get_company_scope_ids(requester_id)
+        if scope_ids:
+            stmt = stmt.where(Company.id.in_(scope_ids))
 
         return await paginate(
             self.session,
@@ -83,6 +121,7 @@ class CompanyService:
                     ) if company.logo else None,
                     type_document=company.type_document,
                     is_active=company.is_active,
+                    parent_company_id=company.parent_company_id,
                     created_by=company.created_by,
                     created_at=company.created_at,
                 )
@@ -92,10 +131,11 @@ class CompanyService:
 
     async def get_company_detail(
         self,
+        requester_id: int,
         company_id: int,
     ) -> Company:
         """Get a single active company by ID."""
-        company = await self._get_company_by_id(company_id)
+        company = await self.require_company_access(requester_id, company_id)
         if not company or not company.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -142,6 +182,13 @@ class CompanyService:
         else:
             parent_company_id = payload.parent_company_id
 
+        if parent_company_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="parent_company_id is required.",
+            )
+        await self.require_company_access(user_id, parent_company_id)
+
         subcompany = Company(
             name=payload.name,
             activity=payload.activity,
@@ -159,11 +206,12 @@ class CompanyService:
 
     async def update_company(
         self,
+        requester_id: int,
         company_id: int,
         payload: CompanyUpdateRequest,
     ) -> EmptyResponse:
         """Update an existing company."""
-        company = await self._get_company_by_id(company_id)
+        company = await self.require_company_access(requester_id, company_id)
         if not company or not company.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -183,7 +231,7 @@ class CompanyService:
         company_id: int,
     ):
         """Soft delete a company by setting is_active = False."""
-        company = await self._get_company_by_id(company_id)
+        company = await self.session.get(Company, company_id)
         if not company or not company.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -200,7 +248,7 @@ class CompanyService:
         user_id: int,
     ):
         """Assign an existing user to a company."""
-        company = await self._get_company_by_id(company_id)
+        company = await self.require_company_access(requester_id, company_id)
         if not company or not company.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -255,6 +303,20 @@ class CompanyService:
         payload: UserCreateRequest,
     ) -> None:
         """Create a new user."""
+        await self.require_company_access(requester_id, company_id)
+        if payload.role == UserRole.SUPERADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="SUPERADMIN accounts cannot be created through the API.",
+            )
+
+        requester = await self.user_service.get_user_by_id(requester_id)
+        if requester and requester.role == UserRole.ADMIN and payload.role == UserRole.ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="ADMIN users cannot create other administrators.",
+            )
+
         check_user = await self.user_service.get_user_by_email(payload.email)
         if check_user:
             await self.assign_user_to_company(
@@ -264,30 +326,9 @@ class CompanyService:
             )
             return None
 
-        await self.user_service._ensure_username_unique(payload.username)
-
-        password_hash = self.user_service._hash_password(payload.password)
-
-        user = User(
-            username=payload.username,
-            full_name=payload.full_name,
-            email=payload.email,
-            password_hash=password_hash,
-            role=payload.role,
-            plan_id=payload.plan_id,
-            status=payload.status,
-            is_active=True,
-            created_at=datetime.now(),
-        )
-
-        self.session.add(user)
-        await self.session.commit()
-        await self.session.refresh(user)
-
-        await self.assign_user_to_company(
+        await self.user_service.create_user(
+            payload=payload,
             requester_id=requester_id,
             company_id=company_id,
-            user_id=user.id,
         )
-
         return None

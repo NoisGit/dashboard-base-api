@@ -1,4 +1,4 @@
-"""Storage URL service for Coredeck uploads."""
+"""Storage URL service for Locentr uploads."""
 
 import uuid
 from urllib.parse import urlparse
@@ -14,6 +14,46 @@ ALLOWED_CONTAINERS = [
     "locations",
     "support-tickets",
 ]
+ALLOWED_UPLOAD_TYPES = {
+    "companies": {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "webp": "image/webp",
+    },
+    "locations": {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "webp": "image/webp",
+    },
+    "documents": {
+        "pdf": "application/pdf",
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+    },
+    "access-logs": {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "webp": "image/webp",
+    },
+    "location-logbook": {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "webp": "image/webp",
+        "mp4": "video/mp4",
+    },
+    "support-tickets": {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "webp": "image/webp",
+        "pdf": "application/pdf",
+    },
+}
 
 
 class StorageService:
@@ -28,8 +68,24 @@ class StorageService:
             raise InvalidContainerError("Invalid container name.")
 
     def _build_object_name(self, container_name: str, file_extension: str) -> str:
-        normalized_extension = file_extension.strip().lstrip(".") or "bin"
+        normalized_extension = file_extension.strip().lower().lstrip(".")
         return f"{container_name}/{uuid.uuid4()}.{normalized_extension}"
+
+    def _validate_upload_type(
+        self,
+        container_name: str,
+        file_extension: str,
+        content_type: str,
+    ) -> None:
+        normalized_extension = file_extension.strip().lower().lstrip(".")
+        normalized_content_type = content_type.strip().lower()
+        expected_content_type = ALLOWED_UPLOAD_TYPES[container_name].get(
+            normalized_extension
+        )
+        if not expected_content_type or expected_content_type != normalized_content_type:
+            raise StorageServiceError(
+                "File extension and content type are not allowed for this container."
+            )
 
     def _object_url(self, object_name: str) -> str:
         return f"{self.storage_base_url}/{object_name.strip('/')}"
@@ -42,6 +98,7 @@ class StorageService:
     ) -> dict:
         """Generate an object URL for a new upload target."""
         self._validate_container(container_name)
+        self._validate_upload_type(container_name, file_extension, content_type)
         object_name = self._build_object_name(container_name, file_extension)
         return {
             "object_url": self._object_url(object_name),
@@ -80,20 +137,24 @@ class StorageService:
         return self._object_url(normalized_object_name)
 
     def extract_object_info_from_url(self, object_url: str) -> tuple[str, str]:
-        """Extract the Coredeck container and object name from a storage URL."""
+        """Extract the Locentr container and object name from a storage URL."""
         try:
             parsed_url = urlparse(object_url)
-            base_path = urlparse(self.storage_base_url).path.strip("/")
+            parsed_base = urlparse(self.storage_base_url)
+            if (
+                parsed_url.scheme not in {"http", "https"}
+                or parsed_url.scheme != parsed_base.scheme
+                or parsed_url.netloc != parsed_base.netloc
+            ):
+                raise ValueError("Storage URL does not belong to Locentr")
+
+            base_path = parsed_base.path.strip("/")
             full_path = parsed_url.path.strip("/")
 
             if base_path and full_path.startswith(f"{base_path}/"):
                 object_name = full_path[len(base_path) + 1:]
             else:
-                marker = f"/storage/v1/object/public/{self.bucket}/"
-                if marker in parsed_url.path:
-                    object_name = parsed_url.path.split(marker, 1)[1]
-                else:
-                    object_name = full_path.split("/", 1)[-1]
+                raise ValueError("Storage URL path is outside the configured bucket")
 
             path_parts = object_name.split("/", 1)
             if len(path_parts) < 2:

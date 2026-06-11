@@ -1,4 +1,4 @@
-"""Service contact service module for the Coredeck API."""
+"""Service contact service module for the Locentr API."""
 
 import csv
 import io
@@ -18,6 +18,7 @@ from src.schemas import (
     ServiceContactCreateRequest,
     ServiceContactUpdateRequest,
 )
+from src.security.uploads import validate_csv_upload
 
 SERVICE_CONTACT_REQUIRED_CSV_HEADERS = {
     "nombre del servicio",
@@ -77,6 +78,7 @@ class ServiceContactService:
             )
 
         content = await file.read()
+        validate_csv_upload(file, content)
         if not content:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

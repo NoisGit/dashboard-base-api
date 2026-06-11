@@ -1,4 +1,4 @@
-"""Blacklist service module for the Coredeck API."""
+"""Blacklist service module for the Locentr API."""
 
 # pylint: disable=no-member, singleton-comparison
 
@@ -25,6 +25,7 @@ from src.schemas import (
 )
 from src.services.user_service import UserService
 from src.services.location_service import LocationService
+from src.security.uploads import validate_csv_upload
 
 BLACKLIST_REQUIRED_CSV_HEADERS = {
     "rut",
@@ -220,6 +221,7 @@ class BlacklistService:
             )
 
         content = await file.read()
+        validate_csv_upload(file, content)
         if not content:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

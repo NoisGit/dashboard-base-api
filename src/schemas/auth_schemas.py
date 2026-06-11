@@ -1,6 +1,6 @@
-"""User-related Pydantic schemas for the Coredeck API."""
+"""Authentication schemas for the Locentr API."""
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class AuthRecoveryPasswordRequest(BaseModel):
@@ -10,14 +10,14 @@ class AuthRecoveryPasswordRequest(BaseModel):
 
 class AuthResetPasswordRequest(BaseModel):
     """Schema for user recovery password"""
-    reset_token: str
-    new_password: str
-    confirm_new_password: str
+    reset_token: str = Field(min_length=20, max_length=255)
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_new_password: str = Field(min_length=8, max_length=128)
 
 
 class RefreshTokenRequest(BaseModel):
     """Schema for refresh token request"""
-    refresh_token: str
+    refresh_token: str = Field(min_length=20, max_length=4096)
 
 
 class AuthTokenResponse(BaseModel):

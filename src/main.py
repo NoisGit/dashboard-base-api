@@ -11,6 +11,7 @@ from src.config.config import settings
 from src.config.lifespan import lifespan
 from src.config.routers import include_routers
 from src.api.endpoints import root, health_check, protected_route
+from src.security.http import SecurityMiddleware
 
 # Create the FastAPI application
 app = FastAPI(
@@ -22,6 +23,8 @@ app = FastAPI(
         "docExpansion": "none"
     }
 )
+
+app.add_middleware(SecurityMiddleware)
 
 # Configure CORS middleware
 app.add_middleware(

@@ -1,4 +1,4 @@
-"""Notification service for Coredeck API."""
+"""Notification service for Locentr API."""
 
 from datetime import datetime
 from typing import Optional
@@ -9,10 +9,11 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, desc
 
-from src.models import Notification
+from src.models import Notification, User
 from src.schemas import (
     SimpleNoticationRequest,
     NotificationResponse,
+    NotificationMessageResponse,
 )
 from src.services.user_service import UserService
 
@@ -57,12 +58,13 @@ class NotificationService:
 
     async def mark_notification_as_read(
         self,
+        user_id: int,
         notification_id: int,
     ):
         """Mark a notification as read."""
         notification = await self.get_notification_by_id(notification_id)
 
-        if not notification:
+        if not notification or notification.user_id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Notification not found",
@@ -77,7 +79,7 @@ class NotificationService:
         self,
         user_id: int,
         params: Params = Params(),
-    ) -> Page[NotificationResponse]:
+    ) -> Page[NotificationMessageResponse]:
         """Get paginated notifications for a user."""
         query = (
             select(Notification)
@@ -90,7 +92,7 @@ class NotificationService:
             query,
             params,
             transformer=lambda items: [
-                NotificationResponse(
+                NotificationMessageResponse(
                     id=notification.id,
                     title=notification.title,
                     message=notification.message,
@@ -104,7 +106,7 @@ class NotificationService:
         self,
         user_id: int,
         params: Params = Params(),
-    ) -> Page[NotificationResponse]:
+    ) -> Page[NotificationMessageResponse]:
         """Get paginated unread notifications for a user."""
         query = (
             select(Notification)
@@ -118,7 +120,7 @@ class NotificationService:
             query,
             params,
             transformer=lambda items: [
-                NotificationResponse(
+                NotificationMessageResponse(
                     id=notification.id,
                     title=notification.title,
                     message=notification.message,
@@ -131,11 +133,25 @@ class NotificationService:
     async def send_notification_to_all_users(
         self,
         notification: SimpleNoticationRequest,
+        created_by_user_id: int,
     ) -> NotificationResponse:
-        """Create an internal notification summary without external push provider."""
+        """Create an in-app notification for every active user."""
+        result = await self.session.execute(
+            select(User.id).where(User.is_active == True)  # noqa: E712
+        )
+        user_ids = result.scalars().all()
+        for user_id in user_ids:
+            self.session.add(
+                Notification(
+                    title=notification.title,
+                    message=notification.message,
+                    created_by_user_id=created_by_user_id,
+                    user_id=user_id,
+                )
+            )
+        await self.session.commit()
+
         return NotificationResponse(
-            title=notification.title,
-            message=notification.message,
-            success=0,
+            success=len(user_ids),
             failed=0,
         )

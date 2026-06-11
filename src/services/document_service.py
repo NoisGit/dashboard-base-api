@@ -1,4 +1,4 @@
-"""Document service module for the Coredeck API."""
+"""Document service module for the Locentr API."""
 
 # pylint: disable=no-member, singleton-comparison
 
@@ -75,17 +75,41 @@ class DocumentService:
         if user.role == UserRole.SUPERADMIN:
             return
 
-        company_id = await self._get_user_company_id(user_id)
-        if company_id is None:
+        await self._ensure_can_access_company(user_id, document.company_id)
+
+    async def _ensure_can_access_company(
+        self,
+        user_id: int,
+        company_id: int,
+    ) -> None:
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+        if user.role == UserRole.SUPERADMIN:
+            return
+
+        user_company_id = await self._get_user_company_id(user_id)
+        if user_company_id is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User is not assigned to a company.",
             )
 
-        if document.company_id != company_id:
+        target_company = await self.session.get(Company, company_id)
+        if (
+            not target_company
+            or not target_company.is_active
+            or (
+                target_company.id != user_company_id
+                and target_company.parent_company_id != user_company_id
+            )
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have access to this document.",
+                detail="You do not have access to this company.",
             )
 
     def _get_allowed_extensions(self) -> List[str]:
@@ -284,6 +308,7 @@ class DocumentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Company not found.",
             )
+        await self._ensure_can_access_company(user_id, payload.company_id)
 
         name = payload.name.strip()
         if not name or name.lower() == "string":
@@ -336,6 +361,7 @@ class DocumentService:
 
     async def update_document(
         self,
+        user_id: int,
         document_id: int,
         payload: DocumentUpdateRequest,
     ) -> EmptyResponse:
@@ -346,6 +372,7 @@ class DocumentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Document not found.",
             )
+        await self._ensure_can_access_document(user_id, document)
 
         normalized_name = self._normalize_optional_str(payload.name)
         if normalized_name is not None:
@@ -383,6 +410,7 @@ class DocumentService:
 
     async def delete_document(
         self,
+        user_id: int,
         document_id: int,
     ) -> None:
         """Hard delete a document record (does not delete blob)."""
@@ -392,6 +420,7 @@ class DocumentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Document not found.",
             )
+        await self._ensure_can_access_document(user_id, document)
 
         await self.session.delete(document)
         await self.session.commit()

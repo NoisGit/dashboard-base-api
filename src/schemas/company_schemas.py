@@ -1,30 +1,30 @@
-"""Company-related Pydantic schemas for the Coredeck API."""
+"""Company-related Pydantic schemas for the Locentr API."""
 
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .base_schemas import BaseResponse
 
 
 class CompanyCreateRequest(BaseModel):
     """Payload for creating a company."""
-    name: str
-    activity: Optional[str] = None
-    id_number: Optional[str] = None
-    logo: Optional[str] = None
-    type_document: Optional[str] = None
+    name: str = Field(min_length=2, max_length=100)
+    activity: Optional[str] = Field(default=None, max_length=100)
+    id_number: str = Field(min_length=2, max_length=50)
+    logo: Optional[str] = Field(default=None, max_length=255)
+    type_document: str = Field(min_length=2, max_length=30)
 
 
 class SubCompanyCreateRequest(BaseModel):
     """Payload for creating a sub company."""
-    name: str
+    name: str = Field(min_length=2, max_length=100)
     activity: Optional[str] = None
-    id_number: Optional[str] = None
+    id_number: str = Field(min_length=2, max_length=50)
     parent_company_id: Optional[int] = None
     logo: Optional[str] = None
-    type_document: Optional[str] = None
+    type_document: str = Field(min_length=2, max_length=30)
 
 
 class CompanyUpdateRequest(BaseModel):

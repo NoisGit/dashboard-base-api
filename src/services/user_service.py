@@ -1,4 +1,4 @@
-"""User service module for Coredeck API."""
+"""User service module for Locentr API."""
 
 # pylint: disable=no-member, singleton-comparison
 
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from src.core.enums import UserRole
-from src.models import User, CompanyStaff
+from src.models import Company, User, CompanyStaff
 from src.schemas import (
     UserCreateRequest,
     UserUpdateRequest,
@@ -135,13 +135,32 @@ class UserService:
 
     async def list_users(
         self,
+        requester_id: int,
         role: Optional[UserRole],
         company_id: Optional[int],
         search: Optional[str],
         params: Params,
     ) -> Page[UserResponse]:
         """Return active users with optional filters."""
+        requester = await self.get_user_by_id(requester_id)
+        if not requester or not requester.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
         stmt = select(User).where(User.is_active == True)  # noqa: E712
+
+        if requester.role == UserRole.ADMIN:
+            company_scope_ids = await self._get_manageable_company_ids(requester_id)
+            if company_id is not None and company_id not in company_scope_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not allowed for this company.",
+                )
+            stmt = stmt.where(User.role != UserRole.SUPERADMIN)
+        else:
+            company_scope_ids = []
 
         if role is not None:
             stmt = stmt.where(User.role == role)
@@ -153,10 +172,14 @@ class UserService:
                 | (User.username.ilike(like_pattern)),
             )
 
-        if company_id is not None:
+        if company_id is not None or company_scope_ids:
             stmt = (
                 stmt.join(CompanyStaff, CompanyStaff.user_id == User.id)
-                .where(CompanyStaff.company_id == company_id)
+                .where(
+                    CompanyStaff.company_id == company_id
+                    if company_id is not None
+                    else CompanyStaff.company_id.in_(company_scope_ids)
+                )
             )
 
         return await paginate(
@@ -181,6 +204,7 @@ class UserService:
 
     async def get_user_detail(
         self,
+        requester_id: int,
         user_id: int,
     ) -> User:
         """Return a single active user."""
@@ -192,13 +216,60 @@ class UserService:
                 detail="User not found.",
             )
 
+        await self._ensure_can_manage_user(requester_id, user)
         return user
 
     async def create_user(
         self,
         payload: UserCreateRequest,
+        requester_id: Optional[int] = None,
+        company_id: Optional[int] = None,
     ) -> User:
         """Create a new user."""
+        if payload.role == UserRole.SUPERADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="SUPERADMIN accounts cannot be created through the API.",
+            )
+
+        requester = None
+        assignment_company_id = company_id
+        if requester_id is not None:
+            requester = await self.get_user_by_id(requester_id)
+            if not requester or not requester.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found.",
+                )
+            if requester.role == UserRole.ADMIN and payload.role == UserRole.ADMIN:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="ADMIN users cannot create other administrators.",
+                )
+            if requester.role == UserRole.ADMIN:
+                requester_company_id = await self._get_user_company_id(requester_id)
+                if requester_company_id is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="User is not assigned to a company.",
+                    )
+                assignment_company_id = assignment_company_id or requester_company_id
+                target_company = await self.session.get(
+                    Company,
+                    assignment_company_id,
+                )
+                if (
+                    not target_company
+                    or not target_company.is_active
+                    or (
+                        target_company.id != requester_company_id
+                        and target_company.parent_company_id != requester_company_id
+                    )
+                ):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Not allowed for this company.",
+                    )
         await self._ensure_email_unique(payload.email)
         await self._ensure_username_unique(payload.username)
 
@@ -217,13 +288,24 @@ class UserService:
         )
 
         self.session.add(user)
+        await self.session.flush()
+
+        if assignment_company_id is not None:
+            self.session.add(
+                CompanyStaff(
+                    company_id=assignment_company_id,
+                    user_id=user.id,
+                    created_by=requester_id,
+                )
+            )
+
         await self.session.commit()
         await self.session.refresh(user)
-
         return user
 
     async def update_user(
         self,
+        requester_id: int,
         user_id: int,
         payload: UserUpdateRequest,
     ) -> User:
@@ -234,6 +316,18 @@ class UserService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
+            )
+
+        if user.role == UserRole.SUPERADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="SUPERADMIN accounts are managed outside the API.",
+            )
+        await self._ensure_can_manage_user(requester_id, user)
+        if payload.role == UserRole.SUPERADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="SUPERADMIN cannot be assigned through the API.",
             )
 
         if payload.email is not None and payload.email != user.email:
@@ -253,6 +347,48 @@ class UserService:
         await self.session.refresh(user)
         return user
 
+    async def _get_user_company_id(self, user_id: int) -> Optional[int]:
+        stmt = select(CompanyStaff.company_id).where(CompanyStaff.user_id == user_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def _get_manageable_company_ids(self, user_id: int) -> list[int]:
+        company_id = await self._get_user_company_id(user_id)
+        if company_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is not assigned to a company.",
+            )
+        result = await self.session.execute(
+            select(Company.id).where(
+                (Company.id == company_id)
+                | (Company.parent_company_id == company_id)
+            )
+        )
+        return list(result.scalars().all())
+
+    async def _ensure_can_manage_user(self, requester_id: int, target: User) -> None:
+        requester = await self.get_user_by_id(requester_id)
+        if not requester or not requester.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+        if requester.role == UserRole.SUPERADMIN:
+            return
+        if target.role in {UserRole.SUPERADMIN, UserRole.ADMIN}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed for this user.",
+            )
+        requester_companies = await self._get_manageable_company_ids(requester_id)
+        target_company = await self._get_user_company_id(target.id)
+        if target_company not in requester_companies:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed for this user.",
+            )
+
     async def suspend_user(
         self,
         user_id: int,
@@ -265,6 +401,11 @@ class UserService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
+            )
+        if user.role == UserRole.SUPERADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="SUPERADMIN accounts are managed outside the API.",
             )
 
         user.is_active = False
@@ -285,6 +426,11 @@ class UserService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
+            )
+        if user.role == UserRole.SUPERADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="SUPERADMIN accounts are managed outside the API.",
             )
 
         user.is_active = False

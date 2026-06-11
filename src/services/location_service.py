@@ -1,4 +1,4 @@
-"""Location service module for the Coredeck API."""
+"""Location service module for the Locentr API."""
 
 # pylint: disable=no-member, singleton-comparison
 
@@ -47,6 +47,7 @@ from src.schemas.location_custom_form_schemas import (
 from src.services.user_service import UserService
 from src.services.company_service import CompanyService
 from src.services.storage_service import StorageService
+from src.security.uploads import validate_csv_upload
 
 MAX_CUSTOM_FIELDS_PER_LOCATION = 4
 OPERATOR_REQUIRED_CSV_HEADERS = {"id", "contrasena", "nombre"}
@@ -89,7 +90,7 @@ class LocationService:
         self,
         username: str,
     ) -> str:
-        return f"{username}@operator.coredeck.local"
+        return f"{username}@locentr.com"
 
     async def _read_operator_csv_rows(
         self,
@@ -108,6 +109,7 @@ class LocationService:
             )
 
         content = await file.read()
+        validate_csv_upload(file, content)
         if not content:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -207,7 +209,7 @@ class LocationService:
         if not company_ids:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Workspace must be assigned to an organization before importing operators.",
+                detail="Location must be assigned to a company before importing operators.",
             )
 
         if len(company_ids) > 1:
@@ -233,6 +235,15 @@ class LocationService:
 
         if existing:
             return
+
+        other_membership_result = await self.session.execute(
+            select(CompanyStaff).where(CompanyStaff.user_id == user_id)
+        )
+        if other_membership_result.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="User is already assigned to another company.",
+            )
 
         self.session.add(
             CompanyStaff(
@@ -325,13 +336,12 @@ class LocationService:
                 status=True,
             )
 
-            new_user = await self.user_service.create_user(payload)
-
-            await self._ensure_company_staff(
-                user_id=new_user.id,
-                company_id=company_id,
+            new_user = await self.user_service.create_user(
+                payload,
                 requester_id=requester_id,
+                company_id=company_id,
             )
+
             await self._ensure_location_access(
                 user_id=new_user.id,
                 location_id=location_id,
@@ -353,14 +363,16 @@ class LocationService:
                 detail="User not found.",
             )
 
+        company_scope_ids: list[int] = []
         if user.role != UserRole.SUPERADMIN:
-            my_company_id = await self.company_service.get_company_id_by_user_id(user_id)
-            if not my_company_id:
+            company_scope_ids = await self.company_service.get_company_scope_ids(
+                user_id
+            )
+            if company_id is not None and company_id not in company_scope_ids:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="User has no company assigned.",
+                    detail="Not allowed for this company.",
                 )
-            company_id = my_company_id
 
         stmt = (
             select(Location)
@@ -368,13 +380,17 @@ class LocationService:
             .options(selectinload(Location.company_locations_accesses))
         )
 
-        if company_id is not None:
+        if company_id is not None or company_scope_ids:
             stmt = (
                 stmt.join(
                     CompanyLocationAccess,
                     CompanyLocationAccess.location_id == Location.id,
                 )
-                .where(CompanyLocationAccess.company_id == company_id)
+                .where(
+                    CompanyLocationAccess.company_id == company_id
+                    if company_id is not None
+                    else CompanyLocationAccess.company_id.in_(company_scope_ids)
+                )
             )
 
         if search:
@@ -438,6 +454,31 @@ class LocationService:
         )
 
         self.session.add(location)
+        await self.session.flush()
+
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        if user.role != UserRole.SUPERADMIN:
+            company_id = await self.company_service.get_company_id_by_user_id(user_id)
+            if company_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User has no company assigned.",
+                )
+            self.session.add(
+                CompanyLocationAccess(
+                    company_id=company_id,
+                    location_id=location.id,
+                    created_by=user_id,
+                    created_at=datetime.now(),
+                )
+            )
+
         await self.session.commit()
 
     async def update_location(
@@ -481,12 +522,18 @@ class LocationService:
         payload: LocationAssignCompanyRequest,
     ):
         """Assign a company to a location."""
-        location = await self._get_location_by_id(location_id)
-        if not location or not location.is_active:
+        requester = await self.user_service.get_user_by_id(requester_id)
+        if not requester or not requester.is_active:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Location not found.",
+                detail="User not found.",
             )
+
+        await self.require_location_access(requester_id, location_id)
+        await self.company_service.require_company_access(
+            requester_id=requester_id,
+            company_id=payload.company_id,
+        )
 
         company = await self.session.get(Company, payload.company_id)
         if not company or not company.is_active:
@@ -552,7 +599,7 @@ class LocationService:
         if target_user.role != UserRole.OPERATOR:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only operator users can be assigned to workspaces.",
+                detail="Only operator users can be assigned to locations.",
             )
 
         staff_stmt = select(CompanyStaff).where(
@@ -588,7 +635,7 @@ class LocationService:
         self.session.add(assignment)
         await self.session.commit()
 
-    async def check_user_permission_on_location(
+    async def require_location_access(
         self,
         user_id: int,
         location_id: int,
@@ -601,8 +648,6 @@ class LocationService:
                 detail="User not found.",
             )
 
-        is_superadmin = user.role == UserRole.SUPERADMIN
-
         location = await self.session.get(Location, location_id)
         if not location or not location.is_active:
             raise HTTPException(
@@ -610,19 +655,27 @@ class LocationService:
                 detail="Location not found.",
             )
 
-        if is_superadmin:
+        if user.role == UserRole.SUPERADMIN:
             return location
 
-        user_company_id = await self.company_service.get_company_id_by_user_id(user_id)
-        if not user_company_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User has no company assigned.",
+        if user.role == UserRole.OPERATOR:
+            assignment_stmt = select(UserLocationAccess.id).where(
+                UserLocationAccess.user_id == user_id,
+                UserLocationAccess.location_id == location_id,
             )
+            assignment_result = await self.session.execute(assignment_stmt)
+            if assignment_result.scalars().first() is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not allowed for this location.",
+                )
+            return location
+
+        company_scope_ids = await self.company_service.get_company_scope_ids(user_id)
 
         company_location_stmt = select(CompanyLocationAccess).where(
             CompanyLocationAccess.location_id == location_id,
-            CompanyLocationAccess.company_id == user_company_id,
+            CompanyLocationAccess.company_id.in_(company_scope_ids),
         )
         company_location_result = await self.session.execute(company_location_stmt)
         company_location = company_location_result.scalars().first()
@@ -634,6 +687,14 @@ class LocationService:
             )
 
         return location
+
+    async def check_user_permission_on_location(
+        self,
+        user_id: int,
+        location_id: int,
+    ) -> Location:
+        """Backward-compatible alias for the centralized location policy."""
+        return await self.require_location_access(user_id, location_id)
 
     async def get_location_custom_form(
         self,
@@ -1024,7 +1085,7 @@ class LocationService:
         search: Optional[str],
         params: Params,
     ) -> Page[OperatorResponse]:
-        """Return operators assigned to a workspace."""
+        """Return operators assigned to a location."""
         user = await self.user_service.get_user_by_id(user_id)
         if not user or not user.is_active:
             raise HTTPException(
