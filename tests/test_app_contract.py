@@ -3,7 +3,7 @@
 import asyncio
 import os
 
-os.environ.setdefault("SECRET_KEY", "test-secret-key")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-at-least-32-bytes")
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://locentr:locentr@localhost:5432/locentr_test",

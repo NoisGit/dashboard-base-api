@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi_pagination import Page, Params
 
 from src.auth.permissions import RoleChecker
@@ -30,7 +30,7 @@ router = APIRouter(
 async def list_all_documents(
     params: Params = Depends(),
     company_id: Optional[int] = None,
-    search: Optional[str] = None,
+    search: Optional[str] = Query(default=None, max_length=100),
     service: DocumentService = Depends(get_document_service),
     _=Depends(
         RoleChecker(
@@ -55,7 +55,7 @@ async def list_all_documents(
 )
 async def list_my_company_documents(
     params: Params = Depends(),
-    search: Optional[str] = None,
+    search: Optional[str] = Query(default=None, max_length=100),
     service: DocumentService = Depends(get_document_service),
     user_id: int = Depends(
         RoleChecker(

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from fastapi_pagination import Page, Params
 
 from src.auth.permissions import RoleChecker
@@ -26,7 +26,7 @@ async def list_blacklist(
     params: Params = Depends(),
     location_id: Optional[int] = None,
     company_id: Optional[int] = None,
-    search: Optional[str] = None,
+    search: Optional[str] = Query(default=None, max_length=100),
     service: BlacklistService = Depends(get_blacklist_service),
     user_id: int = Depends(
         RoleChecker(

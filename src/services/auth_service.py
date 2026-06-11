@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 import hashlib
+import hmac
 from typing import Optional
 import secrets
 
@@ -41,6 +42,10 @@ class AuthService:
 
     def _hash_password(self, plain_password: str) -> str:
         return ph.hash(plain_password)
+
+    @staticmethod
+    def _digest_token(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
     def _verify_password(self, password_hash: str, plain_password: str) -> None:
         try:
@@ -198,7 +203,11 @@ class AuthService:
                 detail="Invalid refresh token"
             )
 
-        if user.refresh_token != refresh_token:
+        token_digest = self._digest_token(refresh_token)
+        if (
+            not user.refresh_token
+            or not hmac.compare_digest(user.refresh_token, token_digest)
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token"
@@ -253,7 +262,11 @@ class AuthService:
                 detail="User not found"
             )
 
-        user.refresh_token = refresh_token
+        user.refresh_token = (
+            self._digest_token(refresh_token)
+            if refresh_token is not None
+            else None
+        )
         self.session.add(user)
         await self.session.commit()
         await self.session.refresh(user)
@@ -287,7 +300,7 @@ class AuthService:
         reset_token_expiry = current_timestamp + timedelta(minutes=15)
         reset_token = secrets.token_urlsafe(32)
 
-        user.reset_token = hashlib.sha256(reset_token.encode("utf-8")).hexdigest()
+        user.reset_token = self._digest_token(reset_token)
         user.reset_token_expiry = reset_token_expiry
         self.session.add(user)
         await self.session.commit()
@@ -311,9 +324,7 @@ class AuthService:
 
     async def reset_password(self, user_data: AuthResetPasswordRequest) -> None:
         """Verify reset token and update user password"""
-        token_digest = hashlib.sha256(
-            user_data.reset_token.encode("utf-8")
-        ).hexdigest()
+        token_digest = self._digest_token(user_data.reset_token)
         statement = select(User).where(User.reset_token == token_digest)
         result = await self.session.execute(statement)
         user = result.scalar_one_or_none()

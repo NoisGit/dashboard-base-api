@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi_pagination import Page, Params
 
 from src.auth.utils import get_user_id_from_token
@@ -40,7 +40,7 @@ async def list_users(
     params: Params = Depends(),
     role: Optional[UserRole] = None,
     company_id: Optional[int] = None,
-    search: Optional[str] = None,
+    search: Optional[str] = Query(default=None, max_length=100),
     service: UserService = Depends(get_user_service),
     requester_id=Depends(
         RoleChecker(

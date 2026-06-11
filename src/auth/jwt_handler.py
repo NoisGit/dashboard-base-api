@@ -4,6 +4,7 @@ This module provides functions for creating and managing JWT access and refresh 
 including token generation, validation, and refresh operations.
 """
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 import jwt
 from fastapi import HTTPException
@@ -37,6 +38,7 @@ def create_refresh_token(user_id: int, role: UserRole) -> str:
     to_encode = {
         "user_id": user_id,
         "role": role.value,
+        "jti": uuid4().hex,
         "exp": datetime.now(timezone.utc)
         + timedelta(days=settings.refresh_token_expire_days),
         "type": "refresh",

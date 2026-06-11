@@ -2,7 +2,7 @@
 
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from fastapi_pagination import Page, Params
 
 from src.auth.permissions import RoleChecker
@@ -38,7 +38,7 @@ router = APIRouter(
 async def list_locations(
     params: Params = Depends(),
     company_id: Optional[int] = None,
-    search: Optional[str] = None,
+    search: Optional[str] = Query(default=None, max_length=100),
     service: LocationService = Depends(get_location_service),
     user_id: int = Depends(
         RoleChecker(
@@ -344,7 +344,7 @@ async def get_location_access_lists(
 async def list_operators(
     location_id: int,
     params: Params = Depends(),
-    search: Optional[str] = None,
+    search: Optional[str] = Query(default=None, max_length=100),
     service: LocationService = Depends(get_location_service),
     user_id: int = Depends(
         RoleChecker(

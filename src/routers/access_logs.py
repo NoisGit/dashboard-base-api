@@ -221,14 +221,17 @@ async def get_logs_dashboard(  # pylint: disable=too-many-arguments, too-many-po
     ),
     search_plate: Optional[str] = Query(
         default=None,
+        max_length=20,
         description="Search by vehicle plate",
     ),
     search_name: Optional[str] = Query(
         default=None,
+        max_length=100,
         description="Search by person name",
     ),
     search_dni: Optional[str] = Query(
         default=None,
+        max_length=50,
         description="Search by person DNI",
     ),
     service: AccessLogService = Depends(get_access_log_service),

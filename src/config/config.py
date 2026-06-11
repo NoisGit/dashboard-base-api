@@ -101,8 +101,18 @@ class Settings(BaseSettings):
         if is_production and self.secret_key == DEV_SECRET_KEY:
             raise ValueError("SECRET_KEY must be changed in production")
 
+        if is_production and len(self.secret_key) < 32:
+            raise ValueError("SECRET_KEY must contain at least 32 characters")
+
         if is_production and not self.database_url:
             raise ValueError("DATABASE_URL is required in production")
+
+        if is_production and (
+            not self.cors_origins or "*" in self.cors_origins
+        ):
+            raise ValueError(
+                "BACKEND_CORS_ORIGINS must list explicit origins in production"
+            )
 
         return self
 

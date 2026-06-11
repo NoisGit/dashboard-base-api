@@ -407,6 +407,11 @@ class AccessLogService:
                 detail="Access log not found",
             )
 
+        await self.location_service.check_user_permission_on_location(
+            user_id=exit_created_by,
+            location_id=access_log.location_id,
+        )
+
         if access_log.exit_date is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
