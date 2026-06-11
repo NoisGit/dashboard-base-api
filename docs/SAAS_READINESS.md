@@ -10,7 +10,7 @@ name exists.
 |---|---|---|---|
 | #4 Security settings and errors | Keep open | Production secrets, explicit CORS, HTTP limits, headers and safe health responses are enforced. | Define one backward-compatible error envelope and add global exception contract tests. |
 | #12 Free deployment | Keep open | `docs/DEPLOYMENT.md` defines the commands and recommended topology. | Create the public API, configure environment variables and verify frontend-to-backend calls. |
-| #15 Database and migrations | Ready to close | Runtime and seed no longer call `create_all`; clean and existing PostgreSQL upgrades pass; Alembic reports no drift. | No code work remains. Provider provisioning belongs to #12. |
+| #15 Database and migrations | Closed | Runtime and seed no longer call `create_all`; clean and existing PostgreSQL upgrades pass; Alembic reports no drift. | No code work remains. Provider provisioning belongs to #12. |
 | #17 Frontend response contract | Keep open | CORS, pagination and real route groups are aligned with the dashboard. | Standardize success/error wrappers only through a documented versioned migration. |
 | #25 Security hardening | Keep open | ORM queries, input bounds, tenant policies, token hardening and 30 regressions are present. | Private storage, deployed integration tests and broader malicious-input coverage remain. |
 
@@ -29,6 +29,11 @@ name exists.
 
 With synthetic data and document uploads disabled, the operations workflow can
 be shown safely while private storage is completed.
+
+Tracked storage work:
+
+- Backend: `NoisGit/locentr-api#31`.
+- Frontend: `NoisGit/locentr-dashboard#72`.
 
 ## P1 Portfolio Professionalization
 
@@ -95,6 +100,11 @@ Frontend tasks:
 - Upgrade, checkout success/cancel and payment-problem states.
 - Clear disabled states when a plan limit is reached.
 - Tenant onboarding flow for company, first admin and first location.
+
+Tracked subscription work:
+
+- Backend: `NoisGit/locentr-api#32`.
+- Frontend: `NoisGit/locentr-dashboard#73`.
 
 ## Later Product Ideas
 
