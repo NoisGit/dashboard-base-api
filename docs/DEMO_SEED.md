@@ -23,6 +23,12 @@ LOCENTR_DEMO_CREDENTIAL_HASH
 
 ## Run seed
 
+Apply migrations first:
+
+```bash
+alembic upgrade head
+```
+
 After setting the environment variables, run:
 
 ```bash
@@ -40,4 +46,5 @@ The script is idempotent:
 
 - The credential hash must be generated locally.
 - The plain credential must not be committed.
+- The seed does not create or upgrade database tables.
 - The seeded user is intended for local development and portfolio demo environments only.

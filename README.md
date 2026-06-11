@@ -179,6 +179,14 @@ Run the API:
 uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+Apply database migrations before starting the API or running the demo seed:
+
+```bash
+alembic upgrade head
+```
+
+See `docs/DEPLOYMENT.md` for local and portfolio deployment commands.
+
 Open API docs:
 
 ```text

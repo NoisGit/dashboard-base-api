@@ -6,7 +6,7 @@ including database connections and cleanup.
 """
 import logging
 from contextlib import asynccontextmanager
-from src.database import connect_db, disconnect_db, test_connection
+from src.database import connect_db, disconnect_db
 
 logger = logging.getLogger(__name__)
 
@@ -15,22 +15,17 @@ logger = logging.getLogger(__name__)
 async def lifespan(_):
     """Manages the application lifespan events for the FastAPI app."""
     try:
-        logger.info("🚀 Starting up Locentr API...")
+        logger.info("Starting up Locentr API...")
         await connect_db()
-
-        if await test_connection():
-            logger.info("✅ Database connection tested successfully")
-        else:
-            logger.warning("⚠️ Database connection test failed")
     except Exception as e:
-        logger.error("❌ Startup failed: %s", str(e))
-        raise e
+        logger.error("Startup failed: %s", str(e))
+        raise
 
     yield
 
     try:
-        logger.info("🛑 Shutting down Locentr API...")
+        logger.info("Shutting down Locentr API...")
         await disconnect_db()
-        logger.info("✅ Database disconnected")
+        logger.info("Database disconnected")
     except Exception as e:
-        logger.error("❌ Shutdown error: %s", str(e))
+        logger.error("Shutdown error: %s", str(e))

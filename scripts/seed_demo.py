@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlmodel import select
 
 from src.core.enums import UserRole
-from src.database import async_session, create_db_and_tables, engine
+from src.database import async_session, engine
 from src.models import User
 
 DEMO_EMAIL = os.getenv("LOCENTR_DEMO_EMAIL", "admin@nois.dev")
@@ -25,7 +25,6 @@ def get_demo_credential_hash() -> str:
 
 async def seed_demo_user() -> None:
     """Create or update the demo admin user."""
-    await create_db_and_tables()
     credential_hash = get_demo_credential_hash()
 
     async with async_session() as session:
