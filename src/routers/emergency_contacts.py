@@ -1,4 +1,4 @@
-"""Emergency contacts router module for Coredeck API."""
+"""Emergency contacts router module for Locentr API."""
 
 from fastapi_pagination import Page, Params
 from fastapi import APIRouter, Depends, status

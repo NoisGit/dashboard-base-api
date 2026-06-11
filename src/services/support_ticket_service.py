@@ -1,4 +1,4 @@
-"""Support ticket service module for the Coredeck API"""
+"""Support ticket service module for the Locentr API"""
 
 # pylint: disable=singleton-comparison
 

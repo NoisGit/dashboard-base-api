@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(_):
     """Manages the application lifespan events for the FastAPI app."""
     try:
-        logger.info("🚀 Starting up Coredeck API...")
+        logger.info("🚀 Starting up Locentr API...")
         await connect_db()
 
         if await test_connection():
@@ -29,7 +29,7 @@ async def lifespan(_):
     yield
 
     try:
-        logger.info("🛑 Shutting down Coredeck API...")
+        logger.info("🛑 Shutting down Locentr API...")
         await disconnect_db()
         logger.info("✅ Database disconnected")
     except Exception as e:

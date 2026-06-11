@@ -1,6 +1,6 @@
 
 """
-Plan database model for the Coredeck API.
+Plan database model for the Locentr API.
 
 Represents the subscription/usage plan assigned to users, including limits
 for workspaces, admins, operators and daily reads.

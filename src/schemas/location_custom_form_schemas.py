@@ -1,4 +1,4 @@
-"""Location custom form schemas for the Coredeck API."""
+"""Location custom form schemas for the Locentr API."""
 
 from datetime import datetime
 from typing import List, Optional

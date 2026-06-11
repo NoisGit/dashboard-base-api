@@ -1,4 +1,4 @@
-"""Blacklist-related Pydantic schemas for the Coredeck API."""
+"""Blacklist-related Pydantic schemas for the Locentr API."""
 
 from datetime import datetime
 from typing import Optional

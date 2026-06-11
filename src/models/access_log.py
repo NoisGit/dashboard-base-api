@@ -1,5 +1,5 @@
 """
-Access log database model for the Coredeck API.
+Access log database model for the Locentr API.
 
 Represents a single access event in a location (site), linked to:
 - The location where the access happened
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class AccessLog(SQLModel, table=True):
-    """Access log database model for the Coredeck API."""
+    """Access log database model for the Locentr API."""
     __tablename__ = "access_log"
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -78,7 +78,7 @@ class AccessLog(SQLModel, table=True):
 
 
 class AccessLogImage(SQLModel, table=True):
-    """Access log image database model for the Coredeck API."""
+    """Access log image database model for the Locentr API."""
     __tablename__ = "access_log_image"
 
     id: Optional[int] = Field(default=None, primary_key=True)

@@ -1,6 +1,7 @@
-"""Auth service module for Coredeck API."""
+"""Auth service module for Locentr API."""
 
 from datetime import datetime, timedelta
+import hashlib
 from typing import Optional
 import secrets
 
@@ -276,20 +277,17 @@ class AuthService:
         await self.session.refresh(user)
 
     async def recovery_password(self, user_data: AuthRecoveryPasswordRequest) -> None:
-        """Verify user email and send recovery password email"""
+        """Send recovery instructions without revealing account existence."""
         user = await self.get_user_by_email(user_data.email)
 
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found"
-            )
+        if not user or not user.is_active:
+            return
 
         current_timestamp = datetime.now()
         reset_token_expiry = current_timestamp + timedelta(minutes=15)
         reset_token = secrets.token_urlsafe(32)
 
-        user.reset_token = reset_token
+        user.reset_token = hashlib.sha256(reset_token.encode("utf-8")).hexdigest()
         user.reset_token_expiry = reset_token_expiry
         self.session.add(user)
         await self.session.commit()
@@ -298,25 +296,25 @@ class AuthService:
         context_base = {
             "full_name": user.full_name,
             "logo_url": settings.LOGO_URL,
-            "front_url_base": settings.FRONT_URL_BASE,
+            "reset_url": (
+                f"{settings.FRONT_URL_BASE.rstrip('/')}"
+                f"/auth/reset-password?token={reset_token}"
+            ),
         }
 
-        if user:
-            self.email_service.send_templated_email(
-                to_email=user.email,
-                subject="Recuperar Contraseña",
-                template_name="reset_password.html",
-                context={
-                    **context_base,
-                    "email": user.email,
-                    "reset_token": user.reset_token
-                }
-            )
+        self.email_service.send_templated_email(
+            to_email=user.email,
+            subject="Restablece tu contraseña de Locentr",
+            template_name="reset_password.html",
+            context=context_base,
+        )
 
     async def reset_password(self, user_data: AuthResetPasswordRequest) -> None:
         """Verify reset token and update user password"""
-        statement = select(User).where(
-            User.reset_token == user_data.reset_token)
+        token_digest = hashlib.sha256(
+            user_data.reset_token.encode("utf-8")
+        ).hexdigest()
+        statement = select(User).where(User.reset_token == token_digest)
         result = await self.session.execute(statement)
         user = result.scalar_one_or_none()
 
@@ -326,7 +324,7 @@ class AuthService:
                 detail="User not found"
             )
 
-        if user.reset_token_expiry < datetime.now():
+        if not user.reset_token_expiry or user.reset_token_expiry < datetime.now():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Reset token has expired"

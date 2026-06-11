@@ -7,7 +7,7 @@ configuration (database, secrets, runtime environment, etc.).
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEV_SECRET_KEY = "dev_only_secret_key_change_me"
+DEV_SECRET_KEY = "dev_only_secret_key_change_me"  # nosec B105
 
 
 class Settings(BaseSettings):
@@ -67,6 +67,18 @@ class Settings(BaseSettings):
         alias="ACCESS_TOKEN_EXPIRE_MINUTES",
     )
     refresh_token_expire_days: int = Field(default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS")
+    max_request_body_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        alias="MAX_REQUEST_BODY_BYTES",
+    )
+    auth_rate_limit_requests: int = Field(
+        default=10,
+        alias="AUTH_RATE_LIMIT_REQUESTS",
+    )
+    auth_rate_limit_window_seconds: int = Field(
+        default=60,
+        alias="AUTH_RATE_LIMIT_WINDOW_SECONDS",
+    )
 
     # pydantic-settings configuration
     model_config = SettingsConfigDict(

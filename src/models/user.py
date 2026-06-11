@@ -1,4 +1,4 @@
-"""User database model for the Coredeck API.
+"""User database model for the Locentr API.
 
 Represents a platform user (admin, operator, superadmin, etc.) and its core relationships:
 - Has a role stored as varchar(10) (handled as an Enum in code)
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 
 class User(SQLModel, table=True):
-    """User ORM model for the Coredeck API."""
+    """User ORM model for the Locentr API."""
 
     __tablename__ = "users"
 

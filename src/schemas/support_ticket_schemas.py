@@ -1,4 +1,4 @@
-"""Support ticket Pydantic schemas for the Coredeck API."""
+"""Support ticket Pydantic schemas for the Locentr API."""
 
 from datetime import datetime
 from typing import Optional

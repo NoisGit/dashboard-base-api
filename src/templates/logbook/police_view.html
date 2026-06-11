@@ -29,7 +29,8 @@
 
         header {
             margin-bottom: 25px;
-            text-align: center;
+            border-bottom: 1px solid #dbe5f0;
+            padding-bottom: 18px;
         }
 
         h1 {
@@ -127,14 +128,35 @@
             color: var(--text-light);
             font-style: italic;
         }
+
+        .brand {
+            color: var(--text-light);
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .notice {
+            background: #eaf4ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            color: #1e3a5f;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            margin-top: 10px;
+            padding: 10px 12px;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <header>
+            <div class="brand">Locentr</div>
             <h1>{{ location_name }}</h1>
-            <div class="subtitle">Registro Oficial de Novedades</div>
+            <div class="subtitle">Libro de novedades para consulta de la autoridad</div>
+            <div class="notice">Este enlace es temporal y queda invalidado después de esta consulta.</div>
         </header>
 
         {% if entries %}
@@ -147,7 +169,7 @@
 
                     {% if log.media_url and mt %}
                     <span class="log-badge">
-                        {% if "VIDEO" in mt %}🎥 Video{% else %}📷 Foto{% endif %}
+                        {% if "VIDEO" in mt %}Video{% else %}Fotografía{% endif %}
                     </span>
                     {% endif %}
                 </div>
@@ -171,7 +193,6 @@
                 {% endif %}
 
                 <div class="log-footer">
-                    <span class="author-icon">👤</span>
                     Registrado por: <strong>{{ log.user_full_name }}</strong>
                 </div>
             </li>

@@ -1,27 +1,27 @@
-"""Location-related Pydantic schemas for the Coredeck API."""
+"""Location-related Pydantic schemas for the Locentr API."""
 
 from datetime import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .base_schemas import BaseResponse
 
 
 class LocationCreateRequest(BaseModel):
     """Schema for creating a location"""
-    name: str
-    address: str
-    country: Optional[str] = None
-    logo: Optional[str] = None
+    name: str = Field(min_length=2, max_length=120)
+    address: str = Field(min_length=3, max_length=255)
+    country: Optional[str] = Field(default=None, max_length=80)
+    logo: Optional[str] = Field(default=None, max_length=255)
 
 
 class LocationUpdateRequest(BaseModel):
     """Schema for updating a location"""
-    name: Optional[str] = None
-    address: Optional[str] = None
-    country: Optional[str] = None
-    logo: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    address: Optional[str] = Field(default=None, min_length=3, max_length=255)
+    country: Optional[str] = Field(default=None, max_length=80)
+    logo: Optional[str] = Field(default=None, max_length=255)
 
 
 class LocationResponse(BaseResponse):
@@ -31,7 +31,7 @@ class LocationResponse(BaseResponse):
     address: str
     country: Optional[str] = None
     logo: Optional[str] = None
-    company_ids: Optional[list[int]] = []
+    company_ids: list[int] = Field(default_factory=list)
     is_active: bool
     created_by: int
     created_at: Optional[datetime] = None

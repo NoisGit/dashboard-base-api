@@ -1,4 +1,4 @@
-"""Access Logs Router for Coredeck API."""
+"""Access Logs Router for Locentr API."""
 
 from datetime import datetime
 from typing import Optional, List
@@ -217,7 +217,7 @@ async def get_logs_dashboard(  # pylint: disable=too-many-arguments, too-many-po
         default=None,
         alias="status",
         description="Filter by status: 'active', 'completed', or 'all'",
-        regex="^(active|completed|all)$",
+        pattern="^(active|completed|all)$",
     ),
     search_plate: Optional[str] = Query(
         default=None,

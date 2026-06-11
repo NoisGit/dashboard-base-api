@@ -1,5 +1,5 @@
 """
-Models package for the Coredeck API.
+Models package for the Locentr API.
 
 This package contains all the data models and entities used throughout the application.
 

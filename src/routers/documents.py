@@ -1,4 +1,4 @@
-"""Documents router module for Coredeck API."""
+"""Documents router module for Locentr API."""
 
 from typing import Optional
 
@@ -134,6 +134,7 @@ async def create_document(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
+                UserRole.ADMIN,
             ],
         ),
     ),
@@ -154,16 +155,18 @@ async def update_document(
     document_id: int,
     payload: DocumentUpdateRequest,
     service: DocumentService = Depends(get_document_service),
-    _=Depends(
+    user_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
+                UserRole.ADMIN,
             ],
         ),
     ),
 ) -> EmptyResponse:
     """Update an existing document"""
     result = await service.update_document(
+        user_id=user_id,
         document_id=document_id,
         payload=payload,
     )
@@ -177,15 +180,17 @@ async def update_document(
 async def delete_document(
     document_id: int,
     service: DocumentService = Depends(get_document_service),
-    _=Depends(
+    user_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
+                UserRole.ADMIN,
             ],
         ),
     ),
 ):
     """Hard delete a document"""
     await service.delete_document(
+        user_id=user_id,
         document_id=document_id,
     )

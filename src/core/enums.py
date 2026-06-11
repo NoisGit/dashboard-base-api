@@ -1,10 +1,10 @@
-"""Core enums for the Coredeck API."""
+"""Core enums for the Locentr API."""
 
 from enum import Enum
 
 
 class UserRole(str, Enum):
-    """Global user roles enumeration for the Coredeck dashboard."""
+    """Global user roles enumeration for the Locentr dashboard."""
     SUPERADMIN = "SUPERADMIN"
     ADMIN = "ADMIN"
     OPERATOR = "OPERATOR"

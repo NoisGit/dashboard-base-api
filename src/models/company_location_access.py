@@ -1,4 +1,4 @@
-"""User–Location Access database model for the Coredeck API.
+"""User–Location Access database model for the Locentr API.
 
 Represents the association between a user and a location (site/project),
 including who created the link and when it was created.

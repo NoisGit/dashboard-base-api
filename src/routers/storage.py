@@ -1,4 +1,4 @@
-"""Storage router module for Coredeck uploads."""
+"""Storage router module for Locentr uploads."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 

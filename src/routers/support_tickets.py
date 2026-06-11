@@ -1,4 +1,4 @@
-"""Support ticket router module for Coredeck API"""
+"""Support ticket router module for Locentr API"""
 
 from typing import Optional
 

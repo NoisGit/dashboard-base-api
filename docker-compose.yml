@@ -1,23 +1,23 @@
 services:
-  coredeck-db:
+  locentr-db:
     image: postgres:17.6
-    container_name: coredeck_db
+    container_name: locentr_db
     restart: always
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-coredeck_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-coredeck_local_password}
-      POSTGRES_DB: ${POSTGRES_DB:-coredeck_db}
+      POSTGRES_USER: ${POSTGRES_USER:-locentr_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-locentr_local_password}
+      POSTGRES_DB: ${POSTGRES_DB:-locentr_db}
     volumes:
       - ./postgres:/var/lib/postgresql/data
 
-  coredeck-pgadmin:
+  locentr-pgadmin:
     image: dpage/pgadmin4
-    container_name: coredeck_pgadmin
+    container_name: locentr_pgadmin
     restart: always
     depends_on:
-      - coredeck-db
+      - locentr-db
     ports:
       - "${PGADMIN_PORT:-8080}:80"
     environment:

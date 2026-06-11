@@ -1,5 +1,5 @@
 """
-AuditLog database model for the Coredeck API.
+AuditLog database model for the Locentr API.
 
 Represents an audit trail entry for user actions in the system:
 - Which user performed the action

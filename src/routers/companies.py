@@ -1,4 +1,4 @@
-"""Companies router module for Coredeck API."""
+"""Companies router module for Locentr API."""
 
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page, Params
@@ -30,7 +30,7 @@ router = APIRouter(
 async def list_companies(
     params: Params = Depends(),
     service: CompanyService = Depends(get_company_service),
-    _=Depends(
+    requester_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -40,7 +40,7 @@ async def list_companies(
     ),
 ) -> Page[CompanyResponse]:
     """List active companies."""
-    companies = await service.list_companies(params)
+    companies = await service.list_companies(requester_id, params)
     return companies
 
 
@@ -51,7 +51,7 @@ async def list_companies(
 async def get_company_detail(
     company_id: int,
     service: CompanyService = Depends(get_company_service),
-    _=Depends(
+    requester_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -62,6 +62,7 @@ async def get_company_detail(
 ) -> CompanyResponse:
     """Get a single active company by ID."""
     company = await service.get_company_detail(
+        requester_id=requester_id,
         company_id=company_id,
     )
     return company
@@ -120,7 +121,7 @@ async def update_company(
     company_id: int,
     payload: CompanyUpdateRequest,
     service: CompanyService = Depends(get_company_service),
-    _=Depends(
+    requester_id=Depends(
         RoleChecker(
             [
                 UserRole.SUPERADMIN,
@@ -131,6 +132,7 @@ async def update_company(
 ) -> EmptyResponse:
     """Update an existing company."""
     return await service.update_company(
+        requester_id=requester_id,
         company_id=company_id,
         payload=payload,
     )

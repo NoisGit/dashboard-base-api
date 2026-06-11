@@ -32,12 +32,12 @@ async def health_check():
             "version": "0.0.1",
             "database": "connected" if db_healthy else "disconnected"
         }
-    except Exception as e:
-        logger.error("Health check failed")
+    except Exception:
+        logger.exception("Health check failed")
         return {
             "status": "unhealthy",
             "service": "locentr-api",
-            "error": str(e)
+            "database": "disconnected",
         }
 
 

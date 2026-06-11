@@ -91,7 +91,7 @@ Routers are registered under `/api/v1`.
 | Documents | `/documents` | Active | Metadata for company/location files. |
 | Storage | `/storage` | Infrastructure | File/storage support layer. |
 | Support Tickets | `/support-tickets` | Active | Support workflow with statuses and comments. |
-| Notifications | `/notifications` | Needs fix | Router exists; registration and REST methods must be aligned. |
+| Notifications | `/notifications` | Active | Unread list, ownership-safe read state and platform broadcasts. |
 | Audit Log | `/audit-log` | Active | Security and system activity history. |
 | Dashboard | `/dashboard` | Active | Location-aware dashboard stats. |
 | System | `/system` | Internal | Platform/system stats for SUPERADMIN. |
@@ -109,7 +109,7 @@ Workspaces
 Projects
 Settings as a standalone product module
 Legacy mailbox/email templates
-Old Portería/Azure/product references
+Old productos anteriores/Azure/product references
 ```
 
 If any of these return later, they need a new architecture decision and API contract first.
@@ -243,9 +243,7 @@ GET  /api/v1/audit-log/
 
 For a complete source of truth, use FastAPI OpenAPI docs from the running API.
 
-## Security Roadmap
-
-Already aligned or in progress:
+## Security Baseline
 
 - Centralized settings for secrets and token expiration.
 - Required production secret/database configuration.
@@ -253,22 +251,20 @@ Already aligned or in progress:
 - Role-aware route protection.
 - Environment-based CORS.
 - No committed `.env` files or real production secrets.
+- Central company/location object authorization.
+- Authentication rate limits and request body limits.
+- Security headers and request IDs.
+- Hashed password-reset and one-time police-access tokens.
+- Upload type and size allowlists.
 
-Future deep hardening is tracked separately in issue #25:
+See `docs/SECURITY.md` for application and infrastructure responsibilities.
 
-- SQL injection audit.
-- Allow-list validation for dynamic fields.
-- Object-level authorization review.
-- Rate limiting.
-- Security headers.
-- Dependency scanning.
-- Tests with malicious payloads.
+## Documentation
 
-## Repository Workflow
-
-```text
-feature branches → develop → main
-```
+- `docs/ARCHITECTURE.md`
+- `docs/FRONTEND_CONTRACT.md`
+- `docs/SECURITY.md`
+- `docs/DEMO_SEED.md`
 
 ## Ownership
 

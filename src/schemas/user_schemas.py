@@ -1,9 +1,9 @@
-"""User-related Pydantic schemas for the Coredeck API."""
+"""User-related Pydantic schemas for the Locentr API."""
 
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 from src.core.enums import UserRole
 from .base_schemas import BaseResponse
@@ -11,10 +11,10 @@ from .base_schemas import BaseResponse
 
 class UserCreateRequest(BaseModel):
     """Schema for creating a user"""
-    username: str
-    full_name: str
+    username: str = Field(min_length=2, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")
+    full_name: str = Field(min_length=2, max_length=160)
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=128)
     role: UserRole
     plan_id: Optional[int] = None
     status: bool = True
@@ -22,7 +22,7 @@ class UserCreateRequest(BaseModel):
 
 class UserUpdateRequest(BaseModel):
     """Schema for updating a user"""
-    full_name: Optional[str] = None
+    full_name: Optional[str] = Field(default=None, min_length=2, max_length=160)
     email: Optional[EmailStr] = None
     role: Optional[UserRole] = None
     status: Optional[bool] = None
@@ -36,25 +36,25 @@ class UserSuspendRequest(BaseModel):
 class UserLoginRequest(BaseModel):
     """Schema for user login"""
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
 
 
 class OperatorLoginRequest(BaseModel):
     """Schema for operator login"""
     username: str
-    password: str
+    password: str = Field(min_length=1, max_length=128)
 
 
 class RefreshTokenRequest(BaseModel):
     """Schema for refresh token request"""
-    refresh_token: str
+    refresh_token: str = Field(min_length=20, max_length=4096)
 
 
 class UserChangePasswordRequest(BaseModel):
     """Schema for changing user password"""
-    current_password: str
-    new_password: str
-    confirm_new_password: str
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_new_password: str = Field(min_length=8, max_length=128)
 
 
 class UserResponse(BaseResponse):

@@ -1,8 +1,9 @@
-"""Location logbook service module for the Coredeck API."""
+"""Location logbook service module for the Locentr API."""
 
 # pylint: disable=no-member, singleton-comparison
 
 from datetime import datetime, timedelta
+import hashlib
 from typing import List, Optional, cast
 
 from fastapi import HTTPException, status
@@ -10,7 +11,7 @@ from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlmodel import select, desc
+from sqlmodel import select, desc, delete
 
 from src.auth import create_secret_token_urlsafe
 from src.models import (
@@ -215,26 +216,20 @@ class LocationLogbookService:
         )
         await self._assert_logbook_enabled(location_id)
 
-        police_access = await self.session.execute(
-            select(PoliceAccessPermit)
-            .where(PoliceAccessPermit.location_id == location_id)
-            .where(PoliceAccessPermit.expires_at > datetime.now())
-        )
-        existing_permit = police_access.scalar_one_or_none()
-
-        if existing_permit:
-            return PoliceLinkResponse(
-                relative_path=f"/location-logbook/police-view/{existing_permit.token}",
-                expires_at=existing_permit.expires_at,
-            )
-
         token = create_secret_token_urlsafe()
         expires_at = datetime.now() + timedelta(minutes=30)
+        token_digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+        await self.session.execute(
+            delete(PoliceAccessPermit).where(
+                PoliceAccessPermit.location_id == location_id
+            )
+        )
 
         new_police_access = PoliceAccessPermit(
             location_id=location_id,
             created_by=user_id,
-            token=token,
+            token=token_digest,
             expires_at=expires_at,
         )
 
@@ -251,11 +246,13 @@ class LocationLogbookService:
         self,
         token: str,
     ) -> PoliceViewResponse:
-        """View logbook entries via police access token."""
+        """Consume a one-time police access token and return logbook entries."""
+        token_digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
         result = await self.session.execute(
             select(PoliceAccessPermit)
             .options(selectinload(PoliceAccessPermit.location))
-            .where(PoliceAccessPermit.token == token)
+            .where(PoliceAccessPermit.token == token_digest)
+            .with_for_update()
         )
         police_access = result.scalar_one_or_none()
 
@@ -309,6 +306,9 @@ class LocationLogbookService:
             )
             for entry in entries[:100]
         ]
+
+        await self.session.delete(police_access)
+        await self.session.commit()
 
         return PoliceViewResponse(
             location_name=location_name,

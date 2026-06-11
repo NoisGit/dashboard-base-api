@@ -1,5 +1,5 @@
 """
-Secret token utilities for the Coredeck API.
+Secret token utilities for the Locentr API.
 
 This module provides secure token generation used for authenticated access
 flows that require URL-safe, non-guessable tokens.

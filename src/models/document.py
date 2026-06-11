@@ -1,5 +1,5 @@
 """
-Document database model for the Coredeck API.
+Document database model for the Locentr API.
 
 Represents a file uploaded/associated to a user, including:
 - The target user (user_id)
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class Document(SQLModel, table=True):
-    """Document ORM model for the Coredeck API."""
+    """Document ORM model for the Locentr API."""
 
     __tablename__ = "documents"
 

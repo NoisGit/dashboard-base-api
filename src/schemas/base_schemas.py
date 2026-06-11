@@ -2,7 +2,7 @@
 Base schema module.
 
 This module provides common base models and response schemas used throughout
-the Coredeck API. It includes standard response models for
+the Locentr API. It includes standard response models for
 empty responses, success/error responses, paginated responses, and base
 configurations for Pydantic models.
 """
