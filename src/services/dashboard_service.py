@@ -33,7 +33,7 @@ class DashboardService:
         self.user_service = user_service
         self.location_service = location_service
 
-    async def get_type_list(self, name_list: str) -> TypeAccessList:
+    async def get_type_list(self, name_list: str) -> TypeAccessList | None:
         """Get data from type list"""
 
         stmt_type_list = select(TypeAccessList).where(
@@ -48,6 +48,8 @@ class DashboardService:
 
         # Get Id list type
         type_list = await self.get_type_list("whitelist")
+        if type_list is None:
+            return KpisWhitelistResponse(total=0, today=0)
 
         #  Whitelist Counts
         stmt_access_whitelist = select(
@@ -79,6 +81,8 @@ class DashboardService:
 
         # Get Id list type
         type_list = await self.get_type_list("blacklist")
+        if type_list is None:
+            return KpisBlacklistResponse(total=0)
 
         #  Blacklist Counts
         stmt_access_blacklist = select(

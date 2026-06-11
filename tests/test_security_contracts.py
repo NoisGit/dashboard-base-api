@@ -606,6 +606,24 @@ def test_dashboard_rejects_foreign_location_before_querying_stats():
     session.execute.assert_not_awaited()
 
 
+def test_dashboard_returns_zero_access_list_kpis_on_clean_database():
+    session = AsyncMock()
+    service = DashboardService(
+        session=session,
+        user_service=AsyncMock(),
+        location_service=AsyncMock(),
+    )
+    service.get_type_list = AsyncMock(return_value=None)
+
+    whitelist = asyncio.run(service.get_kpis_whitelist(location_id=22))
+    blacklist = asyncio.run(service.get_kpis_blacklist(location_id=22))
+
+    assert whitelist.total == 0
+    assert whitelist.today == 0
+    assert blacklist.total == 0
+    session.execute.assert_not_awaited()
+
+
 def test_police_access_token_is_consumed_once_with_row_lock():
     session = AsyncMock()
     permit = SimpleNamespace(
