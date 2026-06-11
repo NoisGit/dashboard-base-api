@@ -27,6 +27,7 @@ from src.schemas import (
 )
 from src.services.storage_service import StorageService
 from src.services.user_service import UserService
+from src.services.subscription_service import SubscriptionService
 
 
 DEFAULT_ALLOWED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg"]
@@ -45,6 +46,7 @@ class DocumentService:
         self.session = session
         self.user_service = user_service
         self.storage_service = storage_service
+        self.subscription_service = SubscriptionService(session)
 
     async def _get_document_by_id(
         self,
@@ -304,6 +306,11 @@ class DocumentService:
         """Authorize and create a private document upload target."""
         await self._ensure_can_access_company(user_id, payload.company_id)
         self._validate_metadata(payload.file_name, payload.size_bytes)
+        await self.subscription_service.enforce_limit(
+            payload.company_id,
+            "storage_bytes",
+            payload.size_bytes,
+        )
         try:
             result = self.storage_service.generate_document_upload_intent(
                 company_id=payload.company_id,

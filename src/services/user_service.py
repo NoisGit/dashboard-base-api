@@ -22,6 +22,7 @@ from src.schemas import (
     UserMeResponse,
     UserChangePasswordRequest,
 )
+from src.services.subscription_service import SubscriptionService
 
 ph = PasswordHasher()
 
@@ -31,6 +32,7 @@ class UserService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.subscription_service = SubscriptionService(session)
 
     def _hash_password(self, plain_password: str) -> str:
         return ph.hash(plain_password)
@@ -270,6 +272,14 @@ class UserService:
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Not allowed for this company.",
                     )
+        if assignment_company_id is not None and payload.role in {
+            UserRole.ADMIN,
+            UserRole.OPERATOR,
+        }:
+            await self.subscription_service.enforce_limit(
+                assignment_company_id,
+                "admins" if payload.role == UserRole.ADMIN else "operators",
+            )
         await self._ensure_email_unique(payload.email)
         await self._ensure_username_unique(payload.username)
 

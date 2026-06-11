@@ -48,6 +48,12 @@ def test_dashboard_auth_and_storage_routes_are_registered():
     assert "/api/v1/storage/private/upload/{token}" in routes
     assert "/api/v1/storage/private/read/{token}" in routes
     assert "/api/v1/documents/upload-intent" in routes
+    assert "/api/v1/subscriptions/plans" in routes
+    assert "/api/v1/subscriptions/trial" in routes
+    assert "/api/v1/subscriptions/me" in routes
+    assert "/api/v1/subscriptions/checkout" in routes
+    assert "/api/v1/subscriptions/stripe/webhook" in routes
+    assert "/api/v1/subscriptions/reconcile" in routes
     assert "/api/v1/notifications/me/unread" in routes
     assert "/api/v1/notifications/send-all-users" in routes
 

@@ -47,6 +47,7 @@ from src.schemas.location_custom_form_schemas import (
 from src.services.user_service import UserService
 from src.services.company_service import CompanyService
 from src.services.storage_service import StorageService
+from src.services.subscription_service import SubscriptionService
 from src.security.uploads import validate_csv_upload
 
 MAX_CUSTOM_FIELDS_PER_LOCATION = 4
@@ -67,6 +68,7 @@ class LocationService:
         self.storage_service = storage_service
         self.user_service = user_service
         self.company_service = company_service
+        self.subscription_service = SubscriptionService(session)
 
     async def _get_location_by_id(
         self,
@@ -443,6 +445,26 @@ class LocationService:
         payload: LocationCreateRequest,
     ):
         """Create a location."""
+        user = await self.user_service.get_user_by_id(user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        company_id = None
+        if user.role != UserRole.SUPERADMIN:
+            company_id = await self.company_service.get_company_id_by_user_id(user_id)
+            if company_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User has no company assigned.",
+                )
+            await self.subscription_service.enforce_limit(
+                company_id,
+                "locations",
+            )
+
         location = Location(
             name=payload.name,
             address=payload.address,
@@ -456,20 +478,7 @@ class LocationService:
         self.session.add(location)
         await self.session.flush()
 
-        user = await self.user_service.get_user_by_id(user_id)
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
-            )
-
-        if user.role != UserRole.SUPERADMIN:
-            company_id = await self.company_service.get_company_id_by_user_id(user_id)
-            if company_id is None:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="User has no company assigned.",
-                )
+        if company_id is not None:
             self.session.add(
                 CompanyLocationAccess(
                     company_id=company_id,
@@ -554,6 +563,10 @@ class LocationService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Location is already assigned to this company.",
             )
+        await self.subscription_service.enforce_limit(
+            payload.company_id,
+            "locations",
+        )
 
         assignment = CompanyLocationAccess(
             company_id=payload.company_id,

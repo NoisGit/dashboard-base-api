@@ -20,6 +20,7 @@ from src.services.notification_service import NotificationService
 from src.services.service_contact_service import ServiceContactService
 from src.services.support_ticket_service import SupportTicketService
 from src.services.system_service import SystemService
+from src.services.subscription_service import SubscriptionService
 from src.services.user_service import UserService
 from src.services.whitelist_service import WhitelistService
 
@@ -27,6 +28,13 @@ from src.services.whitelist_service import WhitelistService
 def get_storage_service() -> StorageService:
     """Dependency to get a StorageService instance."""
     return StorageService()
+
+
+def get_subscription_service(
+    session: AsyncSession = Depends(get_session),
+) -> SubscriptionService:
+    """Dependency to get a SubscriptionService instance."""
+    return SubscriptionService(session)
 
 
 def get_audit_log_service(

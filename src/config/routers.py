@@ -22,6 +22,7 @@ from src.routers import (
     dashboard_router,
     location_logbook_router,
     notifications_router,
+    subscriptions_router,
 )
 
 
@@ -44,3 +45,4 @@ def include_routers(app):
     app.include_router(dashboard_router, prefix="/api/v1")
     app.include_router(location_logbook_router, prefix="/api/v1")
     app.include_router(notifications_router, prefix="/api/v1")
+    app.include_router(subscriptions_router, prefix="/api/v1")

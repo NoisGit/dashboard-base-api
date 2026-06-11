@@ -20,6 +20,7 @@ from .notifications import router as notifications_router
 from .whitelists import router as whitelists_router
 from .blacklists import router as blacklists_router
 from .system import router as system_router
+from .subscriptions import router as subscriptions_router
 from .dashboard import router as dashboard_router
 from .location_logbook import router as location_logbook_router
 
@@ -39,6 +40,7 @@ __all__ = [
     "whitelists_router",
     "blacklists_router",
     "system_router",
+    "subscriptions_router",
     "dashboard_router",
     "location_logbook_router",
 ]

@@ -11,6 +11,15 @@ class UserRole(str, Enum):
     CLIENT = "CLIENT"
 
 
+class SubscriptionStatus(str, Enum):
+    """Commercial state for a root company subscription."""
+
+    TRIALING = "TRIALING"
+    ACTIVE = "ACTIVE"
+    PAST_DUE = "PAST_DUE"
+    CANCELED = "CANCELED"
+
+
 class AuditAction(str, Enum):
     """Audit log action enumeration"""
     CREATE = "CREATE"
@@ -53,6 +62,7 @@ class CustomFormFieldType(str, Enum):
 
 __all__ = [
     "UserRole",
+    "SubscriptionStatus",
     "AuditAction",
     "TableName",
     "SupportTicketStatus",

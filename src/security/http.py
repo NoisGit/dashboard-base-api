@@ -22,6 +22,7 @@ RATE_LIMITED_PATHS = {
     "/api/v1/auth/operator-login",
     "/api/v1/auth/forgot-password",
     "/api/v1/auth/reset-password",
+    "/api/v1/subscriptions/trial",
 }
 
 

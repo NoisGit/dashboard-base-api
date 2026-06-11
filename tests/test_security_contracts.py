@@ -2,7 +2,10 @@
 
 import asyncio
 import hashlib
+import hmac
+import json
 import os
+import time
 from datetime import datetime, timedelta
 from io import BytesIO
 from types import SimpleNamespace
@@ -24,7 +27,7 @@ os.environ.setdefault(
 from src.api.error import StorageServiceError
 from src.auth.jwt_handler import create_refresh_token
 from src.config.config import Settings, settings
-from src.core.enums import UserRole
+from src.core.enums import SubscriptionStatus, UserRole
 from src.schemas import AccessLogExitRequest, CompanyCreateRequest, UserCreateRequest
 from src.schemas.auth_schemas import AuthRecoveryPasswordRequest
 from src.security.http import SecurityMiddleware
@@ -39,6 +42,7 @@ from src.services.location_logbook_service import LocationLogbookService
 from src.services.notification_service import NotificationService
 from src.services.storage_service import StorageService
 from src.services.support_ticket_service import SupportTicketService
+from src.services.subscription_service import SubscriptionService
 from src.services.user_service import UserService
 
 
@@ -174,6 +178,106 @@ def test_private_document_upload_rejects_tampered_size(
 
     with pytest.raises(StorageServiceError):
         service.store_private_upload(token, b"too short", "application/pdf")
+
+
+def test_subscription_rejects_provisioning_when_plan_limit_is_reached():
+    service = SubscriptionService(AsyncMock())
+    service._subscription = AsyncMock(
+        return_value=SimpleNamespace(
+            company_id=10,
+            status=SubscriptionStatus.TRIALING,
+            plan=SimpleNamespace(
+                qty_locations=2,
+                qty_admins=2,
+                qty_operators=10,
+                qty_daily_reads=500,
+                qty_storage_bytes=1024,
+            ),
+        )
+    )
+    service.usage = AsyncMock(
+        return_value=SimpleNamespace(
+            locations=2,
+            admins=1,
+            operators=3,
+            daily_reads=20,
+            storage_bytes=100,
+        )
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(service.enforce_limit(10, "locations"))
+
+    assert error.value.status_code == 409
+
+
+def test_subscription_rejects_provisioning_after_trial_ends():
+    service = SubscriptionService(AsyncMock())
+    service._subscription = AsyncMock(
+        return_value=SimpleNamespace(
+            company_id=10,
+            status=SubscriptionStatus.CANCELED,
+            plan=SimpleNamespace(),
+        )
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(service.enforce_limit(10, "storage_bytes", 100))
+
+    assert error.value.status_code == 402
+
+
+def test_stripe_status_mapping_revokes_terminal_subscriptions():
+    service = SubscriptionService(AsyncMock())
+
+    assert service._map_stripe_status("active") == SubscriptionStatus.ACTIVE
+    assert (
+        service._map_stripe_status("past_due")
+        == SubscriptionStatus.PAST_DUE
+    )
+    assert (
+        service._map_stripe_status("canceled")
+        == SubscriptionStatus.CANCELED
+    )
+
+
+def test_stripe_webhook_retries_are_idempotent(monkeypatch):
+    secret = "whsec_test_locentr"
+    monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", secret)
+    session = Mock()
+    session.add = Mock()
+    session.commit = AsyncMock()
+    missing = Mock()
+    missing.scalars.return_value.first.return_value = None
+    existing = Mock()
+    existing.scalars.return_value.first.return_value = SimpleNamespace(id=1)
+    session.execute = AsyncMock(side_effect=[missing, existing])
+    service = SubscriptionService(session)
+    service._apply_stripe_event = AsyncMock()
+
+    payload = json.dumps(
+        {
+            "id": "evt_locentr_retry",
+            "object": "event",
+            "type": "customer.subscription.updated",
+            "data": {"object": {"metadata": {}}},
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+    timestamp = int(time.time())
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        f"{timestamp}.{payload.decode('utf-8')}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    header = f"t={timestamp},v1={signature}"
+
+    asyncio.run(service.process_stripe_webhook(payload, header))
+    asyncio.run(service.process_stripe_webhook(payload, header))
+
+    service._apply_stripe_event.assert_awaited_once()
+    session.add.assert_called_once()
+    session.commit.assert_awaited_once()
 
 
 def test_password_recovery_does_not_enumerate_accounts():

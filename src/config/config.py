@@ -65,6 +65,16 @@ class Settings(BaseSettings):
         le=3600,
     )
 
+    # SaaS billing settings
+    trial_days: int = Field(default=14, alias="TRIAL_DAYS", ge=1, le=90)
+    trial_plan_code: str = Field(default="growth", alias="TRIAL_PLAN_CODE")
+    STRIPE_SECRET_KEY: str = Field(default="")
+    STRIPE_WEBHOOK_SECRET: str = Field(default="")
+    STRIPE_PRICE_STARTER: str = Field(default="")
+    STRIPE_PRICE_GROWTH: str = Field(default="")
+    STRIPE_PRICE_SCALE: str = Field(default="")
+    BILLING_RECONCILIATION_SECRET: str = Field(default="")
+
     # Supabase compatibility settings
     SUPABASE_URL: str | None = Field(default=None)
     SUPABASE_SERVICE_ROLE_KEY: str | None = Field(default=None)

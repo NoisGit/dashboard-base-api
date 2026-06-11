@@ -70,6 +70,14 @@ FRONT_URL_BASE
 BACKEND_PUBLIC_BASE_URL
 PRIVATE_STORAGE_ROOT
 STORAGE_SIGNED_URL_EXPIRE_SECONDS
+TRIAL_DAYS
+TRIAL_PLAN_CODE
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
+STRIPE_PRICE_STARTER
+STRIPE_PRICE_GROWTH
+STRIPE_PRICE_SCALE
+BILLING_RECONCILIATION_SECRET
 ```
 
 `SECRET_KEY` must contain at least 32 characters. CORS must list explicit
@@ -90,3 +98,8 @@ seed with a real customer credential or production data.
 `PRIVATE_STORAGE_ROOT` must use persistent storage readable and writable only
 by the API process. Private document upload and read URLs are tenant-bound and
 expire after `STORAGE_SIGNED_URL_EXPIRE_SECONDS`.
+
+Stripe must send subscription events to
+`/api/v1/subscriptions/stripe/webhook`. A scheduler should call
+`/api/v1/subscriptions/reconcile` with `X-Reconciliation-Secret` at least once
+per day.

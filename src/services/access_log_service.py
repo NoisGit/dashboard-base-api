@@ -12,6 +12,7 @@ from sqlmodel import select, desc, or_
 from src.services.storage_service import StorageService
 from src.services.user_service import UserService
 from src.services.location_service import LocationService
+from src.services.subscription_service import SubscriptionService
 
 from src.models import (
     AccessList,
@@ -47,6 +48,7 @@ class AccessLogService:
         self.storage_service = storage_service
         self.user_service = user_service
         self.location_service = location_service
+        self.subscription_service = SubscriptionService(session)
 
     async def _get_blacklist_type_id(self) -> Optional[int]:
         stmt = select(TypeAccessList).where(TypeAccessList.name == "blacklist")
@@ -308,6 +310,11 @@ class AccessLogService:
         await self.location_service.check_user_permission_on_location(
             user_id=created_by,
             location_id=payload.location_id,
+        )
+        company_id = await self._get_company_id_by_location(payload.location_id)
+        await self.subscription_service.enforce_limit(
+            company_id,
+            "daily_reads",
         )
 
         result = await self.session.execute(

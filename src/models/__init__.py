@@ -7,7 +7,7 @@ All models are imported and made available through this package's public interfa
 via the __all__ list.
 """
 
-from src.core.enums import UserRole
+from src.core.enums import SubscriptionStatus, UserRole
 
 from .plan import Plan
 from .company import Company
@@ -30,6 +30,7 @@ from .audit_log import AuditLog
 from .service_contacts import ServiceContact
 from .notification import Notification
 from .location_logbook import LocationLogbook, LocationLogbookSettings, PoliceAccessPermit
+from .subscription import BillingEvent, CompanySubscription
 
 
 __all__ = [
@@ -38,6 +39,7 @@ __all__ = [
     "Location",
     "User",
     "UserRole",
+    "SubscriptionStatus",
     "UserLocationAccess",
     "CompanyLocationAccess",
     "CompanyStaff",
@@ -58,4 +60,6 @@ __all__ = [
     "LocationLogbook",
     "LocationLogbookSettings",
     "PoliceAccessPermit",
+    "CompanySubscription",
+    "BillingEvent",
 ]

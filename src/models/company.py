@@ -13,6 +13,7 @@ Matches the `company` table in the ERD:
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
 
+from sqlalchemy import Index, text
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -20,12 +21,23 @@ if TYPE_CHECKING:
     from .user import User
     from .company_location_access import CompanyLocationAccess
     from .document import Document
+    from .subscription import CompanySubscription
 
 
 class Company(SQLModel, table=True):
     """Core company entity aligned with the new ERD."""
 
     __tablename__ = "company"
+    __table_args__ = (
+        Index(
+            "uq_root_company_id_number",
+            "id_number",
+            unique=True,
+            postgresql_where=text(
+                "parent_company_id IS NULL AND id_number IS NOT NULL"
+            ),
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
@@ -82,4 +94,8 @@ class Company(SQLModel, table=True):
     # List of sub-companies belonging to this parent
     sub_companies: List["Company"] = Relationship(
         back_populates="parent_company"
+    )
+
+    subscription: Optional["CompanySubscription"] = Relationship(
+        back_populates="company",
     )

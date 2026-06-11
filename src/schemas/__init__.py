@@ -15,6 +15,7 @@ from .location_custom_form_schemas import *
 from .notification_schemas import *
 from .service_contact_schemas import *
 from .support_ticket_schemas import *
+from .subscription_schemas import *
 from .system_schemas import *
 from .user_schemas import *
 from .whitelist_schemas import *

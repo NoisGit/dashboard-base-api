@@ -20,6 +20,7 @@ from src.schemas import (
 )
 from src.services.user_service import UserService
 from src.services.storage_service import StorageService
+from src.services.subscription_service import SubscriptionService
 
 
 class CompanyService:
@@ -34,6 +35,7 @@ class CompanyService:
         self.session = session
         self.user_service = user_service or UserService(session)
         self.storage_service = storage_service
+        self.subscription_service = SubscriptionService(session)
 
     async def get_company_scope_ids(self, requester_id: int) -> list[int]:
         """Return company IDs visible to the requester."""
@@ -160,6 +162,8 @@ class CompanyService:
         )
 
         self.session.add(company)
+        await self.session.flush()
+        await self.subscription_service.create_trial(company.id)
         await self.session.commit()
         await self.session.refresh(company)
         return EmptyResponse()
@@ -176,7 +180,6 @@ class CompanyService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found.",
             )
-
         if user.role != UserRole.SUPERADMIN:
             parent_company_id = await self.get_company_id_by_user_id(user_id)
         else:
@@ -275,6 +278,11 @@ class CompanyService:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="User is already assigned to another company.",
+            )
+        if user.role in {UserRole.ADMIN, UserRole.OPERATOR}:
+            await self.subscription_service.enforce_limit(
+                company_id,
+                "admins" if user.role == UserRole.ADMIN else "operators",
             )
 
         assignment = CompanyStaff(
