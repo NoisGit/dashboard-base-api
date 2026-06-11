@@ -24,6 +24,7 @@ Important contracts:
 - Company `name`, `id_number`, and `type_document` are required.
 - A location has no required logo.
 - Public API endpoints cannot create, assign, suspend, or delete `SUPERADMIN`.
+- Refresh uses `POST /api/v1/auth/refresh` and rotates both returned tokens.
 - Operator usernames created by bulk import receive the login email
   `{username}@locentr.com`.
 - Police logbook links expire after 30 minutes and are invalidated after the

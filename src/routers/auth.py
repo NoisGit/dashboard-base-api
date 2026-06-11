@@ -10,7 +10,6 @@ from src.schemas import (
     OperatorLoginRequest,
     AuthTokenResponse,
     RefreshTokenRequest,
-    AccessTokenResponse,
     AuthRecoveryPasswordRequest,
     AuthResetPasswordRequest,
 )
@@ -57,16 +56,6 @@ async def refresh_token(
     """Refresh access token using a valid refresh token"""
     user_token = await service.refresh_token(refresh_data)
     return user_token
-
-
-@router.post("/refresh-access-token", response_model=AccessTokenResponse)
-async def refresh_access_token_only(
-    refresh_data: RefreshTokenRequest,
-    service: AuthService = Depends(get_auth_service),
-):
-    """Refresh access token only using a valid refresh token"""
-    user_access_token = await service.refresh_access_token_only(refresh_data)
-    return user_access_token
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

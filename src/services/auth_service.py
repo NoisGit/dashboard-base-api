@@ -12,7 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from src.auth import create_token_pair, create_access_token
+from src.auth import create_token_pair
 from src.auth.utils import get_user_id_from_refresh_token
 from src.config.config import settings
 from src.core.enums import UserRole
@@ -22,7 +22,6 @@ from src.schemas import (
     OperatorLoginRequest,
     RefreshTokenRequest,
     AuthTokenResponse,
-    AccessTokenResponse,
     AuthRecoveryPasswordRequest,
     AuthResetPasswordRequest,
 )
@@ -225,17 +224,6 @@ class AuthService:
         await self.update_refresh_token(user.id, user_token_response.refresh_token)
 
         return user_token_response
-
-    async def refresh_access_token_only(
-        self,
-        refresh_data: RefreshTokenRequest
-    ) -> AccessTokenResponse:
-        """Refresh access token only using a valid refresh token"""
-        user = await self._get_user_from_refresh_token(refresh_data.refresh_token)
-
-        access_token = create_access_token(user.id, user.role)
-        user_access_token = AccessTokenResponse(access_token=access_token)
-        return user_access_token
 
     async def update_user_last_login(self, user_id: int):
         """Update user's last login time"""
