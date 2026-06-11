@@ -32,9 +32,13 @@ from src.security.uploads import CSV_UPLOAD_MAX_BYTES, validate_csv_upload
 from src.services.access_log_service import AccessLogService
 from src.services.auth_service import AuthService
 from src.services.company_service import CompanyService
+from src.services.dashboard_service import DashboardService
+from src.services.document_service import DocumentService
 from src.services.location_service import LocationService
 from src.services.location_logbook_service import LocationLogbookService
+from src.services.notification_service import NotificationService
 from src.services.storage_service import StorageService
+from src.services.support_ticket_service import SupportTicketService
 from src.services.user_service import UserService
 
 
@@ -215,6 +219,33 @@ def test_admin_company_scope_includes_direct_subcompanies():
     assert scope == [10, 11, 12]
 
 
+def test_admin_cannot_access_foreign_company():
+    session = AsyncMock()
+    user_service = AsyncMock()
+    user_service.get_user_by_id.return_value = SimpleNamespace(
+        id=3,
+        role=UserRole.ADMIN,
+        is_active=True,
+    )
+    session.get.return_value = SimpleNamespace(id=99, is_active=True)
+    service = CompanyService(
+        session=session,
+        user_service=user_service,
+        storage_service=Mock(),
+    )
+    service.get_company_scope_ids = AsyncMock(return_value=[10, 11])
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.require_company_access(
+                requester_id=3,
+                company_id=99,
+            )
+        )
+
+    assert error.value.status_code == 403
+
+
 def test_security_middleware_adds_headers_and_limits_auth(monkeypatch):
     monkeypatch.setattr(settings, "auth_rate_limit_requests", 1)
     monkeypatch.setattr(settings, "auth_rate_limit_window_seconds", 60)
@@ -302,6 +333,118 @@ def test_operator_cannot_register_exit_for_unassigned_location():
     session.commit.assert_not_awaited()
 
 
+def test_admin_cannot_download_foreign_company_document():
+    session = AsyncMock()
+    document = SimpleNamespace(id=41, company_id=99)
+    foreign_company = SimpleNamespace(
+        id=99,
+        parent_company_id=None,
+        is_active=True,
+    )
+    session.get.side_effect = [document, foreign_company]
+    company_result = Mock()
+    company_result.first.return_value = (10,)
+    session.execute.return_value = company_result
+
+    user_service = AsyncMock()
+    user_service.get_user_by_id.return_value = SimpleNamespace(
+        id=3,
+        role=UserRole.ADMIN,
+        is_active=True,
+    )
+    service = DocumentService(
+        session=session,
+        user_service=user_service,
+        storage_service=Mock(),
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.get_document_download_url(
+                user_id=3,
+                document_id=document.id,
+            )
+        )
+
+    assert error.value.status_code == 403
+
+
+def test_user_cannot_read_another_users_support_ticket():
+    session = AsyncMock()
+    ticket = SimpleNamespace(id=51, created_by=9)
+    ticket_result = Mock()
+    ticket_result.scalars.return_value.first.return_value = ticket
+    session.execute.return_value = ticket_result
+
+    user_service = AsyncMock()
+    user_service.get_user_by_id.return_value = SimpleNamespace(
+        id=7,
+        role=UserRole.ADMIN,
+        is_active=True,
+    )
+    service = SupportTicketService(
+        session=session,
+        user_service=user_service,
+        storage_service=Mock(),
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.get_support_ticket_detail(
+                ticket_id=ticket.id,
+                user_id=7,
+            )
+        )
+
+    assert error.value.status_code == 403
+
+
+def test_user_cannot_mark_another_users_notification_as_read():
+    session = AsyncMock()
+    notification = SimpleNamespace(id=61, user_id=9, read_at=None)
+    service = NotificationService(
+        session=session,
+        user_service=AsyncMock(),
+    )
+    service.get_notification_by_id = AsyncMock(return_value=notification)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.mark_notification_as_read(
+                user_id=7,
+                notification_id=notification.id,
+            )
+        )
+
+    assert error.value.status_code == 404
+    session.commit.assert_not_awaited()
+
+
+def test_dashboard_rejects_foreign_location_before_querying_stats():
+    session = AsyncMock()
+    location_service = AsyncMock()
+    location_service.check_user_permission_on_location.side_effect = HTTPException(
+        status_code=403,
+        detail="Not allowed for this location.",
+    )
+    service = DashboardService(
+        session=session,
+        user_service=AsyncMock(),
+        location_service=location_service,
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.get_dashboard_stats(
+                user_id=7,
+                location_id=22,
+            )
+        )
+
+    assert error.value.status_code == 403
+    session.execute.assert_not_awaited()
+
+
 def test_police_access_token_is_consumed_once_with_row_lock():
     session = AsyncMock()
     permit = SimpleNamespace(
@@ -338,6 +481,60 @@ def test_police_access_token_is_consumed_once_with_row_lock():
         asyncio.run(service.view_logs_police("one-time-token"))
 
     assert error.value.status_code == 404
+
+
+def test_new_police_link_invalidates_previous_links_for_location():
+    session = Mock()
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    service = LocationLogbookService(
+        session=session,
+        storage_service=Mock(),
+        location_service=AsyncMock(),
+    )
+    service._assert_logbook_enabled = AsyncMock()
+
+    response = asyncio.run(
+        service.create_police_access_path(
+            user_id=7,
+            location_id=11,
+        )
+    )
+
+    raw_token = response.relative_path.rsplit("/", 1)[-1]
+    permit = session.add.call_args.args[0]
+    delete_statement = session.execute.call_args.args[0]
+
+    assert permit.location_id == 11
+    assert permit.token == hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    assert permit.token != raw_token
+    assert delete_statement.compile().params["location_id_1"] == 11
+
+
+def test_police_link_cannot_be_created_for_foreign_location():
+    session = Mock()
+    location_service = AsyncMock()
+    location_service.check_user_permission_on_location.side_effect = HTTPException(
+        status_code=403,
+        detail="Not allowed for this location.",
+    )
+    service = LocationLogbookService(
+        session=session,
+        storage_service=Mock(),
+        location_service=location_service,
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.create_police_access_path(
+                user_id=7,
+                location_id=22,
+            )
+        )
+
+    assert error.value.status_code == 403
+    session.add.assert_not_called()
 
 
 @pytest.mark.parametrize(
