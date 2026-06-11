@@ -50,6 +50,20 @@ class Settings(BaseSettings):
         alias="STORAGE_PUBLIC_BASE_URL",
     )
     storage_bucket_name: str = Field(default="locentr", alias="STORAGE_BUCKET_NAME")
+    backend_public_base_url: str = Field(
+        default="http://localhost:8000",
+        alias="BACKEND_PUBLIC_BASE_URL",
+    )
+    private_storage_root: str = Field(
+        default="private_storage",
+        alias="PRIVATE_STORAGE_ROOT",
+    )
+    storage_signed_url_expire_seconds: int = Field(
+        default=300,
+        alias="STORAGE_SIGNED_URL_EXPIRE_SECONDS",
+        ge=60,
+        le=3600,
+    )
 
     # Supabase compatibility settings
     SUPABASE_URL: str | None = Field(default=None)

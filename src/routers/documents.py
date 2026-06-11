@@ -13,6 +13,8 @@ from src.schemas import (
     DocumentUpdateRequest,
     DocumentResponse,
     DocumentDownloadResponse,
+    DocumentUploadIntentRequest,
+    DocumentUploadIntentResponse,
     EmptyResponse,
 )
 from src.services.document_service import DocumentService
@@ -21,6 +23,26 @@ router = APIRouter(
     prefix="/documents",
     tags=["documents"],
 )
+
+
+@router.post(
+    "/upload-intent",
+    response_model=DocumentUploadIntentResponse,
+)
+async def create_document_upload_intent(
+    payload: DocumentUploadIntentRequest,
+    service: DocumentService = Depends(get_document_service),
+    requester_id: int = Depends(
+        RoleChecker(
+            [
+                UserRole.SUPERADMIN,
+                UserRole.ADMIN,
+            ],
+        ),
+    ),
+) -> DocumentUploadIntentResponse:
+    """Create a short-lived private upload target after tenant authorization."""
+    return await service.create_upload_intent(requester_id, payload)
 
 
 @router.get(

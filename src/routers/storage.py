@@ -1,6 +1,7 @@
 """Storage router module for Locentr uploads."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import FileResponse
 
 from src.auth.permissions import RoleChecker
 from src.core.enums import UserRole
@@ -12,6 +13,7 @@ from src.schemas.storage_schemas import (
     StorageResponse,
     StorageUpdateResponse,
     StorageDeleteResponse,
+    PrivateUploadResponse,
 )
 from src.services.storage_service import StorageService
 from src.api.error import InvalidContainerError, StorageServiceError
@@ -24,6 +26,51 @@ storage_roles = [
     UserRole.CLIENT,
     UserRole.OPERATOR,
 ]
+
+
+@router.put(
+    "/private/upload/{token}",
+    response_model=PrivateUploadResponse,
+)
+async def upload_private_document(
+    token: str,
+    request: Request,
+    service: StorageService = Depends(get_storage_service),
+) -> PrivateUploadResponse:
+    """Store bytes authorized by a short-lived, tenant-bound upload token."""
+    try:
+        content = await request.body()
+        object_name = service.store_private_upload(
+            token=token,
+            content=content,
+            content_type=request.headers.get("content-type", ""),
+        )
+        return PrivateUploadResponse(object_name=object_name)
+    except StorageServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/private/read/{token}", response_class=FileResponse)
+async def read_private_document(
+    token: str,
+    service: StorageService = Depends(get_storage_service),
+) -> FileResponse:
+    """Read a private object using a short-lived signed URL."""
+    try:
+        path, file_name, content_type = service.resolve_private_read(token)
+        return FileResponse(
+            path=path,
+            filename=file_name,
+            media_type=content_type,
+        )
+    except StorageServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        ) from exc
 
 
 @router.post("/generate_upload_url", response_model=StorageResponse)

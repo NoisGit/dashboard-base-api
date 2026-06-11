@@ -67,6 +67,9 @@ DATABASE_URL
 SECRET_KEY
 BACKEND_CORS_ORIGINS
 FRONT_URL_BASE
+BACKEND_PUBLIC_BASE_URL
+PRIVATE_STORAGE_ROOT
+STORAGE_SIGNED_URL_EXPIRE_SECONDS
 ```
 
 `SECRET_KEY` must contain at least 32 characters. CORS must list explicit
@@ -83,3 +86,7 @@ GET /docs
 
 The frontend host must be present in `BACKEND_CORS_ORIGINS`. Never run the demo
 seed with a real customer credential or production data.
+
+`PRIVATE_STORAGE_ROOT` must use persistent storage readable and writable only
+by the API process. Private document upload and read URLs are tenant-bound and
+expire after `STORAGE_SIGNED_URL_EXPIRE_SECONDS`.

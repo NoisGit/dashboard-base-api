@@ -134,6 +134,7 @@ cython_debug/
 
 # API specific
 uploads/
+private_storage/
 temp/
 cache/
 

@@ -12,12 +12,15 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from src.api.error import StorageServiceError
 from src.config.config import settings
 from src.core.enums import UserRole
 from src.models import Company, CompanyStaff, Document
 from src.schemas import (
     DocumentCreateRequest,
     DocumentDownloadResponse,
+    DocumentUploadIntentRequest,
+    DocumentUploadIntentResponse,
     DocumentResponse,
     DocumentUpdateRequest,
     EmptyResponse,
@@ -167,11 +170,6 @@ class DocumentService:
                 )
 
     def _to_document_response(self, doc: Document) -> DocumentResponse:
-        url = self.storage_service.generate_read_url(
-            container_name="documents",
-            object_name=doc.blob_name,
-        )
-
         return DocumentResponse(
             id=doc.id,
             company_id=doc.company_id,
@@ -179,7 +177,7 @@ class DocumentService:
             name=doc.name,
             file_name=doc.file_name,
             blob_name=doc.blob_name,
-            url=url,
+            url=None,
             comment=doc.comment,
             content_type=doc.content_type,
             size_bytes=doc.size_bytes,
@@ -289,12 +287,36 @@ class DocumentService:
             document=document,
         )
 
-        url = self.storage_service.generate_read_url(
-            container_name="documents",
+        url = self.storage_service.generate_private_read_url(
             object_name=document.blob_name,
+            company_id=document.company_id,
+            file_name=document.file_name,
+            content_type=document.content_type,
         )
 
         return DocumentDownloadResponse(url=url)
+
+    async def create_upload_intent(
+        self,
+        user_id: int,
+        payload: DocumentUploadIntentRequest,
+    ) -> DocumentUploadIntentResponse:
+        """Authorize and create a private document upload target."""
+        await self._ensure_can_access_company(user_id, payload.company_id)
+        self._validate_metadata(payload.file_name, payload.size_bytes)
+        try:
+            result = self.storage_service.generate_document_upload_intent(
+                company_id=payload.company_id,
+                file_name=payload.file_name,
+                content_type=payload.content_type,
+                size_bytes=payload.size_bytes,
+            )
+        except StorageServiceError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+        return DocumentUploadIntentResponse(**result)
 
     async def create_document(
         self,
@@ -329,6 +351,21 @@ class DocumentService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="blob_name is required.",
+            )
+        try:
+            self.storage_service.ensure_private_document_exists(
+                blob_name,
+                payload.company_id,
+            )
+        except StorageServiceError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+        if Path(blob_name).suffix.lower() != Path(file_name).suffix.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded object extension does not match file_name.",
             )
 
         comment = payload.comment.strip() if payload.comment else None
@@ -382,8 +419,19 @@ class DocumentService:
         if payload.comment is not None:
             document.comment = normalized_comment
 
+        old_blob_name = document.blob_name
         normalized_blob_name = self._normalize_optional_str(payload.blob_name)
         if normalized_blob_name is not None:
+            try:
+                self.storage_service.ensure_private_document_exists(
+                    normalized_blob_name,
+                    document.company_id,
+                )
+            except StorageServiceError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(exc),
+                ) from exc
             document.blob_name = normalized_blob_name
 
         normalized_file_name = self._normalize_optional_str(payload.file_name)
@@ -405,6 +453,11 @@ class DocumentService:
             document.size_bytes = payload.size_bytes
 
         await self.session.commit()
+        if normalized_blob_name and normalized_blob_name != old_blob_name:
+            self.storage_service.delete_private_document(
+                old_blob_name,
+                document.company_id,
+            )
 
         return EmptyResponse()
 
@@ -422,5 +475,8 @@ class DocumentService:
             )
         await self._ensure_can_access_document(user_id, document)
 
+        object_name = document.blob_name
+        company_id = document.company_id
         await self.session.delete(document)
         await self.session.commit()
+        self.storage_service.delete_private_document(object_name, company_id)

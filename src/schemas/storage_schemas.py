@@ -1,5 +1,7 @@
 """Pydantic schemas for storage requests and responses."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -40,6 +42,29 @@ class StorageDeleteResponse(BaseModel):
     object_url: str
 
 
+class DocumentUploadIntentRequest(BaseModel):
+    """Request a tenant-bound private document upload target."""
+
+    company_id: int = Field(gt=0)
+    file_name: str = Field(min_length=1, max_length=255)
+    content_type: str = Field(min_length=3, max_length=100)
+    size_bytes: int = Field(gt=0, le=10 * 1024 * 1024)
+
+
+class DocumentUploadIntentResponse(BaseModel):
+    """Short-lived private document upload target."""
+
+    upload_url: str
+    object_name: str
+    expires_at: datetime
+
+
+class PrivateUploadResponse(BaseModel):
+    """Result of storing a private object."""
+
+    object_name: str
+
+
 __all__ = [
     "StorageUploadRequest",
     "StorageUpdateRequest",
@@ -47,4 +72,7 @@ __all__ = [
     "StorageResponse",
     "StorageUpdateResponse",
     "StorageDeleteResponse",
+    "DocumentUploadIntentRequest",
+    "DocumentUploadIntentResponse",
+    "PrivateUploadResponse",
 ]

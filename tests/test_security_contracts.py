@@ -119,6 +119,63 @@ def test_storage_rejects_foreign_object_url():
         )
 
 
+def test_private_document_upload_and_read_are_company_bound(
+    monkeypatch,
+    tmp_path,
+):
+    monkeypatch.setattr(settings, "private_storage_root", str(tmp_path))
+    service = StorageService()
+    content = b"%PDF-1.7 private document"
+    intent = service.generate_document_upload_intent(
+        company_id=10,
+        file_name="report.pdf",
+        content_type="application/pdf",
+        size_bytes=len(content),
+    )
+    upload_token = intent["upload_url"].rsplit("/", 1)[-1]
+
+    object_name = service.store_private_upload(
+        upload_token,
+        content,
+        "application/pdf",
+    )
+    service.ensure_private_document_exists(object_name, company_id=10)
+
+    with pytest.raises(StorageServiceError):
+        service.ensure_private_document_exists(object_name, company_id=11)
+
+    read_url = service.generate_private_read_url(
+        object_name=object_name,
+        company_id=10,
+        file_name="report.pdf",
+        content_type="application/pdf",
+    )
+    read_token = read_url.rsplit("/", 1)[-1]
+    path, file_name, content_type = service.resolve_private_read(read_token)
+
+    assert path.read_bytes() == content
+    assert file_name == "report.pdf"
+    assert content_type == "application/pdf"
+
+
+def test_private_document_upload_rejects_tampered_size(
+    monkeypatch,
+    tmp_path,
+):
+    monkeypatch.setattr(settings, "private_storage_root", str(tmp_path))
+    service = StorageService()
+    intent = service.generate_document_upload_intent(
+        company_id=10,
+        file_name="report.pdf",
+        content_type="application/pdf",
+        size_bytes=20,
+    )
+    token = intent["upload_url"].rsplit("/", 1)[-1]
+
+    with pytest.raises(StorageServiceError):
+        service.store_private_upload(token, b"too short", "application/pdf")
+
+
 def test_password_recovery_does_not_enumerate_accounts():
     email_service = Mock()
     service = AuthService(email_service=email_service, session=AsyncMock())

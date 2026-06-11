@@ -45,6 +45,9 @@ def test_dashboard_auth_and_storage_routes_are_registered():
     assert "/api/v1/auth/refresh-access-token" not in routes
     assert "/api/v1/users/me" in routes
     assert "/api/v1/storage/generate_upload_url" in routes
+    assert "/api/v1/storage/private/upload/{token}" in routes
+    assert "/api/v1/storage/private/read/{token}" in routes
+    assert "/api/v1/documents/upload-intent" in routes
     assert "/api/v1/notifications/me/unread" in routes
     assert "/api/v1/notifications/send-all-users" in routes
 
