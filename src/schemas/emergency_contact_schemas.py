@@ -1,4 +1,4 @@
-"""Emergency contact-related Pydantic schemas for the Coredeck API."""
+"""Emergency contact-related Pydantic schemas for the Locentr API."""
 
 from datetime import datetime
 from typing import Optional

@@ -1,6 +1,6 @@
-# Coredeck Demo Seed
+# Locentr Demo Seed
 
-This guide explains how to create the local demo admin user for Coredeck API.
+This guide explains how to create the local demo admin user for Locentr API.
 
 ## Demo user
 
@@ -15,10 +15,10 @@ The credential itself must not be committed to the repository. The seed script e
 
 ```text
 DATABASE_URL
-COREDECK_DEMO_EMAIL
-COREDECK_DEMO_USERNAME
-COREDECK_DEMO_FULL_NAME
-COREDECK_DEMO_CREDENTIAL_HASH
+LOCENTR_DEMO_EMAIL
+LOCENTR_DEMO_USERNAME
+LOCENTR_DEMO_FULL_NAME
+LOCENTR_DEMO_CREDENTIAL_HASH
 ```
 
 ## Run seed

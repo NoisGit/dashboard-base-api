@@ -1,4 +1,4 @@
-"""Company staff association model for the Coredeck API."""
+"""Company staff association model for the Locentr API."""
 
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING

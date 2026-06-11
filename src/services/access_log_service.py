@@ -1,4 +1,4 @@
-"""Access log service module for Coredeck API."""
+"""Access log service module for Locentr API."""
 from datetime import datetime, date
 from typing import Optional, List
 

@@ -1,4 +1,4 @@
-"""Seed demo data for Coredeck API."""
+"""Seed demo data for Locentr API."""
 
 import asyncio
 import os
@@ -10,16 +10,16 @@ from src.core.enums import UserRole
 from src.database import async_session, create_db_and_tables, engine
 from src.models import User
 
-DEMO_EMAIL = os.getenv("COREDECK_DEMO_EMAIL", "admin@nois.dev")
-DEMO_USERNAME = os.getenv("COREDECK_DEMO_USERNAME", "coredeck-admin")
-DEMO_FULL_NAME = os.getenv("COREDECK_DEMO_FULL_NAME", "Coredeck Admin")
-DEMO_CREDENTIAL_HASH = os.getenv("COREDECK_DEMO_CREDENTIAL_HASH")
+DEMO_EMAIL = os.getenv("LOCENTR_DEMO_EMAIL", "admin@nois.dev")
+DEMO_USERNAME = os.getenv("LOCENTR_DEMO_USERNAME", "locentr-admin")
+DEMO_FULL_NAME = os.getenv("LOCENTR_DEMO_FULL_NAME", "Locentr Admin")
+DEMO_CREDENTIAL_HASH = os.getenv("LOCENTR_DEMO_CREDENTIAL_HASH")
 
 
 def get_demo_credential_hash() -> str:
     """Return the demo credential hash from environment."""
     if not DEMO_CREDENTIAL_HASH:
-        raise RuntimeError("COREDECK_DEMO_CREDENTIAL_HASH is required.")
+        raise RuntimeError("LOCENTR_DEMO_CREDENTIAL_HASH is required.")
     return DEMO_CREDENTIAL_HASH
 
 

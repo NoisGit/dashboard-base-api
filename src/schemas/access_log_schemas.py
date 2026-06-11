@@ -1,4 +1,4 @@
-"""Access Log schemas for Coredeck API."""
+"""Access Log schemas for Locentr API."""
 
 from datetime import datetime
 from typing import Optional, List, Any

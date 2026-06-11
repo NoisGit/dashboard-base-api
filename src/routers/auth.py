@@ -1,4 +1,4 @@
-"""Auth router module for Coredeck API."""
+"""Auth router module for Locentr API."""
 
 from fastapi import APIRouter, Depends, status
 

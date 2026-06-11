@@ -2,7 +2,7 @@
 Router module initialization.
 
 This module centralizes the import and export of all API routers for the
-Coredeck API.
+Locentr API.
 """
 
 from .access_logs import router as access_logs_router
