@@ -24,6 +24,31 @@ class Settings(BaseSettings):
 
     # Database settings
     database_url_env: str | None = Field(default=None, alias="DATABASE_URL")
+    db_pool_size: int = Field(default=10, alias="DB_POOL_SIZE", ge=1, le=100)
+    db_max_overflow: int = Field(
+        default=20,
+        alias="DB_MAX_OVERFLOW",
+        ge=0,
+        le=200,
+    )
+    db_pool_timeout_seconds: int = Field(
+        default=10,
+        alias="DB_POOL_TIMEOUT_SECONDS",
+        ge=1,
+        le=120,
+    )
+    db_pool_recycle_seconds: int = Field(
+        default=1800,
+        alias="DB_POOL_RECYCLE_SECONDS",
+        ge=60,
+        le=86400,
+    )
+    db_statement_timeout_ms: int = Field(
+        default=15000,
+        alias="DB_STATEMENT_TIMEOUT_MS",
+        ge=1000,
+        le=300000,
+    )
 
     # SMTP settings
     SMTP_SERVER: str = Field(default="smtp.example.com")
@@ -106,6 +131,18 @@ class Settings(BaseSettings):
     auth_rate_limit_window_seconds: int = Field(
         default=60,
         alias="AUTH_RATE_LIMIT_WINDOW_SECONDS",
+    )
+    max_concurrent_requests: int = Field(
+        default=100,
+        alias="MAX_CONCURRENT_REQUESTS",
+        ge=1,
+        le=2000,
+    )
+    slow_request_threshold_ms: int = Field(
+        default=1000,
+        alias="SLOW_REQUEST_THRESHOLD_MS",
+        ge=100,
+        le=60000,
     )
 
     # pydantic-settings configuration

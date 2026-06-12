@@ -23,6 +23,7 @@ Matches the `access_list` table in the ERD:
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
+from sqlalchemy import Index
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
@@ -35,6 +36,14 @@ if TYPE_CHECKING:
 class AccessList(SQLModel, table=True):
     """AccessList database model for the Locentr API."""
     __tablename__ = "access_list"
+    __table_args__ = (
+        Index(
+            "ix_access_list_company_type_location",
+            "company_id",
+            "type_access_list_id",
+            "location_id",
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
 

@@ -11,7 +11,7 @@ Represents a single access event in a location (site), linked to:
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING, List, Any
 
-from sqlalchemy import Column
+from sqlalchemy import Column, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field, Relationship
 
@@ -26,6 +26,10 @@ if TYPE_CHECKING:
 class AccessLog(SQLModel, table=True):
     """Access log database model for the Locentr API."""
     __tablename__ = "access_log"
+    __table_args__ = (
+        Index("ix_access_log_location_created_at", "location_id", "created_at"),
+        Index("ix_access_log_location_exit_date", "location_id", "exit_date"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
 

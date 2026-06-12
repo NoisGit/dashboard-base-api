@@ -64,6 +64,11 @@ Required production variables:
 ```text
 ENV=production
 DATABASE_URL
+DB_POOL_SIZE
+DB_MAX_OVERFLOW
+DB_POOL_TIMEOUT_SECONDS
+DB_POOL_RECYCLE_SECONDS
+DB_STATEMENT_TIMEOUT_MS
 SECRET_KEY
 BACKEND_CORS_ORIGINS
 FRONT_URL_BASE
@@ -78,19 +83,32 @@ STRIPE_PRICE_STARTER
 STRIPE_PRICE_GROWTH
 STRIPE_PRICE_SCALE
 BILLING_RECONCILIATION_SECRET
+MAX_CONCURRENT_REQUESTS
+SLOW_REQUEST_THRESHOLD_MS
 ```
 
 `SECRET_KEY` must contain at least 32 characters. CORS must list explicit
 frontend origins and cannot use `*`.
+
+Size the database pool together with the number of API workers. The maximum
+possible PostgreSQL connections per instance is approximately
+`workers * (DB_POOL_SIZE + DB_MAX_OVERFLOW)`. Keep that total below the
+provider limit. `DB_STATEMENT_TIMEOUT_MS` cancels runaway queries, while
+`MAX_CONCURRENT_REQUESTS` rejects excess work with `503` and `Retry-After`
+instead of allowing an unbounded queue.
 
 ## Verification
 
 After deployment:
 
 ```text
-GET /health
+GET /live
+GET /ready
 GET /docs
 ```
+
+`/live` checks the process only. `/ready` and `/health` check PostgreSQL and
+return `503` while the service cannot safely receive traffic.
 
 The frontend host must be present in `BACKEND_CORS_ORIGINS`. Never run the demo
 seed with a real customer credential or production data.

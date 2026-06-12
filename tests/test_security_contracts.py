@@ -429,6 +429,17 @@ def test_security_middleware_adds_headers_and_limits_auth(monkeypatch):
     assert second.headers["retry-after"]
 
 
+def test_security_middleware_rejects_excess_inflight_requests(monkeypatch):
+    monkeypatch.setattr(settings, "max_concurrent_requests", 1)
+    middleware = SecurityMiddleware(FastAPI())
+
+    assert asyncio.run(middleware._try_acquire_capacity()) is True
+    assert asyncio.run(middleware._try_acquire_capacity()) is False
+
+    asyncio.run(middleware._release_capacity())
+    assert asyncio.run(middleware._try_acquire_capacity()) is True
+
+
 def test_operator_requires_explicit_location_assignment():
     session = AsyncMock()
     user_service = AsyncMock()

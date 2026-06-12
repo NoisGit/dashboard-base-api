@@ -9,7 +9,7 @@ os.environ.setdefault(
     "postgresql+asyncpg://locentr:locentr@localhost:5432/locentr_test",
 )
 
-from src.api.endpoints import root
+from src.api.endpoints import liveness_check, root
 from src.config.config import settings
 from src.core.enums import UserRole
 from src.main import app
@@ -27,6 +27,13 @@ def test_root_contract_uses_locentr_identity():
 
     assert response["message"] == "Welcome to Locentr API"
     assert response["description"] == "Portfolio-ready operations API for Locentr"
+
+
+def test_liveness_contract_does_not_depend_on_database():
+    """Keep a process-only probe available during database incidents."""
+    response = asyncio.run(liveness_check())
+
+    assert response["status"] == "alive"
 
 
 def test_cors_origins_are_parsed_from_settings():
@@ -63,6 +70,8 @@ def test_dashboard_auth_and_storage_routes_are_registered():
     assert "/api/v1/lifecycle/queue/process" in routes
     assert "/api/v1/notifications/me/unread" in routes
     assert "/api/v1/notifications/send-all-users" in routes
+    assert "/live" in routes
+    assert "/ready" in routes
 
 
 def test_notification_routes_use_expected_http_methods():

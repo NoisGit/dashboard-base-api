@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.endpoints import health_check, protected_route, root
+from src.api.endpoints import health_check, liveness_check, protected_route, root
 from src.api.error_contract import (
     OPENAPI_ERROR_EXAMPLE,
     http_exception_handler,
@@ -57,4 +57,6 @@ include_routers(app)
 # Register basic endpoints
 app.get("/")(root)
 app.get("/health")(health_check)
+app.get("/live")(liveness_check)
+app.get("/ready")(health_check)
 app.get("/protected")(protected_route)

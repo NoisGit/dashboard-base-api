@@ -9,7 +9,7 @@ Represents an audit trail entry for user actions in the system:
 
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import Enum as SaEnum
+from sqlalchemy import Enum as SaEnum, Index
 from sqlmodel import SQLModel, Field, Relationship, Column
 
 from src.core import AuditAction, TableName
@@ -25,6 +25,10 @@ class AuditLog(SQLModel, table=True):
     Matches the `audit_log` table from the ERD.
     """
     __tablename__ = "audit_log"
+    __table_args__ = (
+        Index("ix_audit_log_created_at", "created_at"),
+        Index("ix_audit_log_user_created_at", "user_id", "created_at"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
 

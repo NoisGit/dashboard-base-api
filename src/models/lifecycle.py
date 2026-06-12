@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import JSON, UniqueConstraint
+from sqlalchemy import JSON, Index, UniqueConstraint
 from sqlmodel import Column, Field, SQLModel
 
 from src.core.enums import InvitationStatus, UserRole
@@ -13,6 +13,14 @@ class TenantInvitation(SQLModel, table=True):
     """Expiring, single-use invitation scoped to one tenant."""
 
     __tablename__ = "tenant_invitation"
+    __table_args__ = (
+        Index(
+            "ix_tenant_invitation_company_status_expires",
+            "company_id",
+            "status",
+            "expires_at",
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     company_id: int = Field(foreign_key="company.id", index=True)
@@ -65,6 +73,14 @@ class EmailDelivery(SQLModel, table=True):
     """Retryable transactional email outbox record."""
 
     __tablename__ = "email_delivery"
+    __table_args__ = (
+        Index(
+            "ix_email_delivery_status_scheduled_attempts",
+            "status",
+            "scheduled_for",
+            "attempts",
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     event_key: str = Field(max_length=160, unique=True, index=True)
@@ -92,6 +108,13 @@ class BillingInvoice(SQLModel, table=True):
     """Sanitized invoice metadata displayed in the dashboard."""
 
     __tablename__ = "billing_invoice"
+    __table_args__ = (
+        Index(
+            "ix_billing_invoice_company_created_at",
+            "company_id",
+            "created_at",
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     company_id: int = Field(foreign_key="company.id", index=True)

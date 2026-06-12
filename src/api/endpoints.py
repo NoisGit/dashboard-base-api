@@ -5,7 +5,8 @@ This module contains the basic endpoints for the Locentr API,
 including health checks and protected routes.
 """
 import logging
-from fastapi import Depends
+from fastapi import Depends, status
+from fastapi.responses import JSONResponse
 from src.auth.utils import get_current_user
 from src.database import test_connection
 
@@ -26,19 +27,39 @@ async def health_check():
     try:
         db_healthy = await test_connection()
 
-        return {
+        payload = {
             "status": "healthy" if db_healthy else "unhealthy",
             "service": "locentr-api",
             "version": "0.0.1",
             "database": "connected" if db_healthy else "disconnected"
         }
+        return JSONResponse(
+            content=payload,
+            status_code=(
+                status.HTTP_200_OK
+                if db_healthy
+                else status.HTTP_503_SERVICE_UNAVAILABLE
+            ),
+        )
     except Exception:
         logger.exception("Health check failed")
-        return {
-            "status": "unhealthy",
-            "service": "locentr-api",
-            "database": "disconnected",
-        }
+        return JSONResponse(
+            content={
+                "status": "unhealthy",
+                "service": "locentr-api",
+                "database": "disconnected",
+            },
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
+async def liveness_check():
+    """Confirm that the API process is accepting requests."""
+    return {
+        "status": "alive",
+        "service": "locentr-api",
+        "version": "0.0.1",
+    }
 
 
 def protected_route(_=Depends(get_current_user)):

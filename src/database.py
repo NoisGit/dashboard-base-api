@@ -27,12 +27,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=DEBUG,
-    pool_recycle=1800,
-    pool_pre_ping=True,
-)
+engine_options = {
+    "echo": DEBUG,
+    "pool_size": settings.db_pool_size,
+    "max_overflow": settings.db_max_overflow,
+    "pool_timeout": settings.db_pool_timeout_seconds,
+    "pool_recycle": settings.db_pool_recycle_seconds,
+    "pool_pre_ping": True,
+    "pool_use_lifo": True,
+}
+
+if DATABASE_URL and DATABASE_URL.startswith("postgresql"):
+    engine_options["connect_args"] = {
+        "server_settings": {
+            "application_name": "locentr-api",
+            "statement_timeout": str(settings.db_statement_timeout_ms),
+        }
+    }
+
+engine = create_async_engine(DATABASE_URL, **engine_options)
 
 
 async_session = sessionmaker(
