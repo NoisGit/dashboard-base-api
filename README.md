@@ -10,6 +10,12 @@ This repository contains the active Locentr enterprise backend. It includes tena
 operations, a 14-day trial, subscription plans, Stripe lifecycle hooks, team invitations,
 transactional email delivery and a reproducible portfolio dataset.
 
+## API Preview
+
+![Locentr API OpenAPI catalogue](docs/images/swagger-overview.jpg)
+
+![Locentr SaaS subscription contracts](docs/images/swagger-saas-contracts.jpg)
+
 ## Product Direction
 
 Locentr is a multi-company, multi-location operations dashboard.
