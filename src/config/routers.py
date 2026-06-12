@@ -8,21 +8,23 @@ from src.routers import (
     access_logs_router,
     audit_log_router,
     auth_router,
-    storage_router,
+    blacklists_router,
+    companies_router,
+    dashboard_router,
     documents_router,
     emergency_contacts_router,
-    companies_router,
-    users_router,
-    locations_router,
-    support_tickets_router,
-    service_contacts_router,
-    whitelists_router,
-    blacklists_router,
-    system_router,
-    dashboard_router,
+    lifecycle_router,
     location_logbook_router,
+    locations_router,
     notifications_router,
+    service_contacts_router,
+    storage_router,
     subscriptions_router,
+    support_tickets_router,
+    system_router,
+    teams_router,
+    users_router,
+    whitelists_router,
 )
 
 
@@ -46,3 +48,5 @@ def include_routers(app):
     app.include_router(location_logbook_router, prefix="/api/v1")
     app.include_router(notifications_router, prefix="/api/v1")
     app.include_router(subscriptions_router, prefix="/api/v1")
+    app.include_router(lifecycle_router, prefix="/api/v1")
+    app.include_router(teams_router, prefix="/api/v1")

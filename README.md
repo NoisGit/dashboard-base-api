@@ -6,15 +6,9 @@ Locentr is centered around companies, subcompanies, locations, access management
 
 ## Project Status
 
-This repository is in active cleanup and rebuild mode.
-
-Current goals:
-
-- Keep the backend aligned with `locentr-dashboard`.
-- Remove obsolete template/product references.
-- Expose typed and predictable API modules.
-- Keep secrets and deployment configuration out of source control.
-- Prepare a clean portfolio-ready SaaS backend.
+This repository contains the active Locentr enterprise backend. It includes tenant-aware
+operations, a 14-day trial, subscription plans, Stripe lifecycle hooks, team invitations,
+transactional email delivery and a reproducible portfolio dataset.
 
 ## Product Direction
 
@@ -35,6 +29,8 @@ Company
 │   ├── Service contacts
 │   └── Location logbook
 ├── Documents
+├── Team invitations and plan seats
+├── Subscription, invoices and communication preferences
 ├── Support tickets
 ├── Notifications
 └── Audit log
@@ -98,6 +94,9 @@ Routers are registered under `/api/v1`.
 | Emergency Contacts | `/emergency-contacts` | Optional | Location-scoped contacts. |
 | Service Contacts | `/service-contacts` | Optional | Location-scoped service providers. |
 | Location Logbook | `/location-logbook` | Optional | Location-scoped operational logbook. |
+| Teams | `/teams` | Active | Invitations, acceptance, revoke/resend and seat usage. |
+| Lifecycle | `/lifecycle` | Active | Verification, invoices, preferences and queued email jobs. |
+| Subscriptions | `/subscriptions` | Active | Plans, 14-day trial, checkout, portal and Stripe webhooks. |
 
 ## Removed or Postponed Concepts
 
@@ -129,22 +128,11 @@ If any of these return later, they need a new architecture decision and API cont
 
 ## Local Setup
 
-Create a virtual environment:
+Create and activate a virtual environment:
 
 ```bash
-python -m venv venv
-```
-
-Activate it on Windows:
-
-```bash
-venv\Scripts\activate
-```
-
-Activate it on macOS/Linux:
-
-```bash
-source venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 ```
 
 Install dependencies:
@@ -153,36 +141,30 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Create a `.env` file from `.env.example` when available.
+Create `.env` from `.env.example`, then start a clean PostgreSQL instance:
 
-Required or commonly used environment variables:
-
-```env
-ENV=dev
-DEBUG=true
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/locentr
-SECRET_KEY=change-me
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=7
-BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-FRONT_URL_BASE=http://localhost:5173
-STORAGE_PUBLIC_BASE_URL=http://localhost:54321/storage/v1/object/public/locentr
-STORAGE_BUCKET_NAME=locentr
+```bash
+cp .env.example .env
+docker compose up -d --wait locentr-db
+alembic upgrade head
 ```
 
 Production must provide safe values for `SECRET_KEY` and `DATABASE_URL`.
+
+Create the optional portfolio dataset. Generate the hash at runtime; never commit the demo
+password or its hash:
+
+```bash
+PYTHONPATH=. \
+LOCENTR_DEMO_CREDENTIAL_HASH="$(python -c \
+'from argon2 import PasswordHasher; print(PasswordHasher().hash("choose-a-local-password"))')" \
+python scripts/seed_demo.py
+```
 
 Run the API:
 
 ```bash
 uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Apply database migrations before starting the API or running the demo seed:
-
-```bash
-alembic upgrade head
 ```
 
 See `docs/DEPLOYMENT.md` for local and portfolio deployment commands.
@@ -245,6 +227,12 @@ PUT  /api/v1/locations/{location_id}
 DELETE /api/v1/locations/{location_id}
 
 GET  /api/v1/dashboard/location/{location_id}
+GET  /api/v1/teams/invitations
+GET  /api/v1/teams/seats
+GET  /api/v1/lifecycle/invoices
+GET  /api/v1/lifecycle/preferences
+GET  /api/v1/subscriptions/plans
+GET  /api/v1/subscriptions/me
 GET  /api/v1/support-tickets/
 GET  /api/v1/audit-log/
 ```
@@ -264,6 +252,9 @@ For a complete source of truth, use FastAPI OpenAPI docs from the running API.
 - Security headers and request IDs.
 - Hashed password-reset and one-time police-access tokens.
 - Upload type and size allowlists.
+- Hashed, expiring and single-use invitation and verification tokens.
+- Idempotent billing/email events and retryable delivery records.
+- Versioned API error envelope with request IDs and private internal failures.
 
 See `docs/SECURITY.md` for application and infrastructure responsibilities.
 See `docs/SAAS_READINESS.md` for demo blockers and the plans/trial roadmap.

@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
+from src.auth.jwt_handler import create_token_pair
 from src.config.config import settings
 from src.core.enums import SubscriptionStatus, UserRole
 from src.models import (
@@ -27,14 +28,14 @@ from src.models import (
     Plan,
     User,
 )
-from src.auth.jwt_handler import create_token_pair
 from src.schemas import (
     CompanySubscriptionResponse,
     PlanResponse,
-    SubscriptionUsageResponse,
     StartTrialRequest,
     StartTrialResponse,
+    SubscriptionUsageResponse,
 )
+from src.services.lifecycle_service import LifecycleService
 
 
 class SubscriptionService:
@@ -43,6 +44,7 @@ class SubscriptionService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.password_hasher = PasswordHasher()
+        self.lifecycle_service = LifecycleService(session)
 
     async def start_trial(
         self,
@@ -124,6 +126,18 @@ class SubscriptionService:
         admin.refresh_token = hashlib.sha256(
             tokens["refresh_token"].encode("utf-8")
         ).hexdigest()
+        await self.lifecycle_service.create_email_verification(admin, company.id)
+        await self.lifecycle_service.queue_email(
+            event_key=f"welcome-trial:{admin.id}",
+            company_id=company.id,
+            user_id=admin.id,
+            recipient=admin.email,
+            subject="Bienvenido a Locentr",
+            title="Tu prueba de 14 días está activa",
+            message="Tu empresa y primera ubicación ya están listas para operar.",
+            action_url=f"{settings.FRONT_URL_BASE}/dashboard",
+            action_label="Abrir panel",
+        )
         await self.session.commit()
         return StartTrialResponse(
             **tokens,
@@ -436,7 +450,9 @@ class SubscriptionService:
         checkout_args: dict[str, Any] = {
             "mode": "subscription",
             "line_items": [{"price": price_id, "quantity": 1}],
-            "success_url": f"{settings.FRONT_URL_BASE}/settings/billing?checkout=success",
+            "success_url": (
+                f"{settings.FRONT_URL_BASE}/settings/billing?checkout=success"
+            ),
             "cancel_url": f"{settings.FRONT_URL_BASE}/settings/billing?checkout=cancel",
             "client_reference_id": str(root_company_id),
             "metadata": metadata,
@@ -541,9 +557,7 @@ class SubscriptionService:
 
         event_id = str(event["id"])
         existing = await self.session.execute(
-            select(BillingEvent).where(
-                BillingEvent.provider_event_id == event_id
-            )
+            select(BillingEvent).where(BillingEvent.provider_event_id == event_id)
         )
         if existing.scalars().first():
             return
@@ -615,6 +629,65 @@ class SubscriptionService:
             subscription.status = SubscriptionStatus.PAST_DUE
         elif event_type == "invoice.paid":
             subscription.status = SubscriptionStatus.ACTIVE
+
+        if event_type.startswith("invoice."):
+            invoice = await self.lifecycle_service.upsert_invoice(
+                subscription.company_id,
+                data_object,
+            )
+            if await self.lifecycle_service.billing_emails_enabled(
+                subscription.company_id
+            ):
+                for admin in await self.lifecycle_service.company_admins(
+                    subscription.company_id
+                ):
+                    if event_type == "invoice.payment_failed":
+                        await self.lifecycle_service.queue_email(
+                            event_key=f"invoice-failed:{invoice.provider_invoice_id}:{admin.id}",
+                            company_id=subscription.company_id,
+                            user_id=admin.id,
+                            recipient=admin.email,
+                            subject="No pudimos procesar tu pago de Locentr",
+                            title="Pago pendiente",
+                            message=(
+                                "Actualiza tu medio de pago para mantener activa "
+                                "la operación."
+                            ),
+                            action_url=f"{settings.FRONT_URL_BASE}/settings/billing",
+                            action_label="Resolver pago",
+                        )
+                    elif event_type == "invoice.paid":
+                        await self.lifecycle_service.queue_email(
+                            event_key=f"invoice-paid:{invoice.provider_invoice_id}:{admin.id}",
+                            company_id=subscription.company_id,
+                            user_id=admin.id,
+                            recipient=admin.email,
+                            subject="Pago de Locentr confirmado",
+                            title="Tu pago fue confirmado",
+                            message=(
+                                "La factura ya está disponible en el panel de "
+                                "facturación."
+                            ),
+                            action_url=f"{settings.FRONT_URL_BASE}/settings/billing",
+                            action_label="Ver factura",
+                        )
+        if event_type == "customer.subscription.deleted":
+            for admin in await self.lifecycle_service.company_admins(
+                subscription.company_id
+            ):
+                await self.lifecycle_service.queue_email(
+                    event_key=f"subscription-canceled:{subscription.id}:{admin.id}",
+                    company_id=subscription.company_id,
+                    user_id=admin.id,
+                    recipient=admin.email,
+                    subject="Suscripción de Locentr cancelada",
+                    title="La suscripción fue cancelada",
+                    message=(
+                        "Puedes reactivar un plan desde el panel cuando lo necesites."
+                    ),
+                    action_url=f"{settings.FRONT_URL_BASE}/settings/billing",
+                    action_label="Revisar planes",
+                )
 
         subscription.updated_at = datetime.now()
 

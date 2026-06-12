@@ -7,20 +7,22 @@ from src.database import get_session
 from src.services.access_log_service import AccessLogService
 from src.services.audit_log_service import AuditLogService
 from src.services.auth_service import AuthService
-from src.services.storage_service import StorageService
 from src.services.blacklist_service import BlacklistService
 from src.services.company_service import CompanyService
 from src.services.dashboard_service import DashboardService
 from src.services.document_service import DocumentService
 from src.services.email_service import EmailService
 from src.services.emergency_contact_service import EmergencyContactService
+from src.services.lifecycle_service import LifecycleService
 from src.services.location_logbook_service import LocationLogbookService
 from src.services.location_service import LocationService
 from src.services.notification_service import NotificationService
 from src.services.service_contact_service import ServiceContactService
+from src.services.storage_service import StorageService
+from src.services.subscription_service import SubscriptionService
 from src.services.support_ticket_service import SupportTicketService
 from src.services.system_service import SystemService
-from src.services.subscription_service import SubscriptionService
+from src.services.team_service import TeamService
 from src.services.user_service import UserService
 from src.services.whitelist_service import WhitelistService
 
@@ -47,6 +49,20 @@ def get_audit_log_service(
 def get_email_service() -> EmailService:
     """Dependency to get an EmailService instance."""
     return EmailService()
+
+
+def get_lifecycle_service(
+    session: AsyncSession = Depends(get_session),
+    email_service: EmailService = Depends(get_email_service),
+) -> LifecycleService:
+    return LifecycleService(session, email_service)
+
+
+def get_team_service(
+    session: AsyncSession = Depends(get_session),
+    email_service: EmailService = Depends(get_email_service),
+) -> TeamService:
+    return TeamService(session, email_service)
 
 
 def get_auth_service(

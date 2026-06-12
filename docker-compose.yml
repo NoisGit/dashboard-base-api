@@ -21,24 +21,6 @@ services:
       timeout: 5s
       retries: 10
 
-  locentr-pgadmin:
-    image: dpage/pgadmin4
-    container_name: locentr_pgadmin
-    restart: always
-    depends_on:
-      locentr-db:
-        condition: service_healthy
-    ports:
-      - "${PGADMIN_PORT:-8080}:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@nois.dev}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-locentr_pgadmin_local}
-    volumes:
-      - locentr_pgadmin_data:/var/lib/pgadmin
-      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
-
 volumes:
   locentr_postgres_data:
     name: locentr_postgres_data
-  locentr_pgadmin_data:
-    name: locentr_pgadmin_data

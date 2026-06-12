@@ -54,6 +54,13 @@ def test_dashboard_auth_and_storage_routes_are_registered():
     assert "/api/v1/subscriptions/checkout" in routes
     assert "/api/v1/subscriptions/stripe/webhook" in routes
     assert "/api/v1/subscriptions/reconcile" in routes
+    assert "/api/v1/teams/invitations" in routes
+    assert "/api/v1/teams/invitations/accept" in routes
+    assert "/api/v1/teams/seats" in routes
+    assert "/api/v1/lifecycle/preferences" in routes
+    assert "/api/v1/lifecycle/invoices" in routes
+    assert "/api/v1/lifecycle/verify-email" in routes
+    assert "/api/v1/lifecycle/queue/process" in routes
     assert "/api/v1/notifications/me/unread" in routes
     assert "/api/v1/notifications/send-all-users" in routes
 
@@ -68,9 +75,7 @@ def test_notification_routes_use_expected_http_methods():
 
     assert routes["/api/v1/notifications/send-all-users"] == {"POST"}
     assert routes["/api/v1/notifications/me/unread"] == {"GET"}
-    assert routes["/api/v1/notifications/me/mark-read/{notification_id}"] == {
-        "PUT"
-    }
+    assert routes["/api/v1/notifications/me/mark-read/{notification_id}"] == {"PUT"}
 
 
 def test_subadmin_role_is_not_available():

@@ -1,10 +1,11 @@
 """Email service for sending emails via SMTP."""
 
+import logging
 import os
 import smtplib
-import logging
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from jinja2 import Environment, FileSystemLoader
 
 from src.config.config import settings
@@ -12,9 +13,10 @@ from src.config.config import settings
 logger = logging.getLogger(__name__)
 
 template_env = Environment(
-    loader=FileSystemLoader(os.path.join(
-        os.path.dirname(__file__), "../templates/email")),
-    autoescape=True
+    loader=FileSystemLoader(
+        os.path.join(os.path.dirname(__file__), "../templates/email")
+    ),
+    autoescape=True,
 )
 
 
@@ -31,11 +33,7 @@ class EmailService:
         self.from_email = settings.SMTP_FROM_EMAIL
 
     def send_templated_email(
-        self,
-        to_email: str,
-        subject: str,
-        template_name: str,
-        context: dict
+        self, to_email: str, subject: str, template_name: str, context: dict
     ):
         """Send an email using a specified template and context."""
 
@@ -60,20 +58,16 @@ class EmailService:
             msg.attach(MIMEText(text_content, "plain", "utf-8"))
             msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            if settings.EMAIL_DELIVERY_MODE.lower() == "log":
+                logger.info("transactional_email_rendered template=%s", template_name)
+                return
 
-            server.starttls()
-            server.login(self.smtp_user, self.smtp_password)
-            server.sendmail(self.from_email, to_email, msg.as_string())
-            server.quit()
+            with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=20) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.sendmail(self.from_email, to_email, msg.as_string())
+            logger.info("transactional_email_sent template=%s", template_name)
 
-            logger.info(
-                "📧 Correo %s enviado exitosamente a %s",
-                subject, to_email
-            )
-
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error(
-                "❌ Error enviando correo a %s: %s",
-                to_email, str(e)
-            )
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("transactional_email_failed template=%s", template_name)
+            raise

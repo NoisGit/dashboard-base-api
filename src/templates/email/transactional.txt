@@ -1,0 +1,7 @@
+Locentr
+
+{{ title }}
+
+{{ message }}
+
+{% if action_url %}{{ action_label }}: {{ action_url }}{% endif %}

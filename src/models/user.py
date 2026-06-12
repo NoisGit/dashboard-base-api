@@ -20,19 +20,19 @@ if TYPE_CHECKING:
     from .access_log import AccessLog
     from .audit_log import AuditLog
     from .company import Company
+    from .company_location_access import CompanyLocationAccess
     from .company_staff import CompanyStaff
     from .custom_form import CustomForm
     from .document import Document
     from .emergency_contact import EmergencyContact
-    from .service_contacts import ServiceContact
     from .external_people import ExternalPeople
     from .location import Location
     from .plan import Plan
+    from .service_contacts import ServiceContact
     from .support_response import SupportResponse
     from .support_ticket import SupportTicket
     from .type_access_list import TypeAccessList
     from .user_location_access import UserLocationAccess
-    from .company_location_access import CompanyLocationAccess
 
 
 class User(SQLModel, table=True):
@@ -71,6 +71,7 @@ class User(SQLModel, table=True):
     # Recovery Password Fields
     reset_token: Optional[str] = Field(default=None, max_length=255)
     reset_token_expiry: Optional[datetime] = None
+    email_verified_at: Optional[datetime] = None
 
     # Who created this user (self-reference to users.id)
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
@@ -81,15 +82,13 @@ class User(SQLModel, table=True):
     # Access to locations via user_location_access join table
     location_accesses: List["UserLocationAccess"] = Relationship(
         back_populates="user",
-        sa_relationship_kwargs={
-            "foreign_keys": "[UserLocationAccess.user_id]"},
+        sa_relationship_kwargs={"foreign_keys": "[UserLocationAccess.user_id]"},
     )
 
     # Company–Location accesses created by this user (CompanyLocationAccess.created_by)
     company_location_accesses_created: List["CompanyLocationAccess"] = Relationship(
         back_populates="creator",
-        sa_relationship_kwargs={
-            "foreign_keys": "[CompanyLocationAccess.created_by]"},
+        sa_relationship_kwargs={"foreign_keys": "[CompanyLocationAccess.created_by]"},
     )
 
     # Company memberships via company_staff join table

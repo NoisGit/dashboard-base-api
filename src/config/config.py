@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     SMTP_USER: str = Field(default="admin@nois.dev")
     SMTP_PASSWORD: str = Field(default="")
     SMTP_FROM_EMAIL: str = Field(default="Locentr <admin@nois.dev>")
+    EMAIL_DELIVERY_MODE: str = Field(default="log")
+    EMAIL_QUEUE_SECRET: str = Field(default="")
+    INVITATION_EXPIRE_HOURS: int = Field(default=72, ge=1, le=720)
+    EMAIL_VERIFICATION_EXPIRE_HOURS: int = Field(default=24, ge=1, le=168)
 
     # Logo URL setting
     LOGO_URL: str = Field(default="http://localhost:5173/logo.svg")
@@ -131,9 +135,7 @@ class Settings(BaseSettings):
         if is_production and not self.database_url:
             raise ValueError("DATABASE_URL is required in production")
 
-        if is_production and (
-            not self.cors_origins or "*" in self.cors_origins
-        ):
+        if is_production and (not self.cors_origins or "*" in self.cors_origins):
             raise ValueError(
                 "BACKEND_CORS_ORIGINS must list explicit origins in production"
             )

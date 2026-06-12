@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
+from src.api.error_contract import error_response
 from src.config.config import settings
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,8 @@ RATE_LIMITED_PATHS = {
     "/api/v1/auth/forgot-password",
     "/api/v1/auth/reset-password",
     "/api/v1/subscriptions/trial",
+    "/api/v1/teams/invitations/accept",
+    "/api/v1/lifecycle/verify-email",
 }
 
 
@@ -112,9 +115,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         detail: str,
         request_id: str,
     ) -> JSONResponse:
-        response = JSONResponse(
+        response = error_response(
             status_code=status_code,
-            content={"detail": detail, "request_id": request_id},
+            message=detail,
+            request_id=request_id,
         )
         cls._set_security_headers(response, request_id)
         return response
