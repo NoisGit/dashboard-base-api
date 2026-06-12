@@ -44,7 +44,7 @@ from src.models import (
 
 DEMO_EMAIL = os.getenv("LOCENTR_DEMO_EMAIL", "admin@nois.dev")
 DEMO_USERNAME = os.getenv("LOCENTR_DEMO_USERNAME", "locentr-admin")
-DEMO_FULL_NAME = os.getenv("LOCENTR_DEMO_FULL_NAME", "Boris Alvia")
+DEMO_FULL_NAME = os.getenv("LOCENTR_DEMO_FULL_NAME", "Boris Alvial")
 DEMO_CREDENTIAL_HASH = os.getenv("LOCENTR_DEMO_CREDENTIAL_HASH")
 
 
@@ -326,7 +326,11 @@ async def seed_demo_data() -> None:
                     exit_comment=("Salida registrada" if index % 4 != 0 else None),
                     exit_created_by=(operator_a.id if index % 4 != 0 else None),
                     created_by=(operator_a.id if index % 2 == 0 else operator_b.id),
-                    created_at=now - timedelta(hours=index * 2, minutes=index * 3),
+                    created_at=(
+                        now - timedelta(hours=index * 2, minutes=index * 3)
+                        if index < 8
+                        else now - timedelta(days=(index - 7) * 12, hours=index)
+                    ),
                 )
                 for index in range(24)
             ]
