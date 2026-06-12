@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Libro de Novedades</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 25px;
+            border-bottom: 1px solid #dbe5f0;
+            padding-bottom: 18px;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            margin: 0;
+            color: var(--primary);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-top: 5px;
+        }
+
+        .log-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .log-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid var(--primary);
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+
+        .log-time {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .log-badge {
+            font-size: 0.75rem;
+            color: #0f172a;
+            background: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .log-body {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #334155;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+        }
+
+        .log-footer {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 8px;
+        }
+
+        .author-icon {
+            margin-right: 6px;
+        }
+
+        .media {
+            margin-top: 12px;
+        }
+
+        .media img,
+        .media video {
+            width: 100%;
+            border-radius: 12px;
+            display: block;
+            background: #0b1220;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        .brand {
+            color: var(--text-light);
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .notice {
+            background: #eaf4ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            color: #1e3a5f;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            margin-top: 10px;
+            padding: 10px 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="brand">Locentr</div>
+            <h1>{{ location_name }}</h1>
+            <div class="subtitle">Libro de novedades para consulta de la autoridad</div>
+            <div class="notice">Este enlace es temporal y queda invalidado después de esta consulta.</div>
+        </header>
+
+        {% if entries %}
+        <ul class="log-list">
+            {% for log in entries %}
+            {% set mt = (log.media_type | string) %}
+            <li class="log-card">
+                <div class="log-header">
+                    <span class="log-time">{{ log.created_at.strftime('%d %b, %H:%M') }}</span>
+
+                    {% if log.media_url and mt %}
+                    <span class="log-badge">
+                        {% if "VIDEO" in mt %}Video{% else %}Fotografía{% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="log-body">
+                    {{ log.description }}
+                </div>
+
+                {% if log.media_url and mt %}
+                <div class="media">
+                    {% if "VIDEO" in mt %}
+                    <video controls controlsList="nodownload" onerror="this.style.display='none'">
+                        <source src="{{ log.media_url }}" />
+                        No se pudo reproducir el video.
+                    </video>
+                    {% else %}
+                    <img src="{{ log.media_url }}" alt="Media del libro de novedades"
+                        onerror="this.style.display='none'" />
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="log-footer">
+                    Registrado por: <strong>{{ log.user_full_name }}</strong>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state">
+            <p>No hay registros recientes para mostrar en este periodo.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+
+</html>

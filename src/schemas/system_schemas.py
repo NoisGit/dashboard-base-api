@@ -1,0 +1,60 @@
+"""Stats schema definitions."""
+
+from datetime import datetime
+from typing import Optional, List
+from pydantic import BaseModel, EmailStr
+
+
+class SystemCountersResponse(BaseModel):
+    users_admin: int
+    users_operators: int
+    users_plan_demo: int
+    total_entrances: int
+    income_today: int
+
+
+class IndividualMonthSchema(BaseModel):
+    year: int
+    month: int
+    quantity: int
+
+
+class AdminDetailResponse(BaseModel):
+    id_user: int
+    name: str
+    email: EmailStr
+    logo: Optional[str]
+    plan: Optional[str]
+    creation_date: datetime
+    entrances_count: int
+    operators_count: int
+
+
+class MonthlyIncomeResponse(BaseModel):  # FOR TESTING PURPOSES ONLY
+    detail_income_by_month: List[IndividualMonthSchema]
+
+
+class DetailAdminsResponse(BaseModel):  # FOR TESTING PURPOSES ONLY
+    detail_admins: List[AdminDetailResponse]
+
+
+class StatsDataResponse(BaseModel):
+    counters: SystemCountersResponse
+    detail_income_by_month: List[IndividualMonthSchema]
+    detail_admins: List[AdminDetailResponse]
+
+
+class SystemStatsResponse(BaseModel):
+    status: str
+    message: str
+    data: StatsDataResponse
+
+
+__all__ = [
+    "SystemCountersResponse",
+    "MonthlyIncomeResponse",
+    "AdminDetailResponse",
+    "StatsDataResponse",
+    "SystemStatsResponse",
+    "DetailAdminsResponse",
+]
