@@ -257,11 +257,12 @@ For a complete source of truth, use FastAPI OpenAPI docs from the running API.
 - Versioned API error envelope with request IDs and private internal failures.
 
 See `docs/SECURITY.md` for application and infrastructure responsibilities.
-See `docs/SAAS_READINESS.md` for demo blockers and the plans/trial roadmap.
 
 ## Documentation
 
 - `docs/ARCHITECTURE.md`
+- `docs/DEPLOYMENT.md`
+- `docs/ERROR_CONTRACT.md`
 - `docs/FRONTEND_CONTRACT.md`
 - `docs/SECURITY.md`
 - `docs/DEMO_SEED.md`

@@ -37,6 +37,7 @@ ENV/
 *.env
 
 # IDE
+.vscode/
 .idea/
 *.swp
 *.swo
@@ -138,8 +139,6 @@ private_storage/
 temp/
 cache/
 
-# Docker volumes (Postgres / pgAdmin data)
+# Docker volumes
 postgres/
 pgadmin/
-!docker/pgadmin/
-!docker/pgadmin/servers.json
