@@ -529,7 +529,7 @@ class UserService:
         """Get FCM tokens of all users"""
         result = await self.session.execute(
             select(User.fcm_token)
-            .where(User.fcm_token != None)  # pylint: disable=singleton-comparison
+            .where(User.fcm_token.is_not(None))
         )
         tokens = result.scalars().all()
         return tokens

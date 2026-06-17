@@ -378,7 +378,7 @@ class LocationService:
 
         stmt = (
             select(Location)
-            .where(Location.is_active == True)
+            .where(Location.is_active.is_(True))
             .options(selectinload(Location.company_locations_accesses))
         )
 
@@ -724,7 +724,7 @@ class LocationService:
             select(CustomForm)
             .where(
                 CustomForm.location_id == location_id,
-                CustomForm.is_active == True,
+                CustomForm.is_active.is_(True),
             )
             .options(selectinload(CustomForm.fields))
         )
@@ -786,7 +786,7 @@ class LocationService:
             select(CustomForm)
             .where(
                 CustomForm.location_id == location_id,
-                CustomForm.is_active == True,
+                CustomForm.is_active.is_(True),
             )
             .options(selectinload(CustomForm.fields))
         )
@@ -924,7 +924,7 @@ class LocationService:
             .join(CustomForm, CustomForm.id == CustomFormField.form_id)
             .where(
                 CustomForm.location_id == location_id,
-                CustomForm.is_active == True,
+                CustomForm.is_active.is_(True),
                 CustomFormField.id == custom_form_field_id,
             )
         )
@@ -949,7 +949,7 @@ class LocationService:
 
             name_stmt = select(CustomFormField).where(
                 CustomFormField.form_id == field.form_id,
-                CustomFormField.is_active == True,
+                CustomFormField.is_active.is_(True),
             )
             name_result = await self.session.execute(name_stmt)
             siblings = name_result.scalars().all()
@@ -1068,7 +1068,7 @@ class LocationService:
             today = date.today()
             stmt = stmt.where(
                 or_(
-                    AccessList.expiration_date == None,
+                    AccessList.expiration_date.is_(None),
                     AccessList.expiration_date >= today,
                 )
             )
@@ -1107,7 +1107,7 @@ class LocationService:
             )
 
         stmt = select(User) \
-            .where(User.is_active == True) \
+            .where(User.is_active.is_(True)) \
             .where(User.role == UserRole.OPERATOR)
 
         if search:

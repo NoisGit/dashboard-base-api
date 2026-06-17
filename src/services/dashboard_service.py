@@ -104,7 +104,7 @@ class DashboardService:
             func.count(AccessLog.id).label('historical_total'),
             func.count().filter(cast(AccessLog.created_at, Date)
                                 == date.today()).label('entries_today'),
-            func.count().filter(and_(AccessLog.exit_date == None, cast(AccessLog.created_at, Date)
+            func.count().filter(and_(AccessLog.exit_date.is_(None), cast(AccessLog.created_at, Date)
                                 == date.today())).label('currently_inside'),
         ).where(AccessLog.location_id == location_id)
 

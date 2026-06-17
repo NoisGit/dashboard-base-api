@@ -100,9 +100,7 @@ class CompanyService:
     ) -> Page[CompanyResponse]:
         """List active companies."""
 
-        stmt = select(Company).where(
-            Company.is_active == True  # pylint: disable=singleton-comparison
-        )
+        stmt = select(Company).where(Company.is_active.is_(True))
         scope_ids = await self.get_company_scope_ids(requester_id)
         if scope_ids:
             stmt = stmt.where(Company.id.in_(scope_ids))

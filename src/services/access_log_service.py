@@ -126,7 +126,7 @@ class AccessLogService:
             .where(
                 AccessList.company_id == company_id,
                 AccessList.type_access_list_id == blacklist_type_id,
-                AccessList.location_id == None,  # pylint: disable=singleton-comparison
+                AccessList.location_id.is_(None),
                 ExternalPeople.id_number == id_number,
             )
         )
@@ -158,7 +158,7 @@ class AccessLogService:
             )
             .where(
                 or_(
-                    AccessList.expiration_date == None,  # pylint: disable=singleton-comparison
+                    AccessList.expiration_date.is_(None),
                     AccessList.expiration_date >= now,
                 )
             )
@@ -177,12 +177,12 @@ class AccessLogService:
             .where(
                 AccessList.company_id == company_id,
                 AccessList.type_access_list_id == whitelist_type_id,
-                AccessList.location_id == None,  # pylint: disable=singleton-comparison
+                AccessList.location_id.is_(None),
                 ExternalPeople.id_number == id_number,
             )
             .where(
                 or_(
-                    AccessList.expiration_date == None,  # pylint: disable=singleton-comparison
+                    AccessList.expiration_date.is_(None),
                     AccessList.expiration_date >= now,
                 )
             )
@@ -263,7 +263,7 @@ class AccessLogService:
             .options(selectinload(AccessLog.images))
             .options(selectinload(AccessLog.external_people))
             .where(AccessLog.location_id == location_id)
-            .where(AccessLog.exit_date == None)  # pylint: disable=singleton-comparison
+            .where(AccessLog.exit_date.is_(None))
             .order_by(desc(AccessLog.created_at))
         )
         logs = list(result.scalars().all())
@@ -288,7 +288,7 @@ class AccessLogService:
             .options(selectinload(AccessLog.images))
             .options(selectinload(AccessLog.external_people))
             .where(AccessLog.location_id == location_id)
-            .where(AccessLog.exit_date != None)  # pylint: disable=singleton-comparison
+            .where(AccessLog.exit_date.is_not(None))
             .where(AccessLog.exit_date >= today_start)
             .where(AccessLog.exit_date <= today_end)
             .order_by(desc(AccessLog.exit_date))
@@ -603,11 +603,11 @@ class AccessLogService:
         # Filter by status
         if status_filter == "active":
             query = query.where(
-                AccessLog.exit_date == None  # pylint: disable=singleton-comparison
+                AccessLog.exit_date.is_(None)
             )
         elif status_filter == "completed":
             query = query.where(
-                AccessLog.exit_date != None  # pylint: disable=singleton-comparison
+                AccessLog.exit_date.is_not(None)
             )
 
         # Search filters

@@ -70,7 +70,7 @@ class EmergencyContactService:
 
         stmt = select(EmergencyContact).where(
             or_(
-                EmergencyContact.is_default == True,  # pylint: disable=singleton-comparison
+                EmergencyContact.is_default.is_(True),
                 EmergencyContact.location_id == location_id,
             )
         ).order_by(

@@ -111,7 +111,7 @@ class NotificationService:
         query = (
             select(Notification)
             .where(Notification.user_id == user_id)
-            .where(Notification.read_at == None)  # pylint: disable=singleton-comparison
+            .where(Notification.read_at.is_(None))
             .order_by(desc(Notification.created_at))
         )
 
