@@ -28,9 +28,17 @@ os.environ.setdefault(
 from src.api.error import StorageServiceError
 from src.auth.jwt_handler import create_refresh_token
 from src.config.config import Settings, settings
-from src.core.enums import SubscriptionStatus, UserRole
-from src.schemas import AccessLogExitRequest, CompanyCreateRequest, UserCreateRequest
+from src.core.enums import InvitationStatus, SubscriptionStatus, UserRole
+from src.schemas import (
+    AccessLogCreateRequest,
+    AccessLogExitRequest,
+    CompanyCreateRequest,
+    DocumentUploadIntentRequest,
+    LocationCreateRequest,
+    UserCreateRequest,
+)
 from src.schemas.auth_schemas import AuthRecoveryPasswordRequest
+from src.schemas.lifecycle_schemas import InvitationAcceptRequest
 from src.security.http import SecurityMiddleware
 from src.security.uploads import CSV_UPLOAD_MAX_BYTES, validate_csv_upload
 from src.services.access_log_service import AccessLogService
@@ -44,6 +52,7 @@ from src.services.notification_service import NotificationService
 from src.services.storage_service import StorageService
 from src.services.support_ticket_service import SupportTicketService
 from src.services.subscription_service import SubscriptionService
+from src.services.team_service import TeamService
 from src.services.user_service import UserService
 
 
@@ -263,6 +272,256 @@ def test_subscription_enforces_each_plan_resource_limit(
         asyncio.run(service.enforce_limit(10, resource, increment))
 
     assert error.value.status_code == 409
+
+
+@pytest.mark.parametrize(
+    ("resource", "current", "limit", "increment", "should_raise"),
+    [
+        ("locations", 0, 2, 1, False),
+        ("locations", 1, 2, 1, False),
+        ("locations", 2, 2, 1, True),
+        ("admins", 0, 2, 1, False),
+        ("admins", 1, 2, 1, False),
+        ("admins", 2, 2, 1, True),
+        ("operators", 8, 10, 1, False),
+        ("operators", 9, 10, 1, False),
+        ("operators", 10, 10, 1, True),
+        ("daily_reads", 498, 500, 1, False),
+        ("daily_reads", 499, 500, 1, False),
+        ("daily_reads", 500, 500, 1, True),
+        ("storage_bytes", 800, 1024, 100, False),
+        ("storage_bytes", 924, 1024, 100, False),
+        ("storage_bytes", 925, 1024, 100, True),
+    ],
+)
+def test_subscription_limit_boundaries(
+    resource,
+    current,
+    limit,
+    increment,
+    should_raise,
+):
+    service = SubscriptionService(AsyncMock())
+    plan_limits = {
+        "qty_locations": 100,
+        "qty_admins": 100,
+        "qty_operators": 100,
+        "qty_daily_reads": 10_000,
+        "qty_storage_bytes": 10_000,
+    }
+    limit_field = (
+        "qty_storage_bytes"
+        if resource == "storage_bytes"
+        else f"qty_{resource}"
+    )
+    plan_limits[limit_field] = limit
+    usage = {
+        "locations": 0,
+        "admins": 0,
+        "operators": 0,
+        "daily_reads": 0,
+        "storage_bytes": 0,
+    }
+    usage[resource] = current
+    service._subscription = AsyncMock(
+        return_value=SimpleNamespace(
+            company_id=10,
+            status=SubscriptionStatus.ACTIVE,
+            plan=SimpleNamespace(**plan_limits),
+        )
+    )
+    service.usage = AsyncMock(return_value=SimpleNamespace(**usage))
+
+    if should_raise:
+        with pytest.raises(HTTPException) as error:
+            asyncio.run(service.enforce_limit(10, resource, increment))
+        assert error.value.status_code == 409
+    else:
+        asyncio.run(service.enforce_limit(10, resource, increment))
+
+
+def test_location_creation_calls_plan_limit_before_persisting():
+    session = AsyncMock()
+    user_service = AsyncMock()
+    company_service = AsyncMock()
+    user_service.get_user_by_id.return_value = SimpleNamespace(
+        id=7,
+        role=UserRole.ADMIN,
+        is_active=True,
+    )
+    company_service.get_company_id_by_user_id.return_value = 10
+    service = LocationService(
+        session=session,
+        storage_service=Mock(),
+        user_service=user_service,
+        company_service=company_service,
+    )
+    service.subscription_service.enforce_limit = AsyncMock(
+        side_effect=HTTPException(status_code=409, detail="limit")
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.create_location(
+                7,
+                LocationCreateRequest(
+                    name="Edificio Apoquindo",
+                    address="Av. Apoquindo 4501",
+                    country="Chile",
+                ),
+            )
+        )
+
+    assert error.value.status_code == 409
+    service.subscription_service.enforce_limit.assert_awaited_once_with(
+        10,
+        "locations",
+    )
+    session.add.assert_not_called()
+    session.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("role", "resource"),
+    [
+        (UserRole.ADMIN, "admins"),
+        (UserRole.OPERATOR, "operators"),
+    ],
+)
+def test_user_creation_calls_plan_limit_for_limited_roles(role, resource):
+    service = UserService(AsyncMock())
+    service._ensure_email_unique = AsyncMock()
+    service._ensure_username_unique = AsyncMock()
+    service.subscription_service.enforce_limit = AsyncMock(
+        side_effect=HTTPException(status_code=409, detail="limit")
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.create_user(
+                UserCreateRequest(
+                    username=f"{role.value.lower()}_cocha",
+                    full_name="Usuario Cocha",
+                    email=f"{role.value.lower()}@cocha.cl",
+                    password="strong-password",
+                    role=role,
+                ),
+                company_id=10,
+            )
+        )
+
+    assert error.value.status_code == 409
+    service.subscription_service.enforce_limit.assert_awaited_once_with(
+        10,
+        resource,
+    )
+    service.session.add.assert_not_called()
+    service.session.commit.assert_not_awaited()
+
+
+def test_team_invitation_acceptance_calls_operator_plan_limit_before_user_create():
+    session = AsyncMock()
+    invitation = SimpleNamespace(
+        id=91,
+        company_id=10,
+        location_id=None,
+        email="operador@cocha.cl",
+        username="operador.cocha",
+        full_name="Operador Cocha",
+        role=UserRole.OPERATOR,
+        status=InvitationStatus.PENDING,
+        expires_at=datetime.now() + timedelta(days=1),
+    )
+    result = Mock()
+    result.scalars.return_value.first.return_value = invitation
+    session.execute.return_value = result
+    service = TeamService(session=session, email_service=Mock())
+    service._ensure_identity_available = AsyncMock()
+    service.subscription_service.enforce_limit = AsyncMock(
+        side_effect=HTTPException(status_code=409, detail="limit")
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.accept(
+                InvitationAcceptRequest(
+                    token="raw-token-with-enough-length",
+                    password="strong-password",
+                )
+            )
+        )
+
+    assert error.value.status_code == 409
+    service.subscription_service.enforce_limit.assert_awaited_once_with(
+        10,
+        "operators",
+    )
+    session.add.assert_not_called()
+    session.commit.assert_not_awaited()
+
+
+def test_access_log_creation_calls_daily_read_limit_before_persisting():
+    session = AsyncMock()
+    location_service = AsyncMock()
+    service = AccessLogService(
+        session=session,
+        storage_service=Mock(),
+        user_service=AsyncMock(),
+        location_service=location_service,
+    )
+    service._get_company_id_by_location = AsyncMock(return_value=10)
+    service.subscription_service.enforce_limit = AsyncMock(
+        side_effect=HTTPException(status_code=409, detail="limit")
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.create_access_log(
+                AccessLogCreateRequest(location_id=44, external_people_id=101),
+                created_by=8,
+            )
+        )
+
+    assert error.value.status_code == 409
+    service.subscription_service.enforce_limit.assert_awaited_once_with(
+        10,
+        "daily_reads",
+    )
+    session.add.assert_not_called()
+    session.commit.assert_not_awaited()
+
+
+def test_document_upload_intent_calls_storage_limit_before_intent_generation():
+    service = DocumentService(
+        session=AsyncMock(),
+        user_service=AsyncMock(),
+        storage_service=Mock(),
+    )
+    service._ensure_can_access_company = AsyncMock()
+    service.subscription_service.enforce_limit = AsyncMock(
+        side_effect=HTTPException(status_code=409, detail="limit")
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.create_upload_intent(
+                user_id=7,
+                payload=DocumentUploadIntentRequest(
+                    company_id=10,
+                    file_name="procedimiento.pdf",
+                    content_type="application/pdf",
+                    size_bytes=2048,
+                ),
+            )
+        )
+
+    assert error.value.status_code == 409
+    service.subscription_service.enforce_limit.assert_awaited_once_with(
+        10,
+        "storage_bytes",
+        2048,
+    )
+    service.storage_service.generate_document_upload_intent.assert_not_called()
 
 
 @pytest.mark.parametrize(
