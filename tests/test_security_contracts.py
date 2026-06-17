@@ -16,6 +16,7 @@ import pytest
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 from starlette.datastructures import Headers
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-at-least-32-bytes")
@@ -211,6 +212,115 @@ def test_subscription_rejects_provisioning_when_plan_limit_is_reached():
     assert error.value.status_code == 409
 
 
+@pytest.mark.parametrize(
+    ("resource", "current", "limit", "increment"),
+    [
+        ("locations", 2, 2, 1),
+        ("admins", 2, 2, 1),
+        ("operators", 10, 10, 1),
+        ("daily_reads", 500, 500, 1),
+        ("storage_bytes", 900, 1024, 200),
+    ],
+)
+def test_subscription_enforces_each_plan_resource_limit(
+    resource,
+    current,
+    limit,
+    increment,
+):
+    service = SubscriptionService(AsyncMock())
+    plan_limits = {
+        "qty_locations": 100,
+        "qty_admins": 100,
+        "qty_operators": 100,
+        "qty_daily_reads": 10_000,
+        "qty_storage_bytes": 10_000,
+    }
+    limit_field = (
+        "qty_storage_bytes"
+        if resource == "storage_bytes"
+        else f"qty_{resource}"
+    )
+    plan_limits[limit_field] = limit
+    service._subscription = AsyncMock(
+        return_value=SimpleNamespace(
+            company_id=10,
+            status=SubscriptionStatus.ACTIVE,
+            plan=SimpleNamespace(**plan_limits),
+        )
+    )
+    usage = {
+        "locations": 0,
+        "admins": 0,
+        "operators": 0,
+        "daily_reads": 0,
+        "storage_bytes": 0,
+    }
+    usage[resource] = current
+    service.usage = AsyncMock(return_value=SimpleNamespace(**usage))
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(service.enforce_limit(10, resource, increment))
+
+    assert error.value.status_code == 409
+
+
+@pytest.mark.parametrize(
+    "subscription_status",
+    [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE],
+)
+def test_subscription_allows_provisioning_for_active_trial_or_paid_status(
+    subscription_status,
+):
+    service = SubscriptionService(AsyncMock())
+    service._subscription = AsyncMock(
+        return_value=SimpleNamespace(
+            company_id=10,
+            status=subscription_status,
+            plan=SimpleNamespace(
+                qty_locations=2,
+                qty_admins=2,
+                qty_operators=10,
+                qty_daily_reads=500,
+                qty_storage_bytes=1024,
+            ),
+        )
+    )
+    service.usage = AsyncMock(
+        return_value=SimpleNamespace(
+            locations=1,
+            admins=1,
+            operators=3,
+            daily_reads=20,
+            storage_bytes=100,
+        )
+    )
+
+    asyncio.run(service.enforce_limit(10, "locations"))
+
+
+@pytest.mark.parametrize(
+    "subscription_status",
+    [SubscriptionStatus.PAST_DUE, SubscriptionStatus.CANCELED],
+)
+def test_subscription_blocks_provisioning_for_inactive_paid_states(
+    subscription_status,
+):
+    service = SubscriptionService(AsyncMock())
+    service._subscription = AsyncMock(
+        return_value=SimpleNamespace(
+            company_id=10,
+            status=subscription_status,
+            plan=SimpleNamespace(),
+        )
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(service.enforce_limit(10, "locations"))
+
+    assert error.value.status_code == 402
+
+
 def test_subscription_rejects_provisioning_after_trial_ends():
     service = SubscriptionService(AsyncMock())
     service._subscription = AsyncMock(
@@ -225,6 +335,52 @@ def test_subscription_rejects_provisioning_after_trial_ends():
         asyncio.run(service.enforce_limit(10, "storage_bytes", 100))
 
     assert error.value.status_code == 402
+
+
+def test_expired_trial_is_canceled_before_enforcing_limits():
+    session = AsyncMock()
+    expired_subscription = SimpleNamespace(
+        status=SubscriptionStatus.TRIALING,
+        trial_ends_at=datetime.now() - timedelta(minutes=1),
+        canceled_at=None,
+        updated_at=None,
+    )
+    result = Mock()
+    result.scalars.return_value.first.return_value = expired_subscription
+    session.execute.return_value = result
+    service = SubscriptionService(session)
+    service._root_company_id = AsyncMock(return_value=10)
+
+    subscription = asyncio.run(service._subscription(10, for_update=True))
+
+    assert subscription.status == SubscriptionStatus.CANCELED
+    assert subscription.canceled_at is not None
+    assert subscription.updated_at is not None
+    session.flush.assert_awaited_once()
+
+
+def test_reconciliation_cancels_expired_trials(monkeypatch):
+    monkeypatch.setattr(
+        settings,
+        "BILLING_RECONCILIATION_SECRET",
+        "billing-secret",
+    )
+    session = AsyncMock()
+    subscriptions = [
+        SimpleNamespace(status=SubscriptionStatus.TRIALING, canceled_at=None),
+        SimpleNamespace(status=SubscriptionStatus.TRIALING, canceled_at=None),
+    ]
+    result = Mock()
+    result.scalars.return_value.all.return_value = subscriptions
+    session.execute.return_value = result
+    service = SubscriptionService(session)
+
+    expired = asyncio.run(service.reconcile_expired_trials("billing-secret"))
+
+    assert expired == 2
+    assert all(item.status == SubscriptionStatus.CANCELED for item in subscriptions)
+    assert all(item.canceled_at is not None for item in subscriptions)
+    session.commit.assert_awaited_once()
 
 
 def test_stripe_status_mapping_revokes_terminal_subscriptions():
@@ -246,6 +402,7 @@ def test_stripe_webhook_retries_are_idempotent(monkeypatch):
     monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", secret)
     session = Mock()
     session.add = Mock()
+    session.flush = AsyncMock()
     session.commit = AsyncMock()
     missing = Mock()
     missing.scalars.return_value.first.return_value = None
@@ -277,7 +434,48 @@ def test_stripe_webhook_retries_are_idempotent(monkeypatch):
 
     service._apply_stripe_event.assert_awaited_once()
     session.add.assert_called_once()
+    session.flush.assert_awaited_once()
     session.commit.assert_awaited_once()
+
+
+def test_stripe_webhook_duplicate_race_does_not_apply_event(monkeypatch):
+    secret = "whsec_test_locentr"
+    monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", secret)
+    session = Mock()
+    session.add = Mock()
+    session.flush = AsyncMock(
+        side_effect=IntegrityError("insert billing_event", {}, Exception("dupe"))
+    )
+    session.rollback = AsyncMock()
+    session.commit = AsyncMock()
+    missing = Mock()
+    missing.scalars.return_value.first.return_value = None
+    session.execute = AsyncMock(return_value=missing)
+    service = SubscriptionService(session)
+    service._apply_stripe_event = AsyncMock()
+
+    payload = json.dumps(
+        {
+            "id": "evt_locentr_race",
+            "object": "event",
+            "type": "customer.subscription.updated",
+            "data": {"object": {"metadata": {}}},
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+    timestamp = int(time.time())
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        f"{timestamp}.{payload.decode('utf-8')}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    header = f"t={timestamp},v1={signature}"
+
+    asyncio.run(service.process_stripe_webhook(payload, header))
+
+    service._apply_stripe_event.assert_not_awaited()
+    session.rollback.assert_awaited_once()
+    session.commit.assert_not_awaited()
 
 
 def test_password_recovery_does_not_enumerate_accounts():

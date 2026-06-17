@@ -9,6 +9,7 @@ import stripe
 from argon2 import PasswordHasher
 from fastapi import HTTPException, status
 from sqlalchemy import distinct, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
@@ -40,6 +41,11 @@ from src.services.lifecycle_service import LifecycleService
 
 class SubscriptionService:
     """Manage one commercial subscription per root company tenant."""
+
+    _ACTIVE_STATUSES = {
+        SubscriptionStatus.TRIALING,
+        SubscriptionStatus.ACTIVE,
+    }
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -387,10 +393,7 @@ class SubscriptionService:
     ) -> None:
         """Atomically reject provisioning beyond the active plan."""
         subscription = await self._subscription(company_id, for_update=True)
-        if subscription.status not in {
-            SubscriptionStatus.TRIALING,
-            SubscriptionStatus.ACTIVE,
-        }:
+        if subscription.status not in self._ACTIVE_STATUSES:
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
                 detail="The company subscription is not active.",
@@ -564,7 +567,6 @@ class SubscriptionService:
 
         event_type = str(event["type"])
         data_object = event["data"]["object"]
-        await self._apply_stripe_event(event_type, data_object)
         self.session.add(
             BillingEvent(
                 provider="stripe",
@@ -572,6 +574,13 @@ class SubscriptionService:
                 event_type=event_type,
             )
         )
+        try:
+            await self.session.flush()
+        except IntegrityError:
+            await self.session.rollback()
+            return
+
+        await self._apply_stripe_event(event_type, data_object)
         await self.session.commit()
 
     async def _apply_stripe_event(
