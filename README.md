@@ -144,7 +144,7 @@ source .venv/bin/activate
 Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 Create `.env` from `.env.example`, then start a clean PostgreSQL instance:
@@ -173,13 +173,22 @@ Run the API:
 uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-See `docs/DEPLOYMENT.md` for local and portfolio deployment commands.
-
 Open API docs:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
+
+Useful health checks:
+
+```text
+GET /live
+GET /ready
+GET /health
+```
+
+`/live` checks the process only. `/ready` and `/health` verify PostgreSQL and
+return `503` if the API cannot safely receive traffic.
 
 ## Frontend Integration
 
@@ -245,6 +254,32 @@ GET  /api/v1/audit-log/
 
 For a complete source of truth, use FastAPI OpenAPI docs from the running API.
 
+## Deployment Notes
+
+Alembic is the only supported database schema workflow; the API and demo seed
+never create tables automatically.
+
+Recommended portfolio setup:
+
+- FastAPI web service for the API process.
+- Managed PostgreSQL for the persistent database.
+- Private object storage before enabling real customer documents.
+
+Required production variables are listed in `.env.example`. `SECRET_KEY` must
+contain at least 32 characters, CORS must list explicit frontend origins, and
+database pool sizing must account for worker count:
+
+```text
+workers * (DB_POOL_SIZE + DB_MAX_OVERFLOW)
+```
+
+Keep that total below the provider connection limit. `DB_STATEMENT_TIMEOUT_MS`
+cancels runaway queries, while `MAX_CONCURRENT_REQUESTS` rejects excess work
+with `503` and `Retry-After`.
+
+Stripe events should point to `/api/v1/subscriptions/stripe/webhook`. A scheduler
+can call `/api/v1/subscriptions/reconcile` with `X-Reconciliation-Secret`.
+
 ## Security Baseline
 
 - Centralized settings for secrets and token expiration.
@@ -262,16 +297,19 @@ For a complete source of truth, use FastAPI OpenAPI docs from the running API.
 - Idempotent billing/email events and retryable delivery records.
 - Versioned API error envelope with request IDs and private internal failures.
 
-See `docs/SECURITY.md` for application and infrastructure responsibilities.
+Failed requests use a stable error contract with:
+
+```text
+version, code, message, details, request_id, detail
+```
+
+Validation details never include submitted values. Internal exceptions, SQL
+errors, provider payloads and secrets are not returned.
 
 ## Documentation
 
 - `docs/ARCHITECTURE.md`
-- `docs/DEPLOYMENT.md`
-- `docs/ERROR_CONTRACT.md`
-- `docs/FRONTEND_CONTRACT.md`
 - `docs/SECURITY.md`
-- `docs/DEMO_SEED.md`
 
 ## Ownership
 

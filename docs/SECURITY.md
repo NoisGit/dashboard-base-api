@@ -39,5 +39,6 @@ must also use a reverse proxy or managed WAF/CDN for:
 - IP reputation, geographic rules, and volumetric DDoS protection.
 - Central logs, metrics, alerts, and request-ID correlation.
 
-Recommended checks in CI include `ruff`, `pytest`, `pip-audit`, and `bandit`.
-Database roles should use least privilege and production backups must be tested.
+Recommended checks in CI include `ruff`, `pytest`, `pip-audit`, `bandit`,
+`deptry`, `vulture`, and `pip check`. Database roles should use least privilege
+and production backups must be tested.
