@@ -48,8 +48,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install ruff bandit pip-audit
+          pip install -r requirements-dev.txt
 
       - name: Compile source
         run: python -m compileall src tests
@@ -57,11 +56,20 @@ jobs:
       - name: Run critical lint checks
         run: ruff check src tests --select F401,F821,F841,F811
 
+      - name: Check installed dependencies
+        run: pip check
+
       - name: Run static security checks
         run: bandit -q -r src -x tests
 
       - name: Audit dependencies
         run: pip-audit -r requirements.txt
+
+      - name: Check dependency usage
+        run: deptry .
+
+      - name: Check high-confidence dead code
+        run: vulture src tests --min-confidence 90
 
       - name: Run tests
         run: pytest

@@ -1,0 +1,2 @@
+[tool.deptry]
+per_rule_ignores = { DEP002 = ["asyncpg", "gunicorn", "python-multipart", "uvicorn"] }

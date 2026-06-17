@@ -44,7 +44,7 @@ def test_cors_origins_are_parsed_from_settings():
 
 def test_dashboard_auth_and_storage_routes_are_registered():
     """Validate dashboard-compatible routes exist."""
-    routes = {route.path for route in app.routes}
+    routes = set(app.openapi()["paths"])
 
     assert "/api/v1/auth/login" in routes
     assert "/api/v1/auth/me" in routes
@@ -77,9 +77,8 @@ def test_dashboard_auth_and_storage_routes_are_registered():
 def test_notification_routes_use_expected_http_methods():
     """Keep notification routes aligned with the dashboard service."""
     routes = {
-        route.path: set(route.methods or [])
-        for route in app.routes
-        if hasattr(route, "methods")
+        path: {method.upper() for method in methods}
+        for path, methods in app.openapi()["paths"].items()
     }
 
     assert routes["/api/v1/notifications/send-all-users"] == {"POST"}
